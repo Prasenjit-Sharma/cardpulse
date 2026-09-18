@@ -2,6 +2,7 @@ import type { CardRecord, EventRec } from '../lib/types'
 import { useObjectUrl } from '../lib/useObjectUrl'
 import Avatar from './Avatar'
 import Icon from './Icon'
+import Logo from './Logo'
 
 const WEEK = 7 * 86_400_000
 const today = () => new Date().toISOString().slice(0, 10)
@@ -11,15 +12,19 @@ function Thumb({ blob, name }: { blob?: Blob; name: string }) {
   return url ? <img className="thumb" src={url} alt="" /> : <Avatar name={name} />
 }
 
-export default function Home({ cards, events, dupes, onScan, onExhibition, onOpen, onContacts, onAccuracy }: {
+interface Install { mode: 'native' | 'ios' | null; visible: boolean; install: () => void; dismiss: () => void }
+
+export default function Home({ cards, events, dupes, hasKey, install, onScan, onExhibition, onSetup, onOpen, onContacts }: {
   cards: CardRecord[]
   events: EventRec[]
   dupes: Map<string, CardRecord[]>
+  hasKey: boolean
+  install: Install
   onScan: () => void
   onExhibition: () => void
+  onSetup: () => void
   onOpen: (id: string, idx: number) => void
   onContacts: () => void
-  onAccuracy: () => void
 }) {
   const done = cards.filter((c) => c.status === 'done')
   const people = done.flatMap((c) => (c.corrected ?? []).map((p, i) => ({ c, p, i })))
@@ -30,22 +35,62 @@ export default function Home({ cards, events, dupes, onScan, onExhibition, onOpe
   const busy = cards.filter((c) => c.status === 'pending' || c.status === 'running').length
   const dupCount = done.filter((c) => dupes.has(c.id)).length
 
+  const steps = [
+    { label: 'Connect Gemini', hint: 'Add your free API key', done: hasKey, run: onSetup },
+    { label: 'Scan your first card', hint: 'One card, or a whole table of them', done: people.length > 0, run: onScan },
+    { label: 'Try exhibition mode', hint: 'File everything under an event', done: events.length > 0, run: onExhibition },
+  ]
+  const stepsDone = steps.filter((s) => s.done).length
+
   return (
     <>
-      <header className="page-head"><div><h1>Namaste 👋</h1><p className="muted">Scan a card and it becomes a contact.</p></div></header>
+      <header className="brand"><Logo /><span>CardPulse</span></header>
 
-      <div className="hero-card">
-        <div className="hero-buttons">
-          <button onClick={onScan}><Icon name="camera" size={22} /><span>Scan a card</span></button>
-          <button onClick={onExhibition}><Icon name="booth" size={22} /><span>Exhibition mode</span></button>
-        </div>
+      <section className="summary">
+        {people.length > 0 ? (
+          <>
+            <p className="eyebrow">Your network</p>
+            <div className="big num">{people.length}<span>{people.length === 1 ? ' contact' : ' contacts'}</span></div>
+            <p className="sub">{thisWeek} added this week · {events.length} {events.length === 1 ? 'event' : 'events'}</p>
+          </>
+        ) : (
+          <>
+            <h1>Turn business cards into contacts</h1>
+            <p className="sub">Scan one card or a whole table of them. Every person becomes a contact you can call, message or save.</p>
+          </>
+        )}
+      </section>
+
+      <div className="cta-row">
+        <button className="primary" onClick={onScan}><Icon name="camera" size={20} /> Scan a card</button>
+        <button className="tinted" onClick={onExhibition}><Icon name="booth" size={20} /> Exhibition</button>
       </div>
 
-      <div className="stats3">
-        <div><b>{people.length}</b><span>Contacts</span></div>
-        <div><b>{thisWeek}</b><span>This week</span></div>
-        <div><b>{events.length}</b><span>Events</span></div>
-      </div>
+      {stepsDone < steps.length && (
+        <section className="card checklist">
+          <div className="row-top"><h2>Get started</h2><span className="muted num">{stepsDone} of {steps.length}</span></div>
+          <div className="meter"><i style={{ width: `${(stepsDone / steps.length) * 100}%` }} /></div>
+          {steps.map((s) => (
+            <button key={s.label} className={`step${s.done ? ' done' : ''}`} onClick={s.run} disabled={s.done}>
+              <span className="step-dot">{s.done && <Icon name="check" size={14} />}</span>
+              <span className="grow"><strong>{s.label}</strong><small>{s.hint}</small></span>
+              {!s.done && <Icon name="back" size={16} />}
+            </button>
+          ))}
+        </section>
+      )}
+
+      {install.visible && (
+        <section className="card install">
+          <span className="install-icon"><Icon name="download" size={20} /></span>
+          <div className="grow">
+            <strong>Install CardPulse</strong>
+            <small>{install.mode === 'ios' ? 'Tap Share, then Add to Home Screen.' : 'Add it to your home screen for one-tap scanning.'}</small>
+          </div>
+          {install.mode === 'native' && <button className="primary small" onClick={install.install}>Install</button>}
+          <button className="icon-btn ghost" onClick={install.dismiss} aria-label="Dismiss"><Icon name="x" size={18} /></button>
+        </section>
+      )}
 
       {busy > 0 && <div className="note">Reading {busy} card{busy > 1 ? 's' : ''}…</div>}
       {failed > 0 && <div className="note">{failed} card{failed > 1 ? 's' : ''} couldn't be read. <button className="link" onClick={onContacts}>Review</button></div>}
@@ -66,13 +111,9 @@ export default function Home({ cards, events, dupes, onScan, onExhibition, onOpe
         </section>
       )}
 
-      <section>
-        <h3 className="group">Recent scans</h3>
-        {recent.length === 0 ? (
-          <div className="empty small">
-            <p>No cards yet. Tap <b>Scan a card</b> to get started.</p>
-          </div>
-        ) : (
+      {recent.length > 0 && (
+        <section>
+          <h3 className="group">Recent scans</h3>
           <div className="list">
             {recent.map(({ c, p, i }) => (
               <div key={`${c.id}:${i}`} className="row" onClick={() => onOpen(c.id, i)}>
@@ -81,10 +122,8 @@ export default function Home({ cards, events, dupes, onScan, onExhibition, onOpe
               </div>
             ))}
           </div>
-        )}
-      </section>
-
-      <button className="menu-row" onClick={onAccuracy}><Icon name="chart" /><span className="grow"><b>Accuracy lab</b><small>Check how well cards are being read</small></span><Icon name="back" size={16} /></button>
+        </section>
+      )}
     </>
   )
 }

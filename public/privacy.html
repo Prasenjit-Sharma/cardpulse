@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CardPulse — Privacy policy</title>
+  <meta name="color-scheme" content="light dark" />
+  <style>
+    :root { --bg:#F6F7FB; --ink:#12172B; --ink2:rgba(18,23,43,.72); --line:rgba(18,23,43,.1); --accent:#3E4FE0; }
+    @media (prefers-color-scheme: dark) { :root { --bg:#0C0F1A; --ink:#EEF0FA; --ink2:rgba(238,240,250,.74); --line:rgba(238,240,250,.12); --accent:#8C9BFF; } }
+    * { box-sizing:border-box }
+    body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif }
+    main { max-width:680px; margin:0 auto; padding:32px 16px 64px }
+    h1 { font-size:28px; margin:0 0 8px } h2 { font-size:20px; margin:32px 0 8px }
+    p, li { color:var(--ink2) } ul { padding-left:20px } li { margin:4px 0 }
+    a { color:var(--accent) } .meta { font-size:14px; color:var(--ink2) }
+    hr { border:0; border-top:1px solid var(--line); margin:32px 0 }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Privacy policy</h1>
+  <p class="meta">CardPulse · Last updated 19 September 2026</p>
+  <p>CardPulse turns photos of business cards into contacts. This page explains what happens to your data. In short: your contacts stay on your device, and the only thing that leaves it is the card photo you choose to scan.</p>
+
+  <h2>What we store, and where</h2>
+  <ul>
+    <li>Contacts, notes, follow-up dates, events, and (if you choose to keep them) card photos are stored <strong>only in your browser or installed app</strong> on this device.</li>
+    <li>Your Gemini API key is stored on this device too.</li>
+    <li>We run no servers, have no accounts, and cannot see, recover or delete your data for you.</li>
+  </ul>
+
+  <h2>What leaves your device</h2>
+  <ul>
+    <li><strong>Card photos.</strong> When you scan, the photo is sent to Google's Gemini API, using your own API key, to read the text on the card. Google processes it under its own terms. On Google's free tier, Google may use submitted content to improve its products; paid usage is treated differently. Please review <a href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noreferrer">Google's Gemini API terms</a> before scanning cards that contain sensitive information.</li>
+    <li><strong>Voice notes.</strong> If you tap the microphone to dictate a note, your browser's built-in speech recognition is used. In some browsers, such as Chrome, the audio is processed by the browser vendor's speech service. Nothing is recorded by CardPulse.</li>
+    <li>Nothing else. There is no analytics, advertising or tracking, and no third-party scripts or fonts are loaded.</li>
+  </ul>
+
+  <h2>Permissions</h2>
+  <ul>
+    <li><strong>Camera</strong> — only while the scan screen is open, to take card photos.</li>
+    <li><strong>Microphone</strong> — only while you dictate a note.</li>
+  </ul>
+
+  <h2>Sharing and export</h2>
+  <p>Contacts are shared or exported (vCard, CSV, the phone's share sheet) only when you tap those actions. Contact details are the personal data of the people on the cards you scan; please use them in line with the law and with those people's expectations.</p>
+
+  <h2>Deleting your data</h2>
+  <p>Use <strong>Settings → Delete all data</strong>, or clear this site's data in your browser, or uninstall the app. Because nothing is stored on our side, that removes everything CardPulse holds.</p>
+
+  <h2>Children</h2>
+  <p>CardPulse is a business tool and is not directed at children.</p>
+
+  <h2>Changes and contact</h2>
+  <p>If this policy changes, the date above will change. Questions or requests: <a href="https://github.com/Prasenjit-Sharma/cardpulse/issues" target="_blank" rel="noreferrer">open an issue on GitHub</a>.</p>
+  <hr />
+  <p class="meta"><a href="./">Back to CardPulse</a></p>
+</main>
+</body>
+</html>

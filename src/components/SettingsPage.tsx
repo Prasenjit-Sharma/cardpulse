@@ -1,13 +1,17 @@
 import { useEffect, useState } from 'react'
 import { clearLog, readLog, subscribe } from '../lib/debug'
-import Icon from './Icon'
 import { DEFAULT_MODEL, listModels } from '../lib/gemini'
 import type { Settings } from '../lib/db'
+import Icon from './Icon'
+import Logo from './Logo'
 
 const MODELS_KEY = 'cardpulse.models'
 
-export default function SettingsPage({ settings, onChange, onWipe, onOpenAccuracy }: {
+interface Install { mode: 'native' | 'ios' | null; install: () => void }
+
+export default function SettingsPage({ settings, install, onChange, onWipe, onOpenAccuracy }: {
   settings: Settings
+  install: Install
   onChange: (s: Settings) => void
   onWipe: () => void
   onOpenAccuracy: () => void
@@ -19,7 +23,7 @@ export default function SettingsPage({ settings, onChange, onWipe, onOpenAccurac
     try { const m = JSON.parse(localStorage.getItem(MODELS_KEY) ?? '[]') as string[]; if (m.length) return m } catch { /* ignore */ }
     return settings.model ? [settings.model] : []
   })
-  const [msg, setMsg] = useState('')
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [busy, setBusy] = useState(false)
 
   // Refresh the model list whenever Settings opens, so the dropdown always offers everything the key can use.
@@ -33,7 +37,7 @@ export default function SettingsPage({ settings, onChange, onWipe, onOpenAccurac
   }, [])
 
   const connect = async () => {
-    setBusy(true); setMsg('')
+    setBusy(true); setMsg(null)
     try {
       const list = await listModels(key.trim())
       const flash = list.filter((m) => /flash/.test(m) && !/(image|tts|live|audio|thinking|lite|preview|exp)/.test(m))
@@ -43,56 +47,85 @@ export default function SettingsPage({ settings, onChange, onWipe, onOpenAccurac
       setModels(list)
       try { localStorage.setItem(MODELS_KEY, JSON.stringify(list)) } catch { /* ignore */ }
       onChange({ ...settings, apiKey: key.trim(), model: pick })
-      setMsg(`Connected — ${list.length} models available.`)
+      setMsg({ ok: true, text: `Connected. ${list.length} models available.` })
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : 'Could not connect')
+      setMsg({ ok: false, text: e instanceof Error ? e.message : 'Could not connect' })
     } finally { setBusy(false) }
   }
 
+  const connected = !!settings.apiKey && !!settings.model
+
   return (
     <>
-      <h1>Settings</h1>
-      <button className="menu-row" onClick={onOpenAccuracy}><Icon name="chart" /><span className="grow"><b>Accuracy lab</b><small>Measure how well cards are read</small></span><Icon name="back" size={16} /></button>
-      <label>
-        <span>Gemini API key</span>
-        <input type="password" autoComplete="off" placeholder="AIza…" value={key} onChange={(e) => setKey(e.target.value)} />
-      </label>
-      <p className="hint">
-        Free key from <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">aistudio.google.com/apikey</a>.
-        It is stored only in this browser and sent only to Google. Card images are sent to Gemini for reading —
-        on the free tier Google may use them to improve its products, so test with sample cards, not sensitive ones.
-      </p>
-      <button className="primary" onClick={connect} disabled={!key.trim() || busy}>{busy ? 'Checking…' : 'Save & connect'}</button>
-      {msg && <p className="note">{msg}</p>}
+      <header className="page-head"><h1>Settings</h1></header>
 
-      {models.length > 0 && (
+      <h3 className="group">Gemini</h3>
+      <section className="card">
+        <div className="row-top">
+          <strong>API key</strong>
+          <span className={`status${connected ? ' ok' : ''}`}>{connected ? 'Connected' : 'Not connected'}</span>
+        </div>
         <label>
-          <span>Model</span>
-          <select value={settings.model} onChange={(e) => onChange({ ...settings, model: e.target.value })}>
-            {models.map((m) => <option key={m}>{m}</option>)}
+          <span className="sr">Gemini API key</span>
+          <input type="password" autoComplete="off" placeholder="Paste your key (starts with AIza)" value={key} onChange={(e) => setKey(e.target.value)} />
+        </label>
+        <p className="hint">
+          Get a free key at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">aistudio.google.com/apikey</a>.
+          It stays on this device and is sent only to Google. Card photos are sent to Gemini to be read; on the free tier Google may use them to improve its products.
+        </p>
+        <button className="primary wide" onClick={connect} disabled={!key.trim() || busy}>{busy ? 'Checking…' : 'Save and connect'}</button>
+        {msg && <p className={`inline-msg${msg.ok ? ' ok' : ' bad'}`}>{msg.text}</p>}
+        {models.length > 0 && (
+          <label>
+            <span>Model</span>
+            <select value={settings.model} onChange={(e) => onChange({ ...settings, model: e.target.value })}>
+              {models.map((m) => <option key={m}>{m}</option>)}
+            </select>
+          </label>
+        )}
+      </section>
+
+      <h3 className="group">Photos</h3>
+      <section className="card">
+        <label>
+          <span>After a card is read, keep its photo</span>
+          <select value={settings.keepPhotos} onChange={(e) => onChange({ ...settings, keepPhotos: e.target.value as Settings['keepPhotos'] })}>
+            <option value="full">Full photo</option>
+            <option value="thumb">Small thumbnail only</option>
+            <option value="none">Don't keep photos</option>
           </select>
         </label>
-      )}
+        <p className="hint">Saves storage at exhibitions. Without the full photo a card can't be re-read or have a back side added.</p>
+      </section>
 
-      <label>
-        <span>After a card is read, keep its photo…</span>
-        <select value={settings.keepPhotos} onChange={(e) => onChange({ ...settings, keepPhotos: e.target.value as Settings['keepPhotos'] })}>
-          <option value="full">Full photo (best for accuracy checks)</option>
-          <option value="thumb">Small thumbnail only</option>
-          <option value="none">Don't keep photos</option>
-        </select>
-      </label>
-      <p className="hint">Saves phone storage at exhibitions. Without the full photo a card can't be re-read or have a back side added.</p>
+      <h3 className="group">App</h3>
+      <section className="card flush">
+        {install.mode && (
+          <button className="menu-item" onClick={install.mode === 'native' ? install.install : undefined}>
+            <Icon name="download" /><span className="grow"><strong>Install app</strong><small>{install.mode === 'ios' ? 'Tap Share, then Add to Home Screen' : 'Add CardPulse to your home screen'}</small></span>
+          </button>
+        )}
+        <button className="menu-item" onClick={onOpenAccuracy}>
+          <Icon name="chart" /><span className="grow"><strong>Accuracy lab</strong><small>Measure how well cards are read</small></span><Icon name="back" size={16} />
+        </button>
+        <a className="menu-item" href={`${import.meta.env.BASE_URL}privacy.html`} target="_blank" rel="noreferrer">
+          <Icon name="globe" /><span className="grow"><strong>Privacy policy</strong><small>How your data is handled</small></span><Icon name="back" size={16} />
+        </a>
+      </section>
 
-      <h3>Data</h3>
-      <p className="hint">Cards and images live only in this browser (IndexedDB).</p>
-      <button className="bad" onClick={() => confirm('Delete ALL cards from this browser?') && onWipe()}>Delete all cards</button>
+      <h3 className="group">Your data</h3>
+      <section className="card">
+        <p className="hint">Contacts and photos are stored only in this browser. Clearing site data removes them, so export regularly from the Exhibition tab or Accuracy lab.</p>
+        <button className="danger wide" onClick={() => confirm('Delete ALL cards and contacts from this device? This cannot be undone.') && onWipe()}>Delete all data</button>
+      </section>
 
       <details className="debug">
-        <summary>Debug log</summary>
+        <summary>Diagnostics</summary>
         <button className="link" onClick={clearLog}>clear</button>
         <pre>{lines.join('\n') || '(empty)'}</pre>
       </details>
+
+      <footer className="about"><Logo size={24} /><span>CardPulse v{__APP_VERSION__}</span></footer>
     </>
   )
 }

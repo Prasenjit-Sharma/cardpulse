@@ -1,6 +1,7 @@
 import { download } from '../lib/actions'
 import { buildCsv, buildVcf, fileSafe } from '../lib/export'
 import type { CardRecord, EventRec } from '../lib/types'
+import EmptyState from './EmptyState'
 import Icon from './Icon'
 
 export default function Exhibition({ cards, events, activeEvent, onNew, onRename, onDelete, onScanHere, onView }: {
@@ -16,11 +17,11 @@ export default function Exhibition({ cards, events, activeEvent, onNew, onRename
   const eventName = (id?: string) => events.find((e) => e.id === id)?.name ?? ''
   return (
     <>
-      <header className="page-head"><div><h1>Exhibition mode</h1><p className="muted">Scan stacks of cards fast. Lay several cards in one photo to save time.</p></div></header>
+      <header className="page-head"><div><h1>Exhibition</h1><p className="muted">Scan stacks of cards fast. Lay several cards in one photo to save time.</p></div></header>
       <button className="primary wide" onClick={onNew}><Icon name="plus" size={18} /> New exhibition</button>
 
       {events.length === 0 && (
-        <div className="empty"><h2>No exhibitions yet</h2><p>Create one, then tap <b>Scan here</b>. Every card you scan is filed under it.</p></div>
+        <EmptyState icon="booth" title="No exhibitions yet" text="Create one, then tap Scan here. Every card you scan is filed under it, ready to export when the show ends." />
       )}
 
       {events.map((e) => {

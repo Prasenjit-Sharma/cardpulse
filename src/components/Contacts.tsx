@@ -3,6 +3,7 @@ import { download, toVCard } from '../lib/actions'
 import type { CardRecord, Contact, EventRec } from '../lib/types'
 import { useObjectUrl } from '../lib/useObjectUrl'
 import Avatar from './Avatar'
+import EmptyState from './EmptyState'
 import Icon from './Icon'
 
 type Sort = 'recent' | 'name' | 'company'
@@ -24,7 +25,8 @@ function dayLabel(t: number): string {
 
 const haystack = (p: Contact) => [p.name, p.title, p.company, p.address, p.note, ...p.phones, ...p.emails].join(' ').toLowerCase()
 
-export default function Contacts({ cards: allCards, events, activeEvent, onSelectEvent, onNewEvent, dupes, onOpen, onRetryFailed, onUpload, onMoveToEvent, onDeleteContacts }: {
+export default function Contacts({ onScan, cards: allCards, events, activeEvent, onSelectEvent, onNewEvent, dupes, onOpen, onRetryFailed, onUpload, onMoveToEvent, onDeleteContacts }: {
+  onScan: () => void
   cards: CardRecord[]
   events: EventRec[]
   activeEvent: string
@@ -123,7 +125,10 @@ export default function Contacts({ cards: allCards, events, activeEvent, onSelec
         </div>
       ))}
 
-      {allCards.length === 0 && <div className="empty"><h2>No contacts yet</h2><p>Tap the scan button below.</p></div>}
+      {allCards.length === 0 && (
+        <EmptyState icon="users" title="No contacts yet" text="Scan a card, or lay several on a table and scan them in one shot."
+          action={<button className="primary" onClick={onScan}><Icon name="camera" size={20} /> Scan a card</button>} />
+      )}
       {allCards.length > 0 && rows.length === 0 && pending.length + failed.length === 0 && <p className="empty small">Nothing matches.</p>}
 
       {groups.filter((g) => g.items.length).map((g) => (

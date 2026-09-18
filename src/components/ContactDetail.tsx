@@ -199,7 +199,7 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
             {card.languages?.length ? ` · ${card.languages.join(', ')}` : ''}. Highlighted fields were corrected by you.
           </p>
           <button className={card.reviewed ? 'wide ok' : 'wide primary'} onClick={() => commit(contacts, !card.reviewed)}>
-            {card.reviewed ? '✓ Card reviewed (tap to undo)' : 'Mark card as reviewed'}
+            {card.reviewed ? <><Icon name="check" size={18} /> Reviewed. Tap to undo</> : 'Mark card as reviewed'}
           </button>
         </>
       ))}

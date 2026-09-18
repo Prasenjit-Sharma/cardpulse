@@ -14,6 +14,8 @@ import Report from './components/Report'
 import SettingsPage from './components/SettingsPage'
 import Camera from './components/Camera'
 import Icon from './components/Icon'
+import Toast, { type ToastData } from './components/Toast'
+import { useInstall } from './lib/useInstall'
 
 type Tab = 'home' | 'contacts' | 'exhibition' | 'settings' | 'accuracy'
 const TABS: Tab[] = ['home', 'contacts', 'exhibition', 'settings', 'accuracy']
@@ -43,6 +45,9 @@ export default function App() {
   const dupes = useMemo(() => findDuplicates(cards), [cards])
   const [backTab, setBackTab] = useState<Tab>('home')
   const [camOpen, setCamOpen] = useState(false)
+  const [toast, setToast] = useState<ToastData | null>(null)
+  const toastAt = useRef({ at: 0, count: 0 })
+  const install = useInstall()
   const fallbackInput = useRef<HTMLInputElement>(null)
   const queue = useRef<string[]>([])
   const active = useRef(0)
@@ -51,6 +56,15 @@ export default function App() {
 
   const refresh = useCallback(async () => { const l = await listCards(); log(`refresh: ${l.length} cards`); setCards(l) }, [])
   useEffect(() => { void refresh() }, [refresh])
+
+  /** The "peak" moment: a quiet confirmation that adds up across a batch instead of spamming. */
+  const notifyAdded = useCallback((n: number, cardId: string) => {
+    if (!n) return
+    const t = toastAt.current
+    t.count = Date.now() - t.at < 6000 ? t.count + n : n
+    t.at = Date.now()
+    setToast({ id: t.at, title: `${t.count} contact${t.count === 1 ? '' : 's'} added`, sub: 'Ready to call, message or save', action: { label: 'View', run: () => setOpen({ id: cardId, idx: 0 }) } })
+  }, [])
 
   const runOne = useCallback(async (id: string) => {
     const card = await getCard(id)
@@ -81,12 +95,13 @@ export default function App() {
         languages: r.languages, aiNotes: r.notes,
         extracted: r.contacts, corrected: structuredClone(r.contacts), reviewed: false,
       })
+      notifyAdded(r.contacts.length, id)
     } catch (e) {
       log(`extract failed: ${e instanceof Error ? e.message : e}`)
       await putCard({ ...card, status: 'error', error: e instanceof Error ? e.message : String(e) })
     }
     await refresh()
-  }, [refresh])
+  }, [refresh, notifyAdded])
 
   const pump = useCallback(() => {
     while (active.current < CONCURRENCY && queue.current.length) {
@@ -127,6 +142,13 @@ export default function App() {
 
   const hasLiveCamera = !!navigator.mediaDevices?.getUserMedia
   const scan = () => { if (hasLiveCamera) setCamOpen(true); else fallbackInput.current?.click() }
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    if (params.get('action') !== 'scan') return
+    history.replaceState(null, '', location.pathname)
+    scan()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const openCard = open ? cards.find((c) => c.id === open.id) : undefined
   const eventLabel = events.find((e) => e.id === activeEvent)?.name ?? ''
 
@@ -193,9 +215,9 @@ export default function App() {
             onMoveEvent={(eventId) => void moveToEvent([openCard.id], eventId)}
           />
         ) : tab === 'home' ? (
-          <Home cards={cards} events={events} dupes={dupes} onScan={scan} onExhibition={() => goto('exhibition')} onOpen={(id, idx) => setOpen({ id, idx })} onContacts={() => goto('contacts')} onAccuracy={() => goto('accuracy', 'home')} />
+          <Home cards={cards} events={events} dupes={dupes} hasKey={!!settings.apiKey && !!settings.model} install={install} onScan={scan} onExhibition={() => goto('exhibition')} onSetup={() => goto('settings')} onOpen={(id, idx) => setOpen({ id, idx })} onContacts={() => goto('contacts')} />
         ) : tab === 'contacts' ? (
-          <Contacts cards={cards} events={events} activeEvent={activeEvent} onSelectEvent={setActiveEvent} onNewEvent={newEvent} dupes={dupes}
+          <Contacts onScan={scan} cards={cards} events={events} activeEvent={activeEvent} onSelectEvent={setActiveEvent} onNewEvent={newEvent} dupes={dupes}
             onOpen={(id, idx) => setOpen({ id, idx })} onRetryFailed={retryFailed} onUpload={(f) => void addFiles(f)} onMoveToEvent={moveToEvent} onDeleteContacts={deleteContacts} />
         ) : tab === 'exhibition' ? (
           <Exhibition cards={cards} events={events} activeEvent={activeEvent} onNew={newEventPrompt} onRename={renameEvent} onDelete={removeEvent}
@@ -205,6 +227,7 @@ export default function App() {
         ) : (
           <SettingsPage
             settings={settings}
+            install={install}
             onChange={(s) => { setSettings(s); saveSettings(s) }}
             onWipe={async () => { await Promise.all(cards.map((c) => deleteCard(c.id))); await refresh() }}
             onOpenAccuracy={() => goto('accuracy', 'settings')}
@@ -213,6 +236,7 @@ export default function App() {
       </main>
       {camOpen && <Camera eventLabel={eventLabel} onCard={(fs) => { void addFiles(fs, true, true) }} onGallery={(fs) => { void addFiles(fs) }} onClose={() => setCamOpen(false)} />}
       <input ref={fallbackInput} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { if (e.target.files) void addFiles(e.target.files); e.target.value = '' }} />
+      <Toast toast={toast} onDone={() => setToast(null)} />
       {!openCard && (
         <nav>
           <NavBtn id="home" label="Home" icon="home" active={navActive} go={goto} />
