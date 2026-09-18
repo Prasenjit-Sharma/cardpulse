@@ -1,0 +1,58 @@
+export interface Contact {
+  name: string
+  title: string
+  company: string
+  phones: string[]
+  emails: string[]
+  website: string
+  address: string
+  gstin: string
+  social: string[]
+  /** Free-text note (typed or dictated). */
+  note?: string
+  /** ISO date (yyyy-mm-dd) to follow up on. */
+  followUp?: string
+}
+
+export type Status = 'pending' | 'running' | 'done' | 'error'
+
+export interface CardRecord {
+  id: string
+  createdAt: number
+  /** Front of the card (or the only side). Absent when the user chose not to keep photos. */
+  image?: Blob
+  /** Optional back side; read together with the front as ONE card. */
+  back?: Blob
+  /** `image` is only a small thumbnail, so the card cannot be re-read. */
+  thumbOnly?: boolean
+  status: Status
+  error?: string
+  model?: string
+  latencyMs?: number
+  tokensIn?: number
+  tokensOut?: number
+  languages?: string[]
+  aiNotes?: string
+  /** What the model returned — never modified after extraction. */
+  extracted?: Contact[]
+  /** What the user says is right. Equals `extracted` until edited. */
+  corrected?: Contact[]
+  reviewed: boolean
+  /** Exhibition/event this card was captured at. */
+  eventId?: string
+}
+
+export interface EventRec {
+  id: string
+  name: string
+  createdAt: number
+}
+
+export const emptyContact = (): Contact => ({
+  name: '', title: '', company: '', phones: [], emails: [], website: '', address: '', gstin: '', social: [],
+})
+
+export const SCALAR_FIELDS = ['name', 'title', 'company', 'website', 'address', 'gstin'] as const
+export const LIST_FIELDS = ['phones', 'emails', 'social'] as const
+export type FieldKey = (typeof SCALAR_FIELDS)[number] | (typeof LIST_FIELDS)[number]
+export const ALL_FIELDS: FieldKey[] = [...SCALAR_FIELDS, ...LIST_FIELDS]
