@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useObjectUrl } from '../lib/useObjectUrl'
 import { prepareImage } from '../lib/image'
-import { download, telHref, toVCard, waNumber } from '../lib/actions'
+import { saveToPhone, shareContact, telHref, waNumber } from '../lib/actions'
 import { speechSupported, startDictation } from '../lib/speech'
 import { emptyContact, type CardRecord, type Contact, type EventRec, type FieldKey } from '../lib/types'
 import Camera from './Camera'
@@ -47,6 +47,7 @@ function Info({ icon, label, children, actions }: { icon: 'pin' | 'phone' | 'mai
       <span className="badge"><Icon name={icon} size={18} /></span>
       <div className="grow"><span className="val">{children}</span>{label && <small>{label}</small>}</div>
       {actions && <div className="acts">{actions}</div>}
+
     </div>
   )
 }
@@ -75,6 +76,8 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
   const [tagsOpen, setTagsOpen] = useState(false)
   const [noteOpen, setNoteOpen] = useState(false)
   const [followOpen, setFollowOpen] = useState(false)
+  const [fab, setFab] = useState(false)
+  const [flash, setFlash] = useState('')
   const stopRef = useRef<(() => void) | null>(null)
   const hasLiveCamera = !!navigator.mediaDevices?.getUserMedia
   const canRead = !!card.image && !card.thumbOnly
@@ -83,6 +86,7 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
   const c = contacts[idx]
 
   useEffect(() => () => stopRef.current?.(), [])
+  useEffect(() => { if (!flash) return; const t = setTimeout(() => setFlash(''), 2600); return () => clearTimeout(t) }, [flash])
 
   /** Accuracy edits invalidate the "reviewed" stamp; notes, tags and reminders don't. */
   const commit = (next: Contact[], reviewed: boolean) => { setContacts(next); void onSave({ ...card, corrected: next, reviewed }) }
@@ -104,17 +108,19 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
     const stop = startDictation((t) => patch({ note: [c?.note, t].filter(Boolean).join(' ') }, false), () => { setListening(false); stopRef.current = null })
     if (stop) { stopRef.current = stop; setListening(true) }
   }
-  const share = async () => {
+  const noteFor = () => [eventName, c?.note].filter(Boolean).join(' — ')
+  // Both actions must start inside the tap (Android needs the user gesture to open Contacts or the share sheet).
+  const run = async (kind: 'save' | 'share') => {
     if (!c) return
-    const note = [eventName, c.note].filter(Boolean).join(' — ')
-    const file = new File([toVCard(c, note)], `${c.name || 'contact'}.vcf`, { type: 'text/vcard' })
-    try {
-      if (navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file], title: c.name })
-      else if (navigator.share) await navigator.share({ title: c.name, text: [c.name, c.title, c.company, ...c.phones, ...c.emails].filter(Boolean).join('\n') })
-      else download(file.name, toVCard(c, note), 'text/vcard')
-    } catch { /* share sheet dismissed */ }
+    setFab(false)
+    const result = kind === 'save' ? await saveToPhone(c, noteFor()) : await shareContact(c, noteFor())
+    const msg = { contacts: 'Opening Contacts…', copied: 'Contact details copied', downloaded: 'Contact file downloaded', shared: '', cancelled: '' }[result]
+    if (msg) setFlash(msg)
+    if (result === 'contacts') {
+      // If the Contacts app really opened, this page is hidden a moment later. If it is still showing, say so instead of doing nothing.
+      setTimeout(() => { if (document.visibilityState === 'visible') setFlash('Contacts did not open. Try Share contact instead.') }, 2000)
+    }
   }
-  const saveVcf = () => c && download(`${c.name || 'contact'}.vcf`, toVCard(c, [eventName, c.note].filter(Boolean).join(' — ')), 'text/vcard')
 
   const slides = [url, backUrl].filter(Boolean)
   const today = new Date().toISOString().slice(0, 10)
@@ -131,8 +137,6 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
           <button className="icon-btn ghost" onClick={() => setMenu(!menu)} aria-label="More"><Icon name="more" /></button>
           {menu && (
             <div className="menu" onClick={() => setMenu(false)}>
-              {c && <button onClick={saveVcf}>Save to phone</button>}
-              {c && <button onClick={() => void share()}>Share contact</button>}
               {c && <button onClick={() => patch({ priority: !c.priority }, false)}>{c.priority ? 'Remove priority' : 'Mark as priority'}</button>}
               {canRead && <button onClick={onRetry}>Re-read card</button>}
               {canRead && !card.back && hasLiveCamera && <button onClick={() => setCamOpen(true)}>Add back side (camera)</button>}
@@ -262,6 +266,22 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
             {card.reviewed ? <><Icon name="check" size={18} /> Reviewed. Tap to undo</> : 'Mark card as reviewed'}
           </button>
           <button className="outline" style={{ marginTop: 8 }} onClick={() => setEditing(false)}>Done</button>
+        </>
+      )}
+
+      {flash && <div className="flash" role="status">{flash}</div>}
+      {card.status === 'done' && c && !editing && (
+        <>
+          {fab && <div className="scrim" onClick={() => setFab(false)} />}
+          <div className="fab-menu">
+            {fab && (
+              <>
+                <button className="fab-item" onClick={() => void run('save')}><span>Save to phone</span><i><Icon name="download" size={22} /></i></button>
+                <button className="fab-item" onClick={() => void run('share')}><span>Share contact</span><i><Icon name="share" size={22} /></i></button>
+              </>
+            )}
+            <button className={`fab-main${fab ? ' open' : ''}`} onClick={() => setFab(!fab)} aria-label={fab ? 'Close actions' : 'More actions'} aria-expanded={fab}><Icon name={fab ? 'x' : 'more'} size={26} /></button>
+          </div>
         </>
       )}
     </div>

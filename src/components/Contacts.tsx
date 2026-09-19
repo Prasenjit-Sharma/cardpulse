@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { download, toVCard } from '../lib/actions'
+import { browserEnv, shareVcf, toVCard } from '../lib/actions'
 import type { CardRecord, Contact, EventRec } from '../lib/types'
 import Avatar from './Avatar'
 import EmptyState from './EmptyState'
@@ -129,7 +129,7 @@ export default function Contacts({ onScan, cards: allCards, events, activeEvent,
             <option value="" disabled>Move to…</option><option value="__none">No event</option>
             {events.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
           </select>
-          <button disabled={!chosen.length} onClick={() => { download('contacts.vcf', chosen.map((r) => toVCard(r.p, [eventName(r.card.eventId), r.p.note].filter(Boolean).join(' — '))).join('\r\n'), 'text/vcard'); exit() }} aria-label="Save to phone"><Icon name="download" size={18} /></button>
+          <button disabled={!chosen.length} onClick={() => { void shareVcf('contacts.vcf', chosen.map((r) => toVCard(r.p, [eventName(r.card.eventId), r.p.note].filter(Boolean).join(' — '))).join('\r\n'), `${chosen.length} contacts`, undefined, browserEnv()); exit() }} aria-label="Save to phone"><Icon name="download" size={18} /></button>
           <button className="bad" disabled={!chosen.length} onClick={() => { if (confirm(`Delete ${chosen.length} contact(s)?`)) { onDeleteContacts(chosen.map((r) => r.key)); exit() } }} aria-label="Delete"><Icon name="trash" size={18} /></button>
         </div>
       )}

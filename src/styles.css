@@ -252,3 +252,13 @@ nav button.on { color:var(--ink); font-weight:600 }
 @media (prefers-reduced-motion: reduce) { *,*::before,*::after { animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important; scroll-behavior:auto !important } }
 
 .dots-row i { width:6px; height:6px; border-radius:50%; background:var(--line-strong) } .dots-row i.on { background:var(--ink-3) }
+
+/* Covve-style action button: a dark dot menu that opens a dimmed screen with two labelled round actions */
+.scrim { position:fixed; inset:0; z-index:8; background:rgba(15,18,32,.55); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px) }
+.fab-menu { position:fixed; right:16px; bottom:calc(16px + env(safe-area-inset-bottom)); z-index:9; display:flex; flex-direction:column; align-items:flex-end; gap:16px }
+.fab-main { width:60px; height:60px; min-height:60px; padding:0; border-radius:50%; background:#1E2333; color:#C4B3FF; border:0; box-shadow:0 6px 18px rgba(20,24,50,.35) }
+.fab-main.open { background:var(--accent-solid); color:#fff }
+.fab-item { border:0; background:none; min-height:0; padding:0; gap:16px; color:#fff; font-weight:600; font-size:var(--t-l) }
+.fab-item i { width:52px; height:52px; border-radius:50%; background:#1E2333; color:#C4B3FF; display:inline-flex; align-items:center; justify-content:center }
+.flash { position:fixed; left:50%; transform:translateX(-50%); bottom:calc(92px + env(safe-area-inset-bottom)); z-index:10; background:var(--ink); color:var(--bg); padding:8px 16px; border-radius:99px; font-size:var(--t-s); font-weight:600; animation:toast-in .3s ease both; white-space:nowrap }
+.page-plain { padding-bottom:96px }

@@ -155,6 +155,7 @@ export default function App() {
     scan()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+  useEffect(() => { if (open) setToast(null) }, [open])   // an old "contact added" toast has no business over a contact screen
   const openCard = open ? cards.find((c) => c.id === open.id) : undefined
   const eventLabel = events.find((e) => e.id === activeEvent)?.name ?? ''
 
