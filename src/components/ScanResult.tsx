@@ -1,53 +1,66 @@
 import { useState } from 'react'
-import type { CardRecord } from '../lib/types'
+import type { CardRecord, EventRec } from '../lib/types'
 import { useObjectUrl } from '../lib/useObjectUrl'
 import Avatar from './Avatar'
 import Icon from './Icon'
 
-/** After a photo with several people: confirm who belongs before they become contacts. */
-export default function ScanResult({ card, onBack, onKeep, onEdit }: {
+/** After a read: confirm who belongs, file them under an event, add a note, save. */
+export default function ScanResult({ card, events, onBack, onKeep, onEdit }: {
   card: CardRecord
+  events: EventRec[]
   onBack: () => void
-  onKeep: (keep: number[]) => void
+  onKeep: (keep: number[], extras: { eventId: string; note: string }) => void
   onEdit: (idx: number) => void
 }) {
   const people = card.corrected ?? []
   const [on, setOn] = useState<Set<number>>(() => new Set(people.map((_, i) => i)))
+  const [eventId, setEventId] = useState(card.eventId ?? '')
+  const [note, setNote] = useState('')
   const url = useObjectUrl(card.image)
   const companies = new Set(people.map((p) => p.company.trim().toLowerCase()).filter(Boolean)).size
   const toggle = (i: number) => setOn((s) => { const n = new Set(s); n.has(i) ? n.delete(i) : n.add(i); return n })
 
   return (
-    <div className="editor">
+    <div className="page-plain">
       <header className="bar-top">
-        <button className="icon-btn" onClick={onBack} aria-label="Back"><Icon name="back" /></button>
-        <span className="title muted">Scan result</span>
+        <button className="icon-btn ghost" onClick={onBack} aria-label="Back"><Icon name="back" /></button>
+        <h2 className="title">Review details</h2>
         <span style={{ width: 40 }} />
       </header>
 
-      <h1>{people.length} {people.length === 1 ? 'person' : 'people'}.{companies > 0 && <> {companies} {companies === 1 ? 'company' : 'companies'}.</>}</h1>
-      <p className="muted lede">Shared company details were kept for everyone. Untick anyone who doesn't belong.</p>
+      <div className="center"><span className="chip-pill"><Icon name="users" size={16} /> {people.length} new {people.length === 1 ? 'contact' : 'contacts'}{companies > 0 && ` · ${companies} ${companies === 1 ? 'company' : 'companies'}`}</span></div>
+      {url && <div className="photo-frame"><img src={url} alt="Scanned card" /></div>}
 
-      {url && <img className="result-img" src={url} alt="Scanned card" />}
-
-      <div className="list">
+      <div className="plain-list">
         {people.map((p, i) => (
-          <div key={i} className={`row person${on.has(i) ? '' : ' off'}`} onClick={() => toggle(i)}>
+          <div key={i} className={`contact-row${on.has(i) ? '' : ' off'}`} onClick={() => toggle(i)}>
             <span className={`check-dot${on.has(i) ? ' on' : ''}`}>{on.has(i) && <Icon name="check" size={14} />}</span>
-            <Avatar name={p.name} />
+            <Avatar name={p.name} size={44} />
             <div className="grow">
               <strong>{p.name || '(no name)'}</strong>
-              <span className="muted">{[p.title, p.company].filter(Boolean).join(' · ')}</span>
-              <span className="muted sub">{[p.phones[0], p.emails[0]].filter(Boolean).join('  ·  ')}</span>
+              <span className="muted">{[p.title, p.company].filter(Boolean).join(' | ')}</span>
+              <span className="muted sm">{[p.phones[0], p.emails[0]].filter(Boolean).join('  ·  ')}</span>
             </div>
             <button className="link" onClick={(e) => { e.stopPropagation(); onEdit(i) }}>Edit</button>
           </div>
         ))}
       </div>
 
+      <label className="field-box">
+        <span>Associated event</span>
+        <select value={eventId} onChange={(e) => setEventId(e.target.value)}>
+          <option value="">None</option>
+          {events.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+        </select>
+      </label>
+      <label className="field-box">
+        <span>Notes (optional)</span>
+        <textarea rows={3} placeholder="Just like writing on the back of a business card." value={note} onChange={(e) => setNote(e.target.value)} />
+      </label>
+
       <div className="sticky-cta">
-        <button className="primary big" disabled={on.size === 0} onClick={() => onKeep([...on].sort((a, b) => a - b))}>
-          Keep {on.size} {on.size === 1 ? 'contact' : 'contacts'}
+        <button className="cta" disabled={on.size === 0} onClick={() => onKeep([...on].sort((a, b) => a - b), { eventId, note: note.trim() })}>
+          Save {on.size} {on.size === 1 ? 'contact' : 'contacts'}
         </button>
       </div>
     </div>

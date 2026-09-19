@@ -6,7 +6,7 @@ import { prepareImage } from './lib/image'
 import type { CardRecord, EventRec } from './lib/types'
 import { loadActiveEvent, loadEvents, saveActiveEvent, saveEvents } from './lib/events'
 import { findDuplicates } from './lib/dupes'
-import Home from './components/Home'
+import ScanHome from './components/ScanHome'
 import Contacts from './components/Contacts'
 import Exhibition from './components/Exhibition'
 import Insights from './components/Insights'
@@ -19,13 +19,13 @@ import Icon from './components/Icon'
 import Toast, { type ToastData } from './components/Toast'
 import { useInstall } from './lib/useInstall'
 
-type Tab = 'home' | 'contacts' | 'exhibition' | 'insights' | 'settings' | 'accuracy'
-const TABS: Tab[] = ['home', 'contacts', 'exhibition', 'insights', 'settings', 'accuracy']
+type Tab = 'scan' | 'contacts' | 'exhibition' | 'insights' | 'settings' | 'accuracy'
+const TABS: Tab[] = ['scan', 'contacts', 'exhibition', 'insights', 'settings', 'accuracy']
 const CONCURRENCY = 2
 
 export default function App() {
   // The browser can reload the page while the camera app is open; keep the user where they were.
-  const [tab, setTabState] = useState<Tab>(() => { const t = sessionStorage.getItem('tab') as Tab; return TABS.includes(t) ? t : 'home' })
+  const [tab, setTabState] = useState<Tab>(() => { const t = sessionStorage.getItem('tab') as Tab; return TABS.includes(t) ? t : 'scan' })
   const setTab = (t: Tab) => { setTabState(t); try { sessionStorage.setItem('tab', t) } catch { /* ignore */ } }
   const [cards, setCards] = useState<CardRecord[]>([])
   const [open, setOpen] = useState<{ id: string; idx: number; review?: boolean } | null>(null)
@@ -45,7 +45,7 @@ export default function App() {
     setEvents(next); saveEvents(next); setActiveEvent(ev.id)
   }
   const dupes = useMemo(() => findDuplicates(cards), [cards])
-  const [backTab, setBackTab] = useState<Tab>('home')
+  const [backTab, setBackTab] = useState<Tab>('scan')
   const [camOpen, setCamOpen] = useState(false)
   const [toast, setToast] = useState<ToastData | null>(null)
   const toastAt = useRef({ at: 0, count: 0 })
@@ -193,11 +193,11 @@ export default function App() {
     }
     await refresh()
   }
-  const keepPeople = async (cardId: string, keep: number[]) => {
+  const keepPeople = async (cardId: string, keep: number[], extras: { eventId: string; note: string }) => {
     const c = await getCard(cardId)
     if (!c) return
-    const rest = (c.corrected ?? []).filter((_, i) => keep.includes(i))
-    if (rest.length) await putCard({ ...c, corrected: rest, reviewed: false }); else await deleteCard(cardId)
+    const rest = (c.corrected ?? []).filter((_, i) => keep.includes(i)).map((p) => (extras.note ? { ...p, note: [p.note, extras.note].filter(Boolean).join(' ') } : p))
+    if (rest.length) await putCard({ ...c, corrected: rest, reviewed: false, eventId: extras.eventId || undefined }); else await deleteCard(cardId)
     await refresh()
   }
   const newEventPrompt = () => { const n = prompt('Exhibition / event name'); if (n?.trim()) newEvent(n.trim()) }
@@ -207,20 +207,16 @@ export default function App() {
     try { localStorage.setItem('cardpulse.captureMode', 'many') } catch { /* ignore */ }
     scan()
   }
-  const batchScan = () => {
-    try { localStorage.setItem('cardpulse.captureMode', 'many') } catch { /* ignore */ }
-    scan()
-  }
   const retryFailed = () => enqueue(cards.filter((c) => c.status === 'error').map((c) => c.id))
-  const navActive: Tab = tab === 'accuracy' ? 'insights' : tab
+  const navActive: Tab = tab === 'accuracy' || tab === 'insights' ? 'settings' : tab
 
   return (
     <div className="app">
       <main>
         {banner && <div className="banner">{banner}</div>}
         {openCard && open?.review ? (
-          <ScanResult key={`r-${openCard.id}`} card={openCard} onBack={() => setOpen(null)}
-            onKeep={(keep) => { void keepPeople(openCard.id, keep); setOpen(null); goto('contacts') }}
+          <ScanResult key={`r-${openCard.id}`} card={openCard} events={events} onBack={() => setOpen(null)}
+            onKeep={(keep, extras) => { void keepPeople(openCard.id, keep, extras); setOpen(null); goto('contacts') }}
             onEdit={(idx) => setOpen({ id: openCard.id, idx })} />
         ) : openCard && open ? (
           <ContactDetail
@@ -235,16 +231,17 @@ export default function App() {
             onDelete={async () => { await deleteCard(openCard.id); setOpen(null); await refresh() }}
             onMoveEvent={(eventId) => void moveToEvent([openCard.id], eventId)}
           />
-        ) : tab === 'home' ? (
-          <Home cards={cards} events={events} dupes={dupes} hasKey={readerReady(settings)} needsKey={!serverMode || !!settings.useOwnKey} install={install} onScan={scan} onBatch={batchScan} onUpload={(f) => void addFiles(f)} onSettings={() => goto('settings', 'home')} onExhibition={() => goto('exhibition')} onSetup={() => goto('settings', 'home')} onOpen={(id, idx) => setOpen({ id, idx })} onContacts={() => goto('contacts')} />
+        ) : tab === 'scan' ? (
+          <ScanHome cards={cards} events={events} activeEvent={activeEvent} onSelectEvent={setActiveEvent} ready={readerReady(settings)} needsKey={!serverMode || !!settings.useOwnKey}
+            install={install} onScan={scan} onOpen={(id, review) => setOpen({ id, idx: 0, review })} onContacts={() => goto('contacts')} onSetup={() => goto('settings', 'scan')} onRetry={(id) => enqueue([id])} />
         ) : tab === 'contacts' ? (
-          <Contacts onScan={scan} cards={cards} events={events} activeEvent={activeEvent} onSelectEvent={setActiveEvent} onNewEvent={newEvent} dupes={dupes}
+          <Contacts onScan={scan} cards={cards} events={events} activeEvent={activeEvent} onSelectEvent={setActiveEvent} dupes={dupes}
             onOpen={(id, idx) => setOpen({ id, idx })} onRetryFailed={retryFailed} onUpload={(f) => void addFiles(f)} onMoveToEvent={moveToEvent} onDeleteContacts={deleteContacts} />
         ) : tab === 'exhibition' ? (
           <Exhibition cards={cards} events={events} activeEvent={activeEvent} onNew={newEventPrompt} onRename={renameEvent} onDelete={removeEvent}
             onScanHere={scanHere} onView={(id) => { setActiveEvent(id); goto('contacts') }} />
         ) : tab === 'insights' ? (
-          <Insights cards={cards} onSettings={() => goto('settings', 'insights')} onContacts={() => goto('contacts')} onAccuracy={() => goto('accuracy', 'insights')} onOpen={(id, idx) => setOpen({ id, idx })} />
+          <Insights cards={cards} onBack={() => setTab(backTab)} onContacts={() => goto('contacts')} onAccuracy={() => goto('accuracy', 'insights')} onOpen={(id, idx) => setOpen({ id, idx })} />
         ) : tab === 'accuracy' ? (
           <Report cards={cards} events={events} dupes={dupes} onBack={() => setTab(backTab)} />
         ) : (
@@ -254,6 +251,7 @@ export default function App() {
             onChange={(s) => { setSettings(s); saveSettings(s) }}
             onWipe={async () => { await Promise.all(cards.map((c) => deleteCard(c.id))); await refresh() }}
             onOpenAccuracy={() => goto('accuracy', 'settings')}
+            onOpenInsights={() => goto('insights', 'settings')}
             onBack={() => setTab(backTab)}
           />
         )}
@@ -263,18 +261,17 @@ export default function App() {
       <Toast toast={toast} onDone={() => setToast(null)} />
       {!openCard && (
         <nav>
-          <NavBtn id="home" label="Home" icon="home" active={navActive} go={goto} />
+          <NavBtn id="scan" label="Scan" icon="camera" active={navActive} go={goto} />
           <NavBtn id="contacts" label="Contacts" icon="users" active={navActive} go={goto} />
-          <button className="nav-scan" onClick={scan} aria-label="Scan a card"><Icon name="camera" size={26} /></button>
           <NavBtn id="exhibition" label="Events" icon="booth" active={navActive} go={goto} />
-          <NavBtn id="insights" label="Insights" icon="chart" active={navActive} go={goto} />
+          <NavBtn id="settings" label="Settings" icon="sliders" active={navActive} go={goto} />
         </nav>
       )}
     </div>
   )
 }
 
-function NavBtn({ id, label, icon, active, go }: { id: Tab; label: string; icon: 'home' | 'users' | 'booth' | 'chart'; active: Tab; go: (t: Tab) => void }) {
+function NavBtn({ id, label, icon, active, go }: { id: Tab; label: string; icon: 'camera' | 'users' | 'booth' | 'sliders'; active: Tab; go: (t: Tab) => void }) {
   return (
     <button className={active === id ? 'on' : ''} onClick={() => go(id)}>
       <Icon name={icon} size={22} />

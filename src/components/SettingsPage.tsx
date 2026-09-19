@@ -9,12 +9,13 @@ const MODELS_KEY = 'cardpulse.models'
 
 interface Install { mode: 'native' | 'ios' | null; install: () => void }
 
-export default function SettingsPage({ settings, install, onChange, onWipe, onOpenAccuracy, onBack }: {
+export default function SettingsPage({ settings, install, onChange, onWipe, onOpenAccuracy, onOpenInsights, onBack }: {
   settings: Settings
   install: Install
   onChange: (s: Settings) => void
   onWipe: () => void
   onOpenAccuracy: () => void
+  onOpenInsights: () => void
   onBack: () => void
 }) {
   const [lines, setLines] = useState(readLog)
@@ -135,6 +136,9 @@ export default function SettingsPage({ settings, install, onChange, onWipe, onOp
             <Icon name="download" /><span className="grow"><strong>Install app</strong><small>{install.mode === 'ios' ? 'Tap Share, then Add to Home Screen' : 'Add CardPulse to your home screen'}</small></span>
           </button>
         )}
+        <button className="menu-item" onClick={onOpenInsights}>
+          <Icon name="spark" /><span className="grow"><strong>Insights</strong><small>Follow-ups, companies and priorities</small></span><Icon name="back" size={16} />
+        </button>
         <button className="menu-item" onClick={onOpenAccuracy}>
           <Icon name="chart" /><span className="grow"><strong>Accuracy lab</strong><small>Measure how well cards are read</small></span><Icon name="back" size={16} />
         </button>

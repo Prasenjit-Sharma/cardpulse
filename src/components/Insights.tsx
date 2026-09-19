@@ -4,9 +4,9 @@ import Icon from './Icon'
 
 const today = () => new Date().toISOString().slice(0, 10)
 
-export default function Insights({ cards, onSettings, onContacts, onAccuracy, onOpen }: {
+export default function Insights({ cards, onBack, onContacts, onAccuracy, onOpen }: {
   cards: CardRecord[]
-  onSettings: () => void
+  onBack: () => void
   onContacts: () => void
   onAccuracy: () => void
   onOpen: (id: string, idx: number) => void
@@ -37,8 +37,7 @@ export default function Insights({ cards, onSettings, onContacts, onAccuracy, on
   return (
     <>
       <header className="page-head">
-        <h1>Insights</h1>
-        <button className="icon-btn ghost" onClick={onSettings} aria-label="Settings"><Icon name="sliders" /></button>
+        <div className="head-left"><button className="icon-btn ghost" onClick={onBack} aria-label="Back"><Icon name="back" /></button><h1>Insights</h1></div>
       </header>
 
       <div className="stats2">
