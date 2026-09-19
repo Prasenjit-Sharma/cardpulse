@@ -77,12 +77,12 @@ export default function ScanHome({ cards, events, activeEvent, onSelectEvent, re
 
           <h3 className="group">Recent scans</h3>
           <div className="plain-list">
-            {shown.map((c) => {
+            {shown.map((c, i) => {
               const names = (c.corrected ?? []).map((p) => p.name).filter(Boolean)
               const isNew = Date.now() - c.createdAt < 10 * 60_000 && !c.reviewed
               const multi = (c.corrected?.length ?? 0) > 1
               return (
-                <div key={c.id} className="scan-row" onClick={() => (c.status === 'error' ? onRetry(c.id) : c.status === 'done' && onOpen(c.id, multi))}>
+                <div key={c.id} className="scan-row" style={{ ['--i' as string]: i }} onClick={() => (c.status === 'error' ? onRetry(c.id) : c.status === 'done' && onOpen(c.id, multi))}>
                   <CardThumb blob={c.image} name={c.corrected?.[0]?.name ?? ''} />
                   <div className="grow">
                     {c.status === 'done' ? (

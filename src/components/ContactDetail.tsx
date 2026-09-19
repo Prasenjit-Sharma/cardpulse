@@ -2,10 +2,13 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useObjectUrl } from '../lib/useObjectUrl'
 import { prepareCardImage } from '../lib/cardImage'
 import { browserEnv, download, saveToPhone, shareContact, telHref, toVCard, waNumber } from '../lib/actions'
+import { currentNameFormat } from '../lib/db'
 import { log } from '../lib/debug'
 import { speechSupported, startDictation } from '../lib/speech'
 import { emptyContact, type CardRecord, type Contact, type EventRec, type FieldKey } from '../lib/types'
 import Camera from './Camera'
+import Sheet, { SheetItem } from './Sheet'
+import { useBackClose } from '../lib/useBackClose'
 import Icon from './Icon'
 
 const SUGGESTED_TAGS = ['Customer', 'Supplier', 'Partner', 'Investor', 'Hot lead']
@@ -80,6 +83,9 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
   const [fab, setFab] = useState(false)
   const [flash, setFlash] = useState('')
   const stopRef = useRef<(() => void) | null>(null)
+  useBackClose(fab, () => setFab(false))
+  useBackClose(!!light, () => setLight(''))
+  useBackClose(camOpen, () => setCamOpen(false))
   const hasLiveCamera = !!navigator.mediaDevices?.getUserMedia
   const canRead = !!card.image && !card.thumbOnly
   const busy = card.status === 'pending' || card.status === 'running'
@@ -122,7 +128,8 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
     if (!c) return
     setFab(false)
     const env = browserEnv((m) => log(m))
-    const out = kind === 'save' ? await saveToPhone(c, noteFor(), env) : await shareContact(c, noteFor(), env)
+    const fmt = currentNameFormat()
+    const out = kind === 'save' ? await saveToPhone(c, noteFor(), env, fmt) : await shareContact(c, noteFor(), env, fmt)
     const why = out.problem ? ` (${out.problem})` : ''
     if (out.result === 'copied') setFlash(`Share sheet unavailable${why}. Contact details copied.`)
     else if (out.result === 'downloaded') setFlash(`Downloaded a contact file${why}. Open it to add to Contacts.`)
@@ -139,23 +146,20 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
         {card.status === 'done' && c && (
           <button className={`icon-btn ghost${editing ? ' on' : ''}`} onClick={() => setEditing(!editing)} aria-label={editing ? 'Done editing' : 'Edit'}><Icon name={editing ? 'check' : 'edit'} size={20} /></button>
         )}
-        <div className="menu-wrap">
-          <button className="icon-btn ghost" onClick={() => setMenu(!menu)} aria-label="More"><Icon name="more" /></button>
-          {menu && (
-            <div className="menu" onClick={() => setMenu(false)}>
-              {c && <button onClick={() => patch({ priority: !c.priority }, false)}>{c.priority ? 'Remove priority' : 'Mark as priority'}</button>}
-              {c && <button onClick={() => { download(`${c.name || 'contact'}.vcf`, toVCard(c, noteFor()), 'text/x-vcard'); setFlash('Downloaded. Open the file to choose Contacts.') }}>Download contact file (.vcf)</button>}
-              {canRead && <button onClick={onRetry}>Re-read card</button>}
-              {canRead && !card.back && hasLiveCamera && <button onClick={() => setCamOpen(true)}>Add back side (camera)</button>}
-              {canRead && !card.back && <button onClick={() => document.getElementById('back-file')?.click()}>Add back side (photo)</button>}
-              {card.back && <button onClick={() => confirm('Remove the back side and re-read?') && void setBack(undefined)}>Remove back side</button>}
-              <button className="bad" onClick={() => confirm('Remove this person?') && removePerson()}>Delete contact</button>
-              <button className="bad" onClick={() => confirm('Delete the whole card and all its contacts?') && onDelete()}>Delete card</button>
-            </div>
-          )}
-        </div>
+        <button className="icon-btn ghost" onClick={() => setMenu(true)} aria-label="More options"><Icon name="more" /></button>
         <input id="back-file" type="file" accept="image/*" hidden onChange={(e) => { void pickBack(e.target.files?.[0]); e.target.value = '' }} />
       </header>
+
+      <Sheet open={menu} onClose={() => setMenu(false)} title={c?.name || 'Contact'}>
+        {c && <SheetItem icon="star" label={c.priority ? 'Remove priority' : 'Mark as priority'} onClick={() => { setMenu(false); patch({ priority: !c.priority }, false) }} />}
+        {c && <SheetItem icon="file" label="Download contact file (.vcf)" onClick={() => { setMenu(false); download(`${c.name || 'contact'}.vcf`, toVCard(c, noteFor(), currentNameFormat()), 'text/x-vcard'); setFlash('Downloaded. Open the file to choose Contacts.') }} />}
+        {canRead && <SheetItem icon="refresh" label="Re-read card" onClick={() => { setMenu(false); onRetry() }} />}
+        {canRead && !card.back && hasLiveCamera && <SheetItem icon="camera" label="Add back side (camera)" onClick={() => { setMenu(false); setCamOpen(true) }} />}
+        {canRead && !card.back && <SheetItem icon="image" label="Add back side (photo)" onClick={() => { setMenu(false); document.getElementById('back-file')?.click() }} />}
+        {card.back && <SheetItem icon="image" label="Remove back side" onClick={() => { setMenu(false); if (confirm('Remove the back side and re-read?')) void setBack(undefined) }} />}
+        <SheetItem icon="trash" danger label="Delete contact" onClick={() => { setMenu(false); if (confirm('Remove this person?')) removePerson() }} />
+        <SheetItem icon="trash" danger label="Delete card" onClick={() => { setMenu(false); if (confirm('Delete the whole card and all its contacts?')) onDelete() }} />
+      </Sheet>
 
       {contacts.length > 1 && (
         <div className="chips scroll">

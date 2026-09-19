@@ -19,6 +19,7 @@ import Camera from './components/Camera'
 import Icon from './components/Icon'
 import Toast, { type ToastData } from './components/Toast'
 import { useInstall } from './lib/useInstall'
+import { useBackClose } from './lib/useBackClose'
 
 type Tab = 'scan' | 'contacts' | 'exhibition' | 'insights' | 'settings' | 'accuracy'
 const TABS: Tab[] = ['scan', 'contacts', 'exhibition', 'insights', 'settings', 'accuracy']
@@ -164,6 +165,10 @@ export default function App() {
     const c = cards.find((x) => x.id === open.id)
     if (c?.status === 'done') setOpen({ id: c.id, idx: 0, review: (c.corrected?.length ?? 0) > 1 })
   }, [cards, open])
+  // Android back: close the camera, then the open contact/review, then go back to the Scan tab, before ever leaving the app.
+  useBackClose(camOpen, () => setCamOpen(false))
+  useBackClose(!!open, () => setOpen(null))
+  useBackClose(tab !== 'scan' && !open && !camOpen, () => setTab(tab === 'accuracy' || tab === 'insights' ? backTab : 'scan'))
   const openCard = open ? cards.find((c) => c.id === open.id) : undefined
   const eventLabel = events.find((e) => e.id === activeEvent)?.name ?? ''
 
@@ -223,6 +228,7 @@ export default function App() {
     <div className="app">
       <main>
         {banner && <div className="banner">{banner}</div>}
+        <div className="view" key={openCard ? `o-${open?.id}-${open?.review ? 'r' : 'd'}` : tab}>
         {openCard && open?.review ? (
           <ScanResult key={`r-${openCard.id}`} card={openCard} events={events} onBack={() => setOpen(null)}
             onKeep={(keep, extras) => { void keepPeople(openCard.id, keep, extras); setOpen(null); goto('contacts') }}
@@ -264,6 +270,7 @@ export default function App() {
             onBack={() => setTab(backTab)}
           />
         )}
+        </div>
       </main>
       {camOpen && <Camera eventLabel={eventLabel} onOpenLast={() => { const id = lastCardId.current; if (id) setOpen({ id, idx: 0, whenDone: true }) }} onCard={(fs) => { void addFiles(fs, true, true) }} onGallery={(fs) => { void addFiles(fs) }} onClose={() => setCamOpen(false)} />}
       <input ref={fallbackInput} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { if (e.target.files) void addFiles(e.target.files); e.target.value = '' }} />
@@ -282,8 +289,8 @@ export default function App() {
 
 function NavBtn({ id, label, icon, active, go }: { id: Tab; label: string; icon: 'camera' | 'users' | 'booth' | 'sliders'; active: Tab; go: (t: Tab) => void }) {
   return (
-    <button className={active === id ? 'on' : ''} onClick={() => go(id)}>
-      <Icon name={icon} size={22} />
+    <button className={active === id ? 'on' : ''} onClick={() => go(id)} aria-current={active === id ? 'page' : undefined}>
+      <span className="ind"><Icon name={icon} size={22} /></span>
       <span>{label}</span>
     </button>
   )

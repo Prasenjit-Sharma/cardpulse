@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { browserEnv, shareVcf, toVCard } from '../lib/actions'
+import { currentNameFormat } from '../lib/db'
 import type { CardRecord, Contact, EventRec } from '../lib/types'
 import CardThumb from './CardThumb'
 import EmptyState from './EmptyState'
@@ -105,8 +106,8 @@ export default function Contacts({ onScan, cards: allCards, events, activeEvent,
         <section key={g.label}>
           <h3 className="group">{g.label}</h3>
           <div className="plain-list">
-            {g.items.map((r) => (
-              <div key={r.key} className="contact-row" onClick={() => (sel ? toggle(r.key) : onOpen(r.card.id, r.i))}>
+            {g.items.map((r, i) => (
+              <div key={r.key} className="contact-row" style={{ ['--i' as string]: i }} onClick={() => (sel ? toggle(r.key) : onOpen(r.card.id, r.i))}>
                 {sel && <span className={`check-dot${sel.has(r.key) ? ' on' : ''}`}>{sel.has(r.key) && <Icon name="check" size={14} />}</span>}
                 <CardThumb blob={r.card.image} name={r.p.name} />
                 <div className="grow">
@@ -129,7 +130,7 @@ export default function Contacts({ onScan, cards: allCards, events, activeEvent,
             <option value="" disabled>Move to…</option><option value="__none">No event</option>
             {events.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
           </select>
-          <button disabled={!chosen.length} onClick={() => { void shareVcf('contacts.vcf', chosen.map((r) => toVCard(r.p, [eventName(r.card.eventId), r.p.note].filter(Boolean).join(' — '))).join('\r\n'), `${chosen.length} contacts`, undefined, browserEnv(), false); exit() }} aria-label="Save to phone"><Icon name="download" size={18} /></button>
+          <button disabled={!chosen.length} onClick={() => { void shareVcf('contacts.vcf', chosen.map((r) => toVCard(r.p, [eventName(r.card.eventId), r.p.note].filter(Boolean).join(' — '), currentNameFormat())).join('\r\n'), `${chosen.length} contacts`, undefined, browserEnv(), false); exit() }} aria-label="Save to phone"><Icon name="download" size={18} /></button>
           <button className="bad" disabled={!chosen.length} onClick={() => { if (confirm(`Delete ${chosen.length} contact(s)?`)) { onDeleteContacts(chosen.map((r) => r.key)); exit() } }} aria-label="Delete"><Icon name="trash" size={18} /></button>
         </div>
       )}

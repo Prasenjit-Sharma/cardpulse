@@ -264,3 +264,79 @@ nav button.on { color:var(--ink); font-weight:600 }
 .page-plain { padding-bottom:96px }
 
 .contact-row .scan-thumb { flex:none }
+
+/* Caller ID setting */
+.radio-list { display:flex; flex-direction:column; margin:8px 0 }
+.radio { width:100%; justify-content:flex-start; text-align:left; gap:16px; min-height:56px; padding:8px 4px; border:0; border-radius:var(--r-md); background:none; font-weight:400 }
+.radio .grow { display:flex; flex-direction:column } .radio strong { font-weight:600 } .radio small { color:var(--ink-3) }
+.radio .dot { width:20px; height:20px; border-radius:50%; border:2px solid var(--line-strong); flex:none; position:relative; transition:border-color .2s var(--ease) }
+.radio .dot::after { content:''; position:absolute; inset:3px; border-radius:50%; background:var(--accent-solid); transform:scale(0); transition:transform .2s var(--ease) }
+.radio.on .dot { border-color:var(--accent-solid) } .radio.on .dot::after { transform:scale(1) }
+.call-preview { display:flex; align-items:center; gap:12px; background:var(--surface-2); border-radius:var(--r-lg); padding:12px 16px; margin:8px 0 12px }
+.call-preview div { display:flex; flex-direction:column } .call-preview small { color:var(--ink-3) } .call-preview strong { font-size:var(--t-l) }
+.call-ico { width:36px; height:36px; border-radius:50%; background:var(--ok); color:#fff; display:inline-flex; align-items:center; justify-content:center; flex:none }
+.soon-row { display:flex; align-items:center; gap:12px; padding:12px 0; border-top:1px solid var(--line) } .soon-row>svg { color:var(--accent); flex:none } .soon-row .grow { display:flex; flex-direction:column } .soon-row small { color:var(--ink-3) }
+
+/* ================= Material 3 pass: tokens, motion, nav indicator, sheets, touch targets ================= */
+:root {
+  --ease:cubic-bezier(.2,0,0,1); --ease-in:cubic-bezier(.3,0,.8,.15);
+  --dur-1:120ms; --dur-2:200ms; --dur-3:300ms;
+  --sec-container:rgba(108,71,219,.13); --state:rgba(35,43,64,.07);
+  --nav-h:64px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) { --sec-container:rgba(169,143,255,.2); --state:rgba(236,239,248,.09); } }
+:root[data-theme='dark'] { --sec-container:rgba(169,143,255,.2); --state:rgba(236,239,248,.09); }
+
+/* screen transitions and list entry */
+.view { animation:view-in var(--dur-3) var(--ease) both }
+.scan-row,.contact-row,.event-card,.banner-row { animation:rise .3s var(--ease) both; animation-delay:calc(min(var(--i, 0), 10) * 26ms) }
+.scan-row,.contact-row { transition:background var(--dur-1) linear; border-radius:var(--r-md) }
+.scan-row:active,.contact-row:active,.event-head:active { background:var(--state) }
+.chip { transition:background var(--dur-2) var(--ease), color var(--dur-2) var(--ease), border-color var(--dur-2) var(--ease) }
+.check-dot { transition:background var(--dur-2) var(--ease), border-color var(--dur-2) var(--ease) } .check-dot.on svg { animation:pop .25s var(--ease) both }
+button:not(.shutter):not(.fab-main):active:not(:disabled) { transition-duration:var(--dur-1) }
+button.tinted,.qa-tonal { background:var(--sec-container); color:var(--accent) }
+
+/* M3 navigation bar: the active icon sits in an animated pill */
+nav { min-height:var(--nav-h) }
+nav button { gap:4px; padding:10px 0 8px; min-height:var(--nav-h); position:relative }
+nav button .ind { display:inline-flex; align-items:center; justify-content:center; width:56px; height:28px; border-radius:14px; position:relative; z-index:0 }
+nav button .ind::before { content:''; position:absolute; inset:0; border-radius:14px; background:var(--sec-container); transform:scaleX(.4); opacity:0; transition:transform var(--dur-2) var(--ease), opacity var(--dur-2) var(--ease); z-index:-1 }
+nav button.on .ind::before { transform:scaleX(1); opacity:1 }
+nav button.on { color:var(--ink) } nav button.on .ind svg { color:var(--accent); transform:translateY(-.5px) }
+nav button .ind svg { transition:color var(--dur-2) var(--ease), transform var(--dur-2) var(--ease) }
+nav button:active .ind::before { opacity:1; transform:scaleX(1) }
+
+/* M3 modal bottom sheet */
+.sheet-wrap { position:fixed; inset:0; z-index:30 }
+.sheet-wrap .scrim { position:absolute; inset:0; z-index:auto; animation:fade-in var(--dur-2) var(--ease) both }
+.sheet-wrap.out .scrim { animation:fade-out var(--dur-2) var(--ease) both }
+.sheet { position:absolute; left:0; right:0; bottom:0; max-width:560px; margin:auto; background:var(--surface); border-radius:28px 28px 0 0; padding:8px 8px calc(16px + env(safe-area-inset-bottom)); box-shadow:0 -8px 32px rgba(0,0,0,.2); animation:sheet-in var(--dur-3) var(--ease) both; max-height:85dvh; overflow:auto }
+.sheet-wrap.out .sheet { animation:sheet-out var(--dur-2) var(--ease-in) both }
+.handle { display:block; width:32px; height:4px; border-radius:2px; background:var(--line-strong); margin:4px auto 8px }
+.sheet h3 { padding:4px 16px 8px; color:var(--ink-2); font-size:var(--t-s); font-weight:600 }
+.sheet-list { display:flex; flex-direction:column }
+.sheet-item { width:100%; justify-content:flex-start; gap:16px; min-height:56px; padding:0 16px; border:0; background:none; border-radius:var(--r-lg); font-weight:400; font-size:var(--t-m); text-align:left }
+.sheet-item svg { color:var(--ink-2); flex:none } .sheet-item.danger,.sheet-item.danger svg { color:var(--bad) } .sheet-item:active:not(:disabled) { background:var(--state); transform:none }
+
+/* 48px touch targets without making things bigger: an invisible margin around small controls */
+.icon-btn,.chip,.act,.lrow .x,.check-dot,.mic,.pill-select,.filter-ico { position:relative }
+.icon-btn::after,.chip::after,.act::after,.mic::after { content:''; position:absolute; inset:-4px }
+.pill-select { min-height:40px }
+
+/* action button + scrim + lightbox motion */
+.scrim { animation:fade-in var(--dur-2) var(--ease) both }
+.fab-item { animation:fab-in .22s var(--ease) both } .fab-item:nth-of-type(2) { animation-delay:45ms }
+.fab-main { transition:background var(--dur-2) var(--ease), transform var(--dur-2) var(--ease) } .fab-main.open { transform:rotate(90deg) } .fab-main.open svg { transform:rotate(-90deg) }
+.lightbox { animation:fade-in var(--dur-2) var(--ease) both }
+.flash { animation:toast-in .3s var(--ease) both }
+.camera .last b { animation:pop .3s var(--ease) both }
+.ring { transition:background .4s var(--ease) }
+
+@keyframes view-in { from { opacity:0; transform:translateY(10px) } to { opacity:1; transform:none } }
+@keyframes rise { from { opacity:0; transform:translateY(8px) } to { opacity:1; transform:none } }
+@keyframes fade-in { from { opacity:0 } to { opacity:1 } }
+@keyframes fade-out { from { opacity:1 } to { opacity:0 } }
+@keyframes sheet-in { from { transform:translateY(100%) } to { transform:none } }
+@keyframes sheet-out { from { transform:none } to { transform:translateY(100%) } }
+@keyframes fab-in { from { opacity:0; transform:translateY(14px) scale(.96) } to { opacity:1; transform:none } }

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { download } from '../lib/actions'
+import { currentNameFormat } from '../lib/db'
 import { buildCsv, buildVcf, fileSafe } from '../lib/export'
 import Icon from './Icon'
 import { ALL_FIELDS, type CardRecord, type EventRec } from '../lib/types'
@@ -26,7 +27,7 @@ export default function Report({ cards: allCards, events, dupes, onBack }: { car
   // Keeping only the earliest of a group of duplicates means a re-scanned card is exported once.
   const keep = () => done.filter((c) => !skipDupes || !(dupes.get(c.id) ?? []).some((d) => d.createdAt < c.createdAt))
   const suffix = () => (evId ? '-' + fileSafe(eventName(evId)) : '')
-  const exportVcf = () => download(`contacts${suffix()}.vcf`, buildVcf(keep(), eventName), 'text/vcard')
+  const exportVcf = () => download(`contacts${suffix()}.vcf`, buildVcf(keep(), eventName, currentNameFormat()), 'text/vcard')
   const exportCsv = () => download(`contacts${suffix()}.csv`, buildCsv(keep(), eventName), 'text/csv')
   const exportJson = () => {
     const data = done.map(({ image: _image, ...rest }) => rest)

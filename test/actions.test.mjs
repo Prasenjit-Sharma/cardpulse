@@ -95,3 +95,40 @@ test('shareVcf works for several contacts at once (bulk select)', async () => {
 test('contactText is readable and skips empty fields', () => {
   assert.equal(contactText({ ...c, website: '', address: '' }), 'Rajesh Shah\nGeneral Manager – Procurement, ABC Polymers Pvt. Ltd.\n+91 98765 43210\nrajesh@abc.com')
 })
+
+// ---- Caller-ID naming ----
+import { displayName, NAME_FORMATS } from '../src/lib/naming.ts'
+import { toVCard } from '../src/lib/actions.ts'
+
+test('display name formats, with graceful fallbacks', () => {
+  const p = { name: 'Abhishek Jain', company: 'Vivacity Woven Sack Pvt. Ltd.' }
+  assert.equal(displayName(p, 'name-company'), 'Abhishek Jain (Vivacity Woven Sack Pvt. Ltd.)')
+  assert.equal(displayName(p, 'company-name'), 'Vivacity Woven Sack Pvt. Ltd. - Abhishek Jain')
+  assert.equal(displayName(p, 'name'), 'Abhishek Jain')
+  assert.equal(displayName({ name: 'Abhishek Jain', company: '' }, 'name-company'), 'Abhishek Jain')
+  assert.equal(displayName({ name: '', company: 'Vivacity' }, 'name-company'), 'Vivacity')
+  assert.equal(displayName({ name: '  Asha  ', company: '  Acme ' }, 'company-name'), 'Acme - Asha')
+  assert.equal(NAME_FORMATS.length, 3)
+})
+
+test('vCard: the phone name carries the company so the call screen shows it; ORG and TITLE stay intact', () => {
+  const v = toVCard(c, '', 'name-company').split('\r\n')
+  assert.ok(v.includes('FN:Rajesh Shah (ABC Polymers Pvt. Ltd.)'))
+  assert.ok(v.includes('N:;Rajesh Shah (ABC Polymers Pvt. Ltd.);;;'), 'whole name in the given-name field')
+  assert.ok(v.includes('ORG:ABC Polymers Pvt. Ltd.') && v.includes('TITLE:General Manager – Procurement'))
+  const w = toVCard(c, '', 'company-name').split('\r\n'); assert.ok(w.includes('FN:ABC Polymers Pvt. Ltd. - Rajesh Shah'))
+})
+
+test('vCard: "Name only" keeps the structured name split (first/last)', () => {
+  const v = toVCard(c, '', 'name').split('\r\n')
+  assert.ok(v.includes('N:Shah;Rajesh;;;') && v.includes('FN:Rajesh Shah'))
+  assert.deepEqual(toVCard(c).split('\r\n'), v, 'default is Name only')
+})
+
+test('the naming choice reaches what is shared and saved', async () => {
+  const a = chromeNavigator(); await shareContact(c, '', a.env, 'name-company')
+  assert.match(a.calls.share[0].text, /Rajesh Shah/)                          // the readable text stays the plain name
+  const sent = await a.calls.share[0].files[0].text(); assert.match(sent, /FN:Rajesh Shah \(ABC Polymers Pvt\. Ltd\.\)/)
+  const b = chromeNavigator(); await saveToPhone(c, '', b.env, 'company-name')
+  assert.match(await b.calls.share[0].files[0].text(), /FN:ABC Polymers Pvt\. Ltd\. - Rajesh Shah/)
+})

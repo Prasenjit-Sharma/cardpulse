@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { clearLog, readLog, subscribe } from '../lib/debug'
 import { DEFAULT_MODEL, listModels, serverMode } from '../lib/gemini'
 import type { Settings, Theme } from '../lib/db'
+import { DEFAULT_NAME_FORMAT, displayName, NAME_FORMATS, type NameFormat } from '../lib/naming'
 import Icon from './Icon'
 import Logo from './Logo'
 
@@ -103,6 +104,27 @@ export default function SettingsPage({ settings, install, onChange, onWipe, onOp
 
         </>
       )}
+
+      <h3 className="group">Caller ID</h3>
+      <section className="card">
+        <p className="hint" style={{ marginTop: 0 }}>Your phone's call screen shows only a contact's <b>name</b>, not their company. Choose how CardPulse names people when you save them to your phone.</p>
+        <div className="radio-list" role="radiogroup" aria-label="How to name contacts on your phone">
+          {NAME_FORMATS.map((f) => {
+            const on = (settings.nameFormat ?? DEFAULT_NAME_FORMAT) === f.id
+            return (
+              <button key={f.id} role="radio" aria-checked={on} className={`radio${on ? ' on' : ''}`} onClick={() => onChange({ ...settings, nameFormat: f.id as NameFormat })}>
+                <span className="dot" /><span className="grow"><strong>{f.label}</strong><small>{f.example('Abhishek Jain', 'Vivacity Woven Sack')}</small></span>
+              </button>
+            )
+          })}
+        </div>
+        <div className="call-preview" aria-hidden="true">
+          <span className="call-ico"><Icon name="phone" size={18} /></span>
+          <div><small>Incoming call</small><strong>{displayName({ name: 'Abhishek Jain', company: 'Vivacity Woven Sack' }, settings.nameFormat ?? DEFAULT_NAME_FORMAT)}</strong></div>
+        </div>
+        <div className="soon-row"><Icon name="spark" size={18} /><span className="grow"><strong>Pop-up on incoming calls</strong><small>Company, where you met and your notes, over the call screen.</small></span><span className="status">Android app</span></div>
+        <div className="soon-row"><Icon name="building" size={18} /><span className="grow"><strong>Company label on iPhone</strong><small>Shown by iOS on the incoming call.</small></span><span className="status">iPhone app</span></div>
+      </section>
 
       <h3 className="group">Appearance</h3>
       <section className="card">

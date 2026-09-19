@@ -1,4 +1,5 @@
 import { toVCard } from './actions'
+import type { NameFormat } from './naming'
 import type { CardRecord } from './types'
 
 const cell = (v: string) => `"${v.replace(/"/g, '""')}"`
@@ -13,8 +14,8 @@ export function buildCsv(cards: CardRecord[], eventName: EventName): string {
   return [head.join(','), ...rows].join('\n')
 }
 
-export function buildVcf(cards: CardRecord[], eventName: EventName): string {
+export function buildVcf(cards: CardRecord[], eventName: EventName, fmt: NameFormat = 'name'): string {
   return cards
-    .flatMap((c) => (c.corrected ?? []).filter((p) => p.name).map((p) => toVCard(p, [eventName(c.eventId), p.note].filter(Boolean).join(' — '))))
+    .flatMap((c) => (c.corrected ?? []).filter((p) => p.name).map((p) => toVCard(p, [eventName(c.eventId), p.note].filter(Boolean).join(' — '), fmt)))
     .join('\r\n')
 }

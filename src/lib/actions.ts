@@ -1,3 +1,4 @@
+import { displayName, type NameFormat } from './naming.ts'
 import type { Contact } from './types'
 
 /** wa.me wants country code + number, digits only. Bare Indian numbers get 91. */
@@ -11,10 +12,16 @@ export const telHref = (phone: string) => 'tel:' + phone.replace(/[^\d+]/g, '')
 
 const esc = (v: string) => v.replace(/([,;\\])/g, '\\$1').replace(/\n/g, '\\n')
 
-export function toVCard(c: Contact, note = ''): string {
-  const parts = c.name.trim().split(/\s+/)
-  const last = parts.length > 1 ? parts.pop()! : ''
-  const lines = ['BEGIN:VCARD', 'VERSION:3.0', `N:${esc(last)};${esc(parts.join(' '))};;;`, `FN:${esc(c.name)}`]
+export function toVCard(c: Contact, note = '', fmt: NameFormat = 'name'): string {
+  const disp = displayName(c, fmt)
+  // With the company folded into the name, keep it all in the given-name field so every Contacts app shows it unchanged.
+  let nLine: string
+  if (disp === c.name.trim() || !c.name.trim()) {
+    const parts = c.name.trim().split(/\s+/)
+    const last = parts.length > 1 ? parts.pop()! : ''
+    nLine = `N:${esc(last)};${esc(parts.join(' '))};;;`
+  } else nLine = `N:;${esc(disp)};;;`
+  const lines = ['BEGIN:VCARD', 'VERSION:3.0', nLine, `FN:${esc(disp)}`]
   if (c.company) lines.push(`ORG:${esc(c.company)}`)
   if (c.title) lines.push(`TITLE:${esc(c.title)}`)
   for (const p of c.phones) lines.push(`TEL;TYPE=CELL:${p.replace(/[^\d+]/g, '')}`)
@@ -97,11 +104,11 @@ export async function shareVcf(name: string, vcf: string, title: string, text: s
 }
 
 /** "Save to phone": the share sheet with the vCard file (pick Contacts and your account). Falls back to a download. */
-export function saveToPhone(c: Contact, note: string, env: ActionEnv = browserEnv()): Promise<ActionOutcome> {
-  return shareVcf(`${c.name || 'contact'}.vcf`, toVCard(c, note), c.name, undefined, env, false)
+export function saveToPhone(c: Contact, note: string, env: ActionEnv = browserEnv(), fmt: NameFormat = 'name'): Promise<ActionOutcome> {
+  return shareVcf(`${c.name || 'contact'}.vcf`, toVCard(c, note, fmt), displayName(c, fmt), undefined, env, false)
 }
 
 /** "Share contact": the share sheet with the contact card and readable text. */
-export function shareContact(c: Contact, note: string, env: ActionEnv = browserEnv()): Promise<ActionOutcome> {
-  return shareVcf(`${c.name || 'contact'}.vcf`, toVCard(c, note), c.name, contactText(c, note), env)
+export function shareContact(c: Contact, note: string, env: ActionEnv = browserEnv(), fmt: NameFormat = 'name'): Promise<ActionOutcome> {
+  return shareVcf(`${c.name || 'contact'}.vcf`, toVCard(c, note, fmt), displayName(c, fmt), contactText(c, note), env)
 }

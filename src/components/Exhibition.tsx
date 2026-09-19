@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { download } from '../lib/actions'
+import { currentNameFormat } from '../lib/db'
 import { buildCsv, buildVcf, fileSafe } from '../lib/export'
 import type { CardRecord, EventRec } from '../lib/types'
 import EmptyState from './EmptyState'
 import Icon from './Icon'
+import Sheet, { SheetItem } from './Sheet'
 
 export default function Exhibition({ cards, events, activeEvent, onNew, onRename, onDelete, onScanHere, onView }: {
   cards: CardRecord[]
@@ -29,7 +31,7 @@ export default function Exhibition({ cards, events, activeEvent, onNew, onRename
           action={<button className="cta small" onClick={onNew}><Icon name="plus" size={18} /> New event</button>} />
       )}
 
-      {events.map((e) => {
+      {events.map((e, i) => {
         const mine = cards.filter((c) => c.eventId === e.id)
         const done = mine.filter((c) => c.status === 'done')
         const people = done.flatMap((c) => c.corrected ?? [])
@@ -38,23 +40,19 @@ export default function Exhibition({ cards, events, activeEvent, onNew, onRename
         const busy = mine.filter((c) => c.status === 'pending' || c.status === 'running').length
         const live = activeEvent === e.id
         return (
-          <section key={e.id} className={`event-card${live ? ' live' : ''}`}>
+          <section key={e.id} className={`event-card${live ? ' live' : ''}`} style={{ ['--i' as string]: i }}>
             <div className="event-head" onClick={() => onView(e.id)}>
               <div className="grow">
                 <strong>{e.name}</strong>
                 <span className="muted">{new Date(e.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}{live ? ' · scanning here' : ''}</span>
               </div>
-              <div className="menu-wrap" onClick={(ev) => ev.stopPropagation()}>
-                <button className="icon-btn ghost" onClick={() => setMenu(menu === e.id ? '' : e.id)} aria-label="Event options"><Icon name="more" /></button>
-                {menu === e.id && (
-                  <div className="menu" onClick={() => setMenu('')}>
-                    <button disabled={!done.length} onClick={() => download(`${fileSafe(e.name)}.csv`, buildCsv(done, eventName), 'text/csv')}>Export CSV</button>
-                    <button disabled={!done.length} onClick={() => download(`${fileSafe(e.name)}.vcf`, buildVcf(done, eventName), 'text/vcard')}>Export vCard</button>
-                    <button onClick={() => onRename(e.id)}>Rename</button>
-                    <button className="bad" onClick={() => onDelete(e.id)}>Delete</button>
-                  </div>
-                )}
-              </div>
+              <button className="icon-btn ghost" onClick={(ev) => { ev.stopPropagation(); setMenu(e.id) }} aria-label="Event options"><Icon name="more" /></button>
+              <Sheet open={menu === e.id} onClose={() => setMenu('')} title={e.name}>
+                <SheetItem icon="file" label="Export CSV" disabled={!done.length} onClick={() => { setMenu(''); download(`${fileSafe(e.name)}.csv`, buildCsv(done, eventName), 'text/csv') }} />
+                <SheetItem icon="download" label="Export vCard" disabled={!done.length} onClick={() => { setMenu(''); download(`${fileSafe(e.name)}.vcf`, buildVcf(done, eventName, currentNameFormat()), 'text/vcard') }} />
+                <SheetItem icon="edit" label="Rename" onClick={() => { setMenu(''); onRename(e.id) }} />
+                <SheetItem icon="trash" danger label="Delete event" onClick={() => { setMenu(''); onDelete(e.id) }} />
+              </Sheet>
             </div>
             <div className="event-stats">
               <span><b className="num">{mine.length}</b> cards</span>

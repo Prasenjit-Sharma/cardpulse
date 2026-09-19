@@ -254,7 +254,7 @@ export default function Camera({ onCard, onClose, onGallery, onOpenLast, eventLa
             <div className="thumb-slot">
               {lastUrl && (
                 <button className="last" onClick={() => { flushFront(); onOpenLast?.(); onClose() }} aria-label={`Open last scan (${count} scanned)`}>
-                  <img src={lastUrl} alt="" />{count > 0 && <b>{count}</b>}
+                  <img src={lastUrl} alt="" />{count > 0 && <b key={count}>{count}</b>}
                 </button>
               )}
             </div>
