@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useObjectUrl } from '../lib/useObjectUrl'
-import { prepareImage } from '../lib/image'
-import { saveToPhone, shareContact, telHref, waNumber } from '../lib/actions'
+import { prepareCardImage } from '../lib/cardImage'
+import { browserEnv, saveToPhone, shareContact, telHref, waNumber } from '../lib/actions'
+import { log } from '../lib/debug'
 import { speechSupported, startDictation } from '../lib/speech'
 import { emptyContact, type CardRecord, type Contact, type EventRec, type FieldKey } from '../lib/types'
 import Camera from './Camera'
@@ -86,6 +87,13 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
   const c = contacts[idx]
 
   useEffect(() => () => stopRef.current?.(), [])
+  // Opened while still being read (or after a re-read): take the new contacts as soon as the reading finishes.
+  useEffect(() => {
+    if (card.status !== 'done') return
+    setContacts(card.corrected ?? [])
+    setIdx((i) => Math.min(i, Math.max(0, (card.corrected?.length ?? 1) - 1)))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [card.status])
   useEffect(() => { if (!flash) return; const t = setTimeout(() => setFlash(''), 2600); return () => clearTimeout(t) }, [flash])
 
   /** Accuracy edits invalidate the "reviewed" stamp; notes, tags and reminders don't. */
@@ -97,7 +105,7 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
     return !!orig && !!c && JSON.stringify(orig[k]) !== JSON.stringify(c[k])
   }
   const setBack = async (back: Blob | undefined) => { await onSave({ ...card, back, reviewed: false }); onRetry() }
-  const pickBack = async (f?: File) => { if (f) await setBack(await prepareImage(f)) }
+  const pickBack = async (f?: File) => { if (f) await setBack(await prepareCardImage(f)) }
   const removePerson = () => {
     if (contacts.length <= 1) return onDelete()
     setIdx(Math.max(0, idx - 1))
@@ -113,13 +121,11 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
   const run = async (kind: 'save' | 'share') => {
     if (!c) return
     setFab(false)
-    const result = kind === 'save' ? await saveToPhone(c, noteFor()) : await shareContact(c, noteFor())
-    const msg = { contacts: 'Opening Contacts…', copied: 'Contact details copied', downloaded: 'Contact file downloaded', shared: '', cancelled: '' }[result]
-    if (msg) setFlash(msg)
-    if (result === 'contacts') {
-      // If the Contacts app really opened, this page is hidden a moment later. If it is still showing, say so instead of doing nothing.
-      setTimeout(() => { if (document.visibilityState === 'visible') setFlash('Contacts did not open. Try Share contact instead.') }, 2000)
-    }
+    const env = browserEnv((m) => log(m))
+    const out = kind === 'save' ? await saveToPhone(c, noteFor(), env) : await shareContact(c, noteFor(), env)
+    const why = out.problem ? ` (${out.problem})` : ''
+    if (out.result === 'copied') setFlash(`Share sheet unavailable${why}. Contact details copied.`)
+    else if (out.result === 'downloaded') setFlash(`Downloaded a contact file${why}. Open it to add to Contacts.`)
   }
 
   const slides = [url, backUrl].filter(Boolean)

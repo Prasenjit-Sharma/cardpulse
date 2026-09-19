@@ -1,13 +1,9 @@
 import type { CardRecord, EventRec } from '../lib/types'
-import { useObjectUrl } from '../lib/useObjectUrl'
+import CardThumb from './CardThumb'
 import Icon from './Icon'
 
 interface Install { mode: 'native' | 'ios' | null; visible: boolean; install: () => void; dismiss: () => void }
 
-function Thumb({ blob }: { blob?: Blob }) {
-  const url = useObjectUrl(blob)
-  return url ? <img className="scan-thumb" src={url} alt="" /> : <span className="scan-thumb blank" />
-}
 
 function when(t: number) {
   return new Date(t).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })
@@ -87,7 +83,7 @@ export default function ScanHome({ cards, events, activeEvent, onSelectEvent, re
               const multi = (c.corrected?.length ?? 0) > 1
               return (
                 <div key={c.id} className="scan-row" onClick={() => (c.status === 'error' ? onRetry(c.id) : c.status === 'done' && onOpen(c.id, multi))}>
-                  <Thumb blob={c.image} />
+                  <CardThumb blob={c.image} name={c.corrected?.[0]?.name ?? ''} />
                   <div className="grow">
                     {c.status === 'done' ? (
                       <>

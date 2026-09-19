@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { CARD_GUIDE, cropRect } from '../lib/crop'
 import { log } from '../lib/debug'
 import { detectCard, isStable, type Detection } from '../lib/detect'
+import { growQuad, quadSize, warpQuad, type Pt, type Quad } from '../lib/warp'
 import { useObjectUrl } from '../lib/useObjectUrl'
 import Icon from './Icon'
 
@@ -13,19 +14,22 @@ const MODES: { id: Mode; label: string }[] = [
   { id: 'sided', label: 'Front + back' },
   { id: 'many', label: 'Many' },
 ]
-const HOLD_FRAMES = 7       // ~1 second of holding still before auto-capture
+const HOLD_MS = 300         // how long the card must hold still before Auto Detect captures
 const ANALYSE_WIDTH = 160
+const MIN_GAP_MS = 55       // detect at most ~18 times a second
 const PAD = 0.03            // breathing room around a detected card
 
-interface VideoDet extends Detection { fw: number; fh: number } // detection in VIDEO pixels
+interface VideoDet extends Detection { fw: number; fh: number; progress: number } // detection in VIDEO pixels
 
 /**
  * Full-screen scanner. With Auto Detect on, the card is found, outlined and captured straightened
  * when the phone is held still. Otherwise a frame guides the shot and the photo is cropped to it.
  */
-export default function Camera({ onCard, onClose, onGallery, eventLabel = '', single = false, sidedOnly = false }: {
+export default function Camera({ onCard, onClose, onGallery, onOpenLast, eventLabel = '', single = false, sidedOnly = false }: {
   onCard: (files: File[]) => void
   onClose: () => void
+  /** Tapping the last-shot thumbnail: leave the camera and open what was just scanned. */
+  onOpenLast?: () => void
   onGallery?: (files: FileList) => void
   eventLabel?: string
   single?: boolean
@@ -86,36 +90,52 @@ export default function Camera({ onCard, onClose, onGallery, eventLabel = '', si
     return () => { ro.disconnect(); v?.removeEventListener('loadedmetadata', measure) }
   }, [])
 
-  // Auto Detect loop: look for a card several times a second, capture when it holds still.
+  // Auto Detect loop: look for a card on every new camera frame (as fast as the phone allows), capture once it holds still.
   useEffect(() => {
     if (!auto || mode === 'many' || error) { setDet(null); setHold(0); return }
+    const v = video.current
+    if (!v) return
     const c = document.createElement('canvas')
     const ctx = c.getContext('2d', { willReadFrequently: true })!
-    let prev: Detection | null = null, stable = 0, lost = 0, armed = true, idle = 0
-    const id = setInterval(() => {
-      const v = video.current
-      if (!v || !v.videoWidth) return
-      const k = ANALYSE_WIDTH / v.videoWidth
-      c.width = ANALYSE_WIDTH; c.height = Math.max(1, Math.round(v.videoHeight * k))
-      ctx.drawImage(v, 0, 0, c.width, c.height)
-      const d = detectCard(ctx.getImageData(0, 0, c.width, c.height).data, c.width, c.height)
-      if (!d) {
-        prev = null; stable = 0
-        if (++lost >= 4) armed = true
-        if (++idle > 28) setStruggling(true)
-        setDet(null); setHold(0)
-        return
+    let prev: Detection | null = null, stableSince = 0, unstable = 0, lost = 0, armed = true, idleSince = performance.now(), lastRun = 0
+    let stopped = false, timer = 0, vfc = 0
+
+    const tick = () => {
+      if (stopped) return
+      const now = performance.now()
+      if (v.videoWidth && now - lastRun >= MIN_GAP_MS) {
+        lastRun = now
+        const k = ANALYSE_WIDTH / v.videoWidth
+        c.width = ANALYSE_WIDTH; c.height = Math.max(1, Math.round(v.videoHeight * k))
+        ctx.drawImage(v, 0, 0, c.width, c.height)
+        const d = detectCard(ctx.getImageData(0, 0, c.width, c.height).data, c.width, c.height)
+        if (!d) {
+          prev = null; stableSince = 0; unstable = 0
+          if (++lost >= 5) armed = true                                     // the card left the frame: ready for the next one
+          if (now - idleSince > 3500) setStruggling(true)
+          setDet(null); setHold(0)
+        } else {
+          lost = 0; idleSince = now; setStruggling(false)
+          if (prev && isStable(prev, d, c.width)) { unstable = 0; if (!stableSince) stableSince = now }
+          else if (++unstable > 1) { stableSince = 0; unstable = 0 }        // a hand-held phone jitters: one wobbly frame is forgiven
+          prev = d
+          const progress = stableSince ? Math.min(1, (now - stableSince) / HOLD_MS) : 0
+          const up = 1 / k
+          const scale = ([x, y]: Pt): Pt => [x * up, y * up]
+          const vd: VideoDet = { ...d, cx: d.cx * up, cy: d.cy * up, w: d.w * up, h: d.h * up, corners: d.corners.map(scale), quad: d.quad.map(scale) as Quad, fw: v.videoWidth, fh: v.videoHeight, progress }
+          setDet(vd); setHold(progress)
+          if (armed && progress >= 1) { armed = false; stableSince = 0; shootRef.current(vd) }
+        }
       }
-      lost = 0; idle = 0; setStruggling(false)
-      // A hand-held phone jitters: one wobbly frame costs a little progress, it doesn't reset it.
-      stable = prev && isStable(prev, d, c.width) ? stable + 1 : Math.max(0, stable - 2)
-      prev = d
-      const up = 1 / k
-      const vd: VideoDet = { ...d, cx: d.cx * up, cy: d.cy * up, w: d.w * up, h: d.h * up, corners: d.corners.map(([x, y]) => [x * up, y * up] as [number, number]), fw: v.videoWidth, fh: v.videoHeight }
-      setDet(vd); setHold(Math.min(1, stable / HOLD_FRAMES))
-      if (armed && stable >= HOLD_FRAMES) { armed = false; stable = 0; shootRef.current(vd) }
-    }, 140)
-    return () => clearInterval(id)
+      schedule()
+    }
+    const schedule = () => {
+      if (stopped) return
+      if ('requestVideoFrameCallback' in v) vfc = (v as HTMLVideoElement & { requestVideoFrameCallback: (cb: () => void) => number }).requestVideoFrameCallback(tick)
+      else timer = window.setTimeout(tick, MIN_GAP_MS)
+    }
+    schedule()
+    return () => { stopped = true; clearTimeout(timer); if (vfc && 'cancelVideoFrameCallback' in v) (v as HTMLVideoElement & { cancelVideoFrameCallback: (h: number) => void }).cancelVideoFrameCallback(vfc) }
   }, [auto, mode, error])
 
   const finish = (files: File[]) => {
@@ -136,12 +156,18 @@ export default function Camera({ onCard, onClose, onGallery, eventLabel = '', si
     const found = mode !== 'many' && auto ? (d ?? detRef.current) : null
     const cap = mode === 'many' ? 2560 : 1800
     if (found) {
-      // Straighten and crop to the detected card.
-      const w = found.w * (1 + 2 * PAD), h = found.h * (1 + 2 * PAD)
-      const s = Math.min(1, cap / Math.max(w, h))
-      c.width = Math.max(1, Math.round(w * s)); c.height = Math.max(1, Math.round(h * s))
-      ctx.translate(c.width / 2, c.height / 2); ctx.scale(s, s); ctx.rotate(-found.angle); ctx.translate(-found.cx, -found.cy)
-      ctx.drawImage(v, 0, 0)
+      // Flatten the card using its four corners: fixes tilt AND perspective. Work from a capped-size copy of the frame.
+      const k = Math.min(1, 2200 / Math.max(v.videoWidth, v.videoHeight))
+      const fw = Math.round(v.videoWidth * k), fh = Math.round(v.videoHeight * k)
+      const src = document.createElement('canvas'); src.width = fw; src.height = fh
+      const sctx = src.getContext('2d', { willReadFrequently: true })!
+      sctx.drawImage(v, 0, 0, fw, fh)
+      const q = growQuad(found.quad.map(([x, y]) => [x * k, y * k] as Pt) as Quad, PAD * 2)
+      const size = quadSize(q)
+      const s = Math.min(1, cap / Math.max(size.w, size.h))
+      c.width = Math.max(1, Math.round(size.w * s)); c.height = Math.max(1, Math.round(size.h * s))
+      const flat = warpQuad(sctx.getImageData(0, 0, fw, fh).data, fw, fh, q, c.width, c.height)
+      ctx.putImageData(new ImageData(flat, c.width, c.height), 0, 0)
     } else {
       const box = view.current?.getBoundingClientRect()
       const r = box && box.width && box.height
@@ -175,7 +201,7 @@ export default function Camera({ onCard, onClose, onGallery, eventLabel = '', si
     return `${(size.w - size.vw * s) / 2 + x * s},${(size.h - size.vh * s) / 2 + y * s}`
   }
   const canOutline = det && size.vw > 0 && auto && mode !== 'many'
-  const status = hasFront ? 'Now the back' : sidedOnly ? 'Back side' : det ? (hold >= 1 ? 'Capturing…' : 'Hold steady') : mode === 'many' ? 'Lay cards flat, then tap' : count ? 'Scan next card' : auto ? 'Point at a card' : 'Fit the card in the frame'
+  const status = hasFront ? 'Now the back' : sidedOnly ? 'Back side' : det ? (hold >= 1 ? 'Got it' : 'Hold steady') : mode === 'many' ? 'Lay cards flat, then tap' : count ? 'Scan next card' : auto ? 'Point at a card' : 'Fit the card in the frame'
 
   return (
     <div className="camera">
@@ -187,7 +213,7 @@ export default function Camera({ onCard, onClose, onGallery, eventLabel = '', si
         )}
         {canOutline && (
           <svg className="outline" width={size.w} height={size.h} aria-hidden="true">
-            <polygon points={det.corners.map(toView).join(' ')} className={hold >= 0.6 ? 'lock' : ''} />
+            <polygon points={det.quad.map(toView).join(' ')} className={hold >= 0.5 ? 'lock' : ''} />
           </svg>
         )}
 
@@ -226,7 +252,11 @@ export default function Camera({ onCard, onClose, onGallery, eventLabel = '', si
           </div>
           <div className="shutter-row">
             <div className="thumb-slot">
-              {lastUrl && <div className="last"><img src={lastUrl} alt="Last scan" />{count > 0 && <b>{count}</b>}</div>}
+              {lastUrl && (
+                <button className="last" onClick={() => { flushFront(); onOpenLast?.(); onClose() }} aria-label={`Open last scan (${count} scanned)`}>
+                  <img src={lastUrl} alt="" />{count > 0 && <b>{count}</b>}
+                </button>
+              )}
             </div>
             <button className="shutter" onClick={() => shoot()} disabled={!!error} aria-label="Take photo" />
             <div className="thumb-slot right">

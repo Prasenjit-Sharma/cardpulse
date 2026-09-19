@@ -3,6 +3,7 @@ import { deleteCard, getCard, listCards, loadSettings, putCard, readerReady, sav
 import { log } from './lib/debug'
 import { extractCard, serverMode } from './lib/gemini'
 import { prepareImage } from './lib/image'
+import { prepareCardImage } from './lib/cardImage'
 import type { CardRecord, EventRec } from './lib/types'
 import { loadActiveEvent, loadEvents, saveActiveEvent, saveEvents } from './lib/events'
 import { findDuplicates } from './lib/dupes'
@@ -28,7 +29,8 @@ export default function App() {
   const [tab, setTabState] = useState<Tab>(() => { const t = sessionStorage.getItem('tab') as Tab; return TABS.includes(t) ? t : 'scan' })
   const setTab = (t: Tab) => { setTabState(t); try { sessionStorage.setItem('tab', t) } catch { /* ignore */ } }
   const [cards, setCards] = useState<CardRecord[]>([])
-  const [open, setOpen] = useState<{ id: string; idx: number; review?: boolean } | null>(null)
+  const [open, setOpen] = useState<{ id: string; idx: number; review?: boolean; whenDone?: boolean } | null>(null)
+  const lastCardId = useRef('')
   const [settings, setSettings] = useState<Settings>(loadSettings)
   const [banner, setBanner] = useState('')
   const [events, setEvents] = useState<EventRec[]>(loadEvents)
@@ -130,10 +132,10 @@ export default function App() {
     for (const group of oneCard ? [list] : list.map((f) => [f])) {
       const f = group[0]
       try {
-        const image = prepared ? f : await prepareImage(f)
+        const image = prepared ? f : await prepareCardImage(f)
         const id = crypto.randomUUID()
         log(`image ready ${image.size}B, saving`)
-        const back = group[1] ? (prepared ? group[1] : await prepareImage(group[1])) : undefined
+        const back = group[1] ? (prepared ? group[1] : await prepareCardImage(group[1])) : undefined
         await putCard({ id, createdAt: Date.now(), image, back, status: 'pending', reviewed: false, eventId: activeEventRef.current || undefined })
         log('saved to IndexedDB')
         ids.push(id)
@@ -143,7 +145,7 @@ export default function App() {
       }
     }
     await refresh()
-    if (ids.length) { setBanner(''); enqueue(ids) }
+    if (ids.length) { lastCardId.current = ids[ids.length - 1]!; setBanner(''); enqueue(ids) }
   }, [enqueue, refresh])
 
   const hasLiveCamera = !!navigator.mediaDevices?.getUserMedia
@@ -156,6 +158,12 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   useEffect(() => { if (open) setToast(null) }, [open])   // an old "contact added" toast has no business over a contact screen
+  // A card opened before it finished reading: when it lands, show the review screen if it turned out to be several people.
+  useEffect(() => {
+    if (!open?.whenDone) return
+    const c = cards.find((x) => x.id === open.id)
+    if (c?.status === 'done') setOpen({ id: c.id, idx: 0, review: (c.corrected?.length ?? 0) > 1 })
+  }, [cards, open])
   const openCard = open ? cards.find((c) => c.id === open.id) : undefined
   const eventLabel = events.find((e) => e.id === activeEvent)?.name ?? ''
 
@@ -257,7 +265,7 @@ export default function App() {
           />
         )}
       </main>
-      {camOpen && <Camera eventLabel={eventLabel} onCard={(fs) => { void addFiles(fs, true, true) }} onGallery={(fs) => { void addFiles(fs) }} onClose={() => setCamOpen(false)} />}
+      {camOpen && <Camera eventLabel={eventLabel} onOpenLast={() => { const id = lastCardId.current; if (id) setOpen({ id, idx: 0, whenDone: true }) }} onCard={(fs) => { void addFiles(fs, true, true) }} onGallery={(fs) => { void addFiles(fs) }} onClose={() => setCamOpen(false)} />}
       <input ref={fallbackInput} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { if (e.target.files) void addFiles(e.target.files); e.target.value = '' }} />
       <Toast toast={toast} onDone={() => setToast(null)} />
       {!openCard && (

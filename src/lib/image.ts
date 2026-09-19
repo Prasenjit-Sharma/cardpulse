@@ -12,10 +12,10 @@ export async function prepareImage(file: Blob, maxSide = 1800, quality = 0.88): 
   )
 }
 
-interface Decoded { source: CanvasImageSource; width: number; height: number; release: () => void }
+export interface Decoded { source: CanvasImageSource; width: number; height: number; release: () => void }
 
 /** createImageBitmap is fastest, but some mobile browsers reject it; an <img> element is the universal fallback. */
-async function decode(file: Blob): Promise<Decoded> {
+export async function decode(file: Blob): Promise<Decoded> {
   try {
     const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' }).catch(() => createImageBitmap(file))
     return { source: bmp, width: bmp.width, height: bmp.height, release: () => bmp.close() }

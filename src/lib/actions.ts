@@ -41,68 +41,59 @@ export function contactText(c: Contact, note = ''): string {
   return [c.name, [c.title, c.company].filter(Boolean).join(', '), ...c.phones, ...c.emails, c.website, c.address, note].filter(Boolean).join('\n')
 }
 
-/**
- * Android "new contact" intent: opens the phone's Contacts app with the details filled in, and lets the user pick
- * where to save (Google account, phone, SIM). Keys are Android's ContactsContract.Intents.Insert extras.
- */
-export function androidInsertIntent(c: Contact, note = ''): string {
-  const extra = (k: string, v: string | undefined) => (v ? `S.${k}=${encodeURIComponent(v)};` : '')
-  const notes = [note, c.website && `Web: ${c.website}`, c.gstin && `GSTIN: ${c.gstin}`].filter(Boolean).join('\n')
-  return 'intent:#Intent;action=android.intent.action.INSERT;type=vnd.android.cursor.dir/contact;'
-    + extra('name', c.name) + extra('company', c.company) + extra('job_title', c.title)
-    + extra('phone', c.phones[0]) + extra('secondary_phone', c.phones[1]) + extra('tertiary_phone', c.phones[2])
-    + extra('email', c.emails[0]) + extra('secondary_email', c.emails[1])
-    + extra('postal', c.address) + extra('notes', notes)
-    + 'end'
-}
-
 export interface ActionEnv {
-  ua: string
-  navigate: (url: string) => void
   nav: {
     share?: (data: { title?: string; text?: string; files?: File[] }) => Promise<void>
     canShare?: (data: { files?: File[] }) => boolean
     clipboard?: { writeText: (t: string) => Promise<void> }
   }
   download: (name: string, text: string, type: string) => void
+  log?: (msg: string) => void
 }
 
-export const browserEnv = (): ActionEnv => ({
-  ua: navigator.userAgent,
-  navigate: (url) => { window.location.href = url },
-  nav: navigator as unknown as ActionEnv['nav'],
-  download,
-})
+export const browserEnv = (log?: (m: string) => void): ActionEnv => ({ nav: navigator as unknown as ActionEnv['nav'], download, log })
 
-export type ActionResult = 'contacts' | 'shared' | 'copied' | 'downloaded' | 'cancelled'
+export type ActionResult = 'shared' | 'copied' | 'downloaded' | 'cancelled'
+export interface ActionOutcome { result: ActionResult; /** Why the share sheet could not be used, if it could not. */ problem?: string }
+
+const errName = (e: unknown) => (e instanceof Error ? e.name : String(e))
 
 /**
- * Hand a vCard file to the system. Tries the share sheet (which lists Contacts, WhatsApp, Drive, email…), and only
- * downloads the file as a last resort.
+ * Hand a vCard to the system. The share sheet lists Contacts, WhatsApp, Drive, email and more, so it is tried first.
+ * If it cannot be used the reason is reported and the details are copied or the file downloaded: never silence.
+ * NOTE: browser methods must be called ON `navigator` (a detached canShare throws "Illegal invocation").
  */
-export async function shareVcf(name: string, vcf: string, title: string, text: string | undefined, env: ActionEnv): Promise<ActionResult> {
+export async function shareVcf(name: string, vcf: string, title: string, text: string | undefined, env: ActionEnv, textOnlyFallback = true): Promise<ActionOutcome> {
   const file = new File([vcf], name, { type: 'text/vcard' })
-  const { share, canShare } = env.nav
-  if (share && canShare?.({ files: [file] })) {
-    try { await share.call(env.nav, { files: [file], title, ...(text ? { text } : {}) }); return 'shared' } catch (e) { if ((e as Error).name === 'AbortError') return 'cancelled' }
+  const nav = env.nav
+  let problem: string | undefined
+
+  let canFiles = false
+  try { canFiles = !!nav.canShare?.({ files: [file] }) } catch (e) { problem = `canShare: ${errName(e)}`; env.log?.(`share: ${problem}`) }
+  env.log?.(`share: hasShare=${typeof nav.share === 'function'} canShareFiles=${canFiles}`)
+
+  if (typeof nav.share === 'function' && canFiles) {
+    try { await nav.share({ files: [file], title, ...(text ? { text } : {}) }); return { result: 'shared' } }
+    catch (e) { if (errName(e) === 'AbortError') return { result: 'cancelled' }; problem = `share file: ${errName(e)}`; env.log?.(`share: ${problem}`) }
   }
-  if (share && text) {
-    try { await share.call(env.nav, { title, text }); return 'shared' } catch (e) { if ((e as Error).name === 'AbortError') return 'cancelled' }
+  if (typeof nav.share === 'function' && text && textOnlyFallback) {
+    try { await nav.share({ title, text }); return { result: 'shared' } }
+    catch (e) { if (errName(e) === 'AbortError') return { result: 'cancelled' }; problem = `share text: ${errName(e)}`; env.log?.(`share: ${problem}`) }
   }
-  if (text && env.nav.clipboard) {
-    try { await env.nav.clipboard.writeText(text); return 'copied' } catch { /* fall through to download */ }
+  if (typeof nav.share !== 'function') problem ??= 'no share sheet in this browser'
+  if (text && nav.clipboard) {
+    try { await nav.clipboard.writeText(text); return { result: 'copied', problem } } catch (e) { env.log?.(`clipboard: ${errName(e)}`) }
   }
   env.download(name, vcf, 'text/vcard')
-  return 'downloaded'
+  return { result: 'downloaded', problem }
 }
 
-/** "Save to phone": on Android opens the Contacts app pre-filled (you choose the account); elsewhere the share sheet. */
-export async function saveToPhone(c: Contact, note: string, env: ActionEnv = browserEnv()): Promise<ActionResult> {
-  if (/android/i.test(env.ua)) { env.navigate(androidInsertIntent(c, note)); return 'contacts' } // must stay synchronous: needs the tap's user gesture
-  return shareVcf(`${c.name || 'contact'}.vcf`, toVCard(c, note), c.name, undefined, env)
+/** "Save to phone": the share sheet with the vCard file (pick Contacts and your account). Falls back to a download. */
+export function saveToPhone(c: Contact, note: string, env: ActionEnv = browserEnv()): Promise<ActionOutcome> {
+  return shareVcf(`${c.name || 'contact'}.vcf`, toVCard(c, note), c.name, undefined, env, false)
 }
 
-/** "Share contact": the share sheet with the contact card and readable text. Never fails silently. */
-export async function shareContact(c: Contact, note: string, env: ActionEnv = browserEnv()): Promise<ActionResult> {
+/** "Share contact": the share sheet with the contact card and readable text. */
+export function shareContact(c: Contact, note: string, env: ActionEnv = browserEnv()): Promise<ActionOutcome> {
   return shareVcf(`${c.name || 'contact'}.vcf`, toVCard(c, note), c.name, contactText(c, note), env)
 }
