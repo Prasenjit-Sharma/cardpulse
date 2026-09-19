@@ -91,3 +91,31 @@ test('is fast enough to run several times a second', () => {
   console.log(`  ~${per.toFixed(1)} ms per frame`)
   assert.ok(per < 15)
 })
+
+// ---- Real-world regression: frames built from a real phone screenshot (carpet texture, real card colour, a phone in the corner).
+// The original bug: on textured carpet the detector reported "no card" while the card was plainly in view.
+import { readFileSync } from 'node:fs'
+import { gunzipSync } from 'node:zlib'
+const meta = JSON.parse(readFileSync(new URL('./fixtures/meta.json', import.meta.url), 'utf8'))
+for (const [name, m] of Object.entries(meta)) {
+  test(`real carpet frame: ${name}`, () => {
+    const px = new Uint8ClampedArray(gunzipSync(readFileSync(new URL(`./fixtures/${name}.rgba.gz`, import.meta.url))))
+    const d = detectCard(px, m.w, m.h)
+    assert.ok(d, 'the card must be found')
+    assert.ok(Math.hypot(d.cx - m.cx, d.cy - m.cy) < 6, `centre off: (${d.cx.toFixed(0)},${d.cy.toFixed(0)}) vs (${m.cx.toFixed(0)},${m.cy.toFixed(0)})`)
+    if (!m.clipped) {
+      assert.ok(Math.abs(d.w - m.cardW) < m.cardW * 0.1, `width ${d.w.toFixed(0)} vs ${m.cardW.toFixed(0)}`)
+      assert.ok(Math.abs(d.h - m.cardH) < m.cardH * 0.12, `height ${d.h.toFixed(0)} vs ${m.cardH.toFixed(0)}`)
+    }
+    assert.ok(d.w / d.h > 1.5 && d.w / d.h < 1.95, `proportions ${(d.w / d.h).toFixed(2)}`)
+    assert.ok(angDiff(d.angle, m.tilt) < 0.06, `angle ${(d.angle * 180 / Math.PI).toFixed(1)} vs ${(m.tilt * 180 / Math.PI).toFixed(1)}`)
+  })
+}
+
+test('real carpet with NO card in view: nothing is reported', () => {
+  // the same carpet frame with the card painted out (uniform carpet colour patch) must not produce a detection
+  const px = new Uint8ClampedArray(gunzipSync(readFileSync(new URL('./fixtures/carpet-far-and-steep.rgba.gz', import.meta.url))))
+  const m = meta['carpet-far-and-steep']
+  for (let y = 0; y < m.h; y++) for (let x = 0; x < m.w; x++) if (Math.hypot(x - m.cx, y - m.cy) < 70) { const i = (y * m.w + x) * 4; px[i] = 140; px[i + 1] = 125; px[i + 2] = 100 }
+  assert.equal(detectCard(px, m.w, m.h), null)
+})

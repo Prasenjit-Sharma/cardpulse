@@ -107,7 +107,8 @@ export default function Camera({ onCard, onClose, onGallery, eventLabel = '', si
         return
       }
       lost = 0; idle = 0; setStruggling(false)
-      stable = prev && isStable(prev, d, c.width) ? stable + 1 : 0
+      // A hand-held phone jitters: one wobbly frame costs a little progress, it doesn't reset it.
+      stable = prev && isStable(prev, d, c.width) ? stable + 1 : Math.max(0, stable - 2)
       prev = d
       const up = 1 / k
       const vd: VideoDet = { ...d, cx: d.cx * up, cy: d.cy * up, w: d.w * up, h: d.h * up, corners: d.corners.map(([x, y]) => [x * up, y * up] as [number, number]), fw: v.videoWidth, fh: v.videoHeight }

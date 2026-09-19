@@ -1,8 +1,8 @@
 /**
  * Finds a business card in a small camera frame, in plain TypeScript (no OpenCV, no download).
  *
- * Idea: blur away the printing, split the frame into light and dark with Otsu's method, take the
- * blob that contains the middle of the frame, and fit a rotated rectangle to it with PCA.
+ * Idea: erase the printing (grey-level dilate/erode), threshold halfway between the card's brightness and the
+ * table's, clean the mask, take the blob that contains the middle of the frame, and fit a rotated rectangle to it with PCA.
  * If the blob is card-shaped (right proportions, fills its rectangle, doesn't run off the frame),
  * it is a card. Coordinates are in the analysed image's pixels; the caller scales them.
  */
@@ -60,32 +60,31 @@ function morph(src: Float32Array, w: number, h: number, r: number, max: boolean)
   return out
 }
 
+/** Binary opening with a (2r+1) square: removes specks and thin bridges, keeps the solid card body. */
+function openMask(m: Uint8Array, w: number, h: number, r: number): Uint8Array {
+  const pass = (src: Uint8Array, wantAll: boolean): Uint8Array => {
+    const tmp = new Uint8Array(src.length), out = new Uint8Array(src.length)
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      let v = wantAll ? 1 : 0
+      for (let k = Math.max(0, x - r); k <= Math.min(w - 1, x + r); k++) { const b = src[y * w + k]!; if (wantAll ? !b : b) { v = wantAll ? 0 : 1; break } }
+      tmp[y * w + x] = v
+    }
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      let v = wantAll ? 1 : 0
+      for (let k = Math.max(0, y - r); k <= Math.min(h - 1, y + r); k++) { const b = tmp[k * w + x]!; if (wantAll ? !b : b) { v = wantAll ? 0 : 1; break } }
+      out[y * w + x] = v
+    }
+    return out
+  }
+  return pass(pass(m, true), false) // erode (all neighbours set), then dilate (any neighbour set)
+}
+
 function percentile(vals: number[], p: number): number {
   vals.sort((a, b) => a - b)
   return vals[Math.min(vals.length - 1, Math.floor(p * vals.length))]!
 }
 
-function otsu(gray: Float32Array): number {
-  const hist = new Float64Array(256)
-  for (const v of gray) hist[Math.max(0, Math.min(255, v | 0))]!++
-  const total = gray.length
-  let sumAll = 0
-  for (let i = 0; i < 256; i++) sumAll += i * hist[i]!
-  let wB = 0, sumB = 0, best = -1, thr = 127
-  for (let t = 0; t < 256; t++) {
-    wB += hist[t]!
-    if (!wB) continue
-    const wF = total - wB
-    if (!wF) break
-    sumB += t * hist[t]!
-    const mB = sumB / wB, mF = (sumAll - sumB) / wF
-    const between = wB * wF * (mB - mF) ** 2
-    if (between > best) { best = between; thr = t }
-  }
-  return thr
-}
-
-export function detectCard(rgba: Uint8ClampedArray, W: number, H: number): Detection | null {
+export function detectCard(rgba: Uint8ClampedArray, W: number, H: number, dbg?: Record<string, unknown>): Detection | null {
   const n = W * H
   let gray: Float32Array = new Float32Array(n)
   for (let i = 0; i < n; i++) gray[i] = 0.299 * rgba[i * 4]! + 0.587 * rgba[i * 4 + 1]! + 0.114 * rgba[i * 4 + 2]!
@@ -102,12 +101,31 @@ export function detectCard(rgba: Uint8ClampedArray, W: number, H: number): Detec
   const lightScore = percentile(centre.slice(), 0.9) - percentile(ring.slice(), 0.9)
   const darkScore = percentile(ring.slice(), 0.1) - percentile(centre.slice(), 0.1)
   const cardIsLight = lightScore >= darkScore
+  if (dbg) Object.assign(dbg, { lightScore, darkScore, cardIsLight })
   if (Math.max(lightScore, darkScore) < 18) return null // no meaningful difference between card and table
 
-  const R = Math.max(2, Math.round(Math.min(W, H) * 0.03))
-  gray = boxBlur(morph(gray, W, H, R, cardIsLight), W, H, 1)   // dilate (light card) / erode (dark card) removes the printing
-  const thr = otsu(gray)
-  const inMask = (i: number) => (gray[i]! > thr) === cardIsLight
+  const R = Math.max(2, Math.round(W * 0.018))                    // ~3px at 160px: enough to erase printing, gentle on textured tables
+  gray = boxBlur(morph(gray, W, H, R, cardIsLight), W, H, 1)      // dilate (light card) / erode (dark card) removes the printing
+
+  // Threshold halfway between the card's level and the table's level. (Otsu can lock onto some unrelated
+  // very dark or very bright object, like a phone on the table, and call everything else "card".)
+  const centre2: number[] = [], ring2: number[] = []
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const inMid = x > W * 0.3 && x < W * 0.7 && y > H * 0.3 && y < H * 0.7
+    const inRing = x < W * 0.08 || x > W * 0.92 || y < H * 0.08 || y > H * 0.92
+    if (inMid) centre2.push(gray[y * W + x]!); else if (inRing) ring2.push(gray[y * W + x]!)
+  }
+  const cardLevel = percentile(centre2, cardIsLight ? 0.85 : 0.15)
+  const tableLevel = percentile(ring2, 0.5)
+  if (dbg) Object.assign(dbg, { cardLevel, tableLevel })
+  if (Math.abs(cardLevel - tableLevel) < 14) return null
+  const thr = (cardLevel + tableLevel) / 2
+
+  // Binary mask, then an opening (erode then dilate) to cut thin bridges to specks of table texture.
+  let mask: Uint8Array = new Uint8Array(n)
+  for (let i = 0; i < n; i++) mask[i] = (gray[i]! > thr) === cardIsLight ? 1 : 0
+  mask = openMask(mask, W, H, 2)
+  const inMask = (i: number) => mask[i] === 1
 
   // Seed: the middle pixel, or the nearest masked pixel to it.
   const mx = (W / 2) | 0, my = (H / 2) | 0
@@ -136,6 +154,7 @@ export function detectCard(rgba: Uint8ClampedArray, W: number, H: number): Detec
     if (y < H - 1 && !seen[p + W] && inMask(p + W)) { seen[p + W] = 1; queue[tail++] = p + W }
   }
   const area = tail
+  if (dbg) Object.assign(dbg, { area, areaFrac: +(area / n).toFixed(3), borderPx, seedFound: seed >= 0 })
   if (area < MIN_AREA * n || area > MAX_AREA * n) return null
   if (borderPx > 0.25 * 2 * (W + H)) return null // it is the background, not a card
 
@@ -155,6 +174,7 @@ export function detectCard(rgba: Uint8ClampedArray, W: number, H: number): Detec
   let w = u1 - u0 + 1 - 2 * R, h = v1 - v0 + 1 - 2 * R // the max/min filter grew the blob by R on every side
   if (w <= 0 || h <= 0) return null
   const fill = area / ((w + 2 * R) * (h + 2 * R))
+  if (dbg) Object.assign(dbg, { w, h, fill: +fill.toFixed(2), aspect: +(Math.max(w, h) / Math.min(w, h)).toFixed(2), R })
   if (fill < MIN_FILL) return null
   let ang = angle
   if (h > w) { [w, h] = [h, w]; ang += Math.PI / 2; [u0, u1, v0, v1] = [v0, v1, -u1, -u0] }
@@ -175,8 +195,8 @@ export function detectCard(rgba: Uint8ClampedArray, W: number, H: number): Detec
 
 /** Same card seen in two consecutive frames? Used to decide when the user is holding still. */
 export function isStable(a: Detection, b: Detection, frameW: number): boolean {
-  const near = Math.hypot(a.cx - b.cx, a.cy - b.cy) < frameW * 0.03
-  const size = Math.abs(a.w - b.w) < a.w * 0.06 && Math.abs(a.h - b.h) < a.h * 0.08
+  const near = Math.hypot(a.cx - b.cx, a.cy - b.cy) < frameW * 0.045
+  const size = Math.abs(a.w - b.w) < a.w * 0.09 && Math.abs(a.h - b.h) < a.h * 0.11
   let da = Math.abs(a.angle - b.angle) % Math.PI; if (da > Math.PI / 2) da = Math.PI - da
-  return near && size && da < 0.07
+  return near && size && da < 0.1
 }
