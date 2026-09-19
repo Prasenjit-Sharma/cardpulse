@@ -45,15 +45,42 @@ export default function ScanHome({ cards, events, activeEvent, onSelectEvent, re
   onRetry: (id: string) => void
 }) {
   const recent = cards.filter((c) => Date.now() - c.createdAt < 30 * 86_400_000)
-  const shown = recent.slice(0, 6)
+  const t0 = startOfToday()
+  const todayCards = cards.filter((c) => c.createdAt >= t0)
+  const filed = recent.filter((c) => c.createdAt < t0).slice(0, 5)
   const people = cards.reduce((n, c) => n + (c.corrected?.length ?? 0), 0)
-  const todayCount = cards.filter((c) => c.createdAt >= startOfToday()).length
+
+  const row = (c: CardRecord, i: number) => {
+    const names = (c.corrected ?? []).map((p) => p.name).filter(Boolean)
+    const isNew = Date.now() - c.createdAt < 10 * 60_000 && !c.reviewed
+    const multi = (c.corrected?.length ?? 0) > 1
+    return (
+      <div key={c.id} className="scan-row" style={{ ['--i' as string]: i }}
+        onClick={() => (c.status === 'error' ? onRetry(c.id) : c.status === 'done' && onOpen(c.id, multi))}>
+        <CardThumb blob={c.image} name={names[0] ?? ''} />
+        <div className="grow">
+          {c.status === 'done' ? (
+            <>
+              <strong>{names[0] ?? 'Unnamed card'}{names.length > 1 && <span className="plus"> +{names.length - 1}</span>}</strong>
+              <span className="muted">{c.corrected?.[0]?.company ?? ''}</span>
+              <span className="muted time">{when(c.createdAt)}</span>
+            </>
+          ) : c.status === 'error' ? (
+            <><strong className="bad">Couldn't read this card</strong><span className="muted">Tap to try again</span></>
+          ) : (
+            <><strong>Reading…</strong><span className="dots"><i /><i /><i /></span></>
+          )}
+        </div>
+        {isNew && <span className="new-tag">New</span>}
+      </div>
+    )
+  }
 
   return (
     <>
       <header className="album-head">
         <span className="wordmark">CardPulse</span>
-        <span className="tally num">{people > 0 ? <><b>{people}</b> filed</> : 'new album'}</span>
+        <span className="tally num">{cards.length === 0 ? 'new album' : todayCards.length > 0 ? <><b>{todayCards.length}</b> today</> : <><b>{people}</b> filed</>}</span>
       </header>
 
       {needsKey && !ready && (
@@ -76,40 +103,20 @@ export default function ScanHome({ cards, events, activeEvent, onSelectEvent, re
         </div>
       ) : (
         <>
-          <div className="summary-card">
-            <div className="ring" style={{ ['--p' as string]: Math.min(1, recent.length / 20) }}><b className="num">{recent.length}</b><span>{recent.length === 1 ? 'scan' : 'scans'}</span></div>
-            <div className="grow"><strong>{people} {people === 1 ? 'contact' : 'contacts'} saved</strong><p className="muted">in the last 30 days</p></div>
-          </div>
-
-          <div className="band">
-            <span className="band-label">{todayCount > 0 ? 'under the band' : 'recent'}</span>
-            <div className="plain-list">
-            {shown.map((c, i) => {
-              const names = (c.corrected ?? []).map((p) => p.name).filter(Boolean)
-              const isNew = Date.now() - c.createdAt < 10 * 60_000 && !c.reviewed
-              const multi = (c.corrected?.length ?? 0) > 1
-              return (
-                <div key={c.id} className="scan-row" style={{ ['--i' as string]: i }} onClick={() => (c.status === 'error' ? onRetry(c.id) : c.status === 'done' && onOpen(c.id, multi))}>
-                  <CardThumb blob={c.image} name={c.corrected?.[0]?.name ?? ''} />
-                  <div className="grow">
-                    {c.status === 'done' ? (
-                      <>
-                        <strong>{names[0] ?? 'Unnamed card'}{names.length > 1 && <span className="plus"> +{names.length - 1}</span>}</strong>
-                        <span className="muted">{c.corrected?.[0]?.company ?? ''}</span>
-                        <span className="muted time">{when(c.createdAt)}</span>
-                      </>
-                    ) : c.status === 'error' ? (
-                      <><strong className="bad">Couldn't read this card</strong><span className="muted">Tap to try again</span></>
-                    ) : (
-                      <><strong>Reading…</strong><span className="dots"><i /><i /><i /></span></>
-                    )}
-                  </div>
-                  {isNew && <span className="new-tag">New</span>}
-                </div>
-              )
-            })}
+          {todayCards.length > 0 && (
+            <div className="band">
+              <span className="band-label">under the band</span>
+              <div className="plain-list">{todayCards.map(row)}</div>
             </div>
-          </div>
+          )}
+
+          {filed.length > 0 && (
+            <section>
+              <h3 className="group">Filed</h3>
+              <div className="plain-list">{filed.map(row)}</div>
+            </section>
+          )}
+
           <button className="outline center" onClick={onContacts}>View all <Icon name="chevron" size={16} /></button>
         </>
       )}
@@ -124,7 +131,7 @@ export default function ScanHome({ cards, events, activeEvent, onSelectEvent, re
             </select>
           </label>
         )}
-        <button className="cta" onClick={onScan}><Icon name="camera" size={22} /> Scan</button>
+        <button className="cta" onClick={onScan}><Icon name="camera" size={22} /> Scan a card</button>
       </div>
     </>
   )

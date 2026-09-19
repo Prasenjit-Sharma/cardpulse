@@ -61,7 +61,7 @@ export default function Contacts({ onScan, cards: allCards, events, activeEvent,
   const exit = () => setSel(null)
 
   return (
-    <>
+    <div>
       <header className="page-head">
         <h1>Contacts</h1>
         {rows.length > 0 && (sel ? <button className="link" onClick={exit}>Cancel</button> : <button className="link" onClick={() => setSel(new Set())}>Select</button>)}
@@ -83,9 +83,6 @@ export default function Contacts({ onScan, cards: allCards, events, activeEvent,
             <option value="">Tags</option>{allTags.map((t) => <option key={t}>{t}</option>)}
           </select>
         )}
-        <select className="pill-select" value={activeEvent} onChange={(e) => onSelectEvent(e.target.value)} aria-label="Event">
-          <option value="">Events</option>{events.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
-        </select>
         <select className="pill-select" value={flt} onChange={(e) => setFlt(e.target.value as Flt)} aria-label="Show">
           <option value="all">Show all</option><option value="priority">Priority</option><option value="review">Needs review</option><option value="dupes">Duplicates</option><option value="followup">Follow-ups</option>
         </select>
@@ -93,6 +90,18 @@ export default function Contacts({ onScan, cards: allCards, events, activeEvent,
           <option value="recent">Recent</option><option value="name">Name</option><option value="company">Company</option>
         </select>
       </div>
+
+      {events.length > 0 && (
+        <>
+          <nav className="tab-strip" aria-label="Event dividers">
+            <button className={activeEvent === '' ? 'on' : ''} onClick={() => onSelectEvent('')} aria-current={activeEvent === '' ? 'true' : undefined}>All</button>
+            {events.map((e) => (
+              <button key={e.id} className={activeEvent === e.id ? 'on' : ''} onClick={() => onSelectEvent(e.id)} aria-current={activeEvent === e.id ? 'true' : undefined} title={e.name}>{e.name}</button>
+            ))}
+          </nav>
+          <div className="tab-sheet" />
+        </>
+      )}
 
       {failed.length > 0 && <div className="note">{failed.length} card{failed.length > 1 ? 's' : ''} failed. <button className="link" onClick={onRetryFailed}>Retry all</button></div>}
 
@@ -134,6 +143,6 @@ export default function Contacts({ onScan, cards: allCards, events, activeEvent,
           <button className="bad" disabled={!chosen.length} onClick={() => { if (confirm(`Delete ${chosen.length} contact(s)?`)) { onDeleteContacts(chosen.map((r) => r.key)); exit() } }} aria-label="Delete"><Icon name="trash" size={18} /></button>
         </div>
       )}
-    </>
+    </div>
   )
 }

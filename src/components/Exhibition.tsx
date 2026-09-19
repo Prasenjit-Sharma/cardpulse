@@ -41,10 +41,11 @@ export default function Exhibition({ cards, events, activeEvent, onNew, onRename
         const live = activeEvent === e.id
         return (
           <section key={e.id} className={`event-card${live ? ' live' : ''}`} style={{ ['--i' as string]: i }}>
+            <span className="event-tab">{live ? 'Scanning here' : 'Event'}</span>
             <div className="event-head" onClick={() => onView(e.id)}>
               <div className="grow">
                 <strong>{e.name}</strong>
-                <span className="muted">{new Date(e.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}{live ? ' · scanning here' : ''}</span>
+                <span className="muted">{new Date(e.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
               </div>
               <button className="icon-btn ghost" onClick={(ev) => { ev.stopPropagation(); setMenu(e.id) }} aria-label="Event options"><Icon name="more" /></button>
               <Sheet open={menu === e.id} onClose={() => setMenu('')} title={e.name}>
