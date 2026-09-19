@@ -20,7 +20,7 @@ function chunk(type, data) {
 }
 
 const SS = 4
-const TOP = [47, 93, 168], BOT = [22, 52, 100], WHITE = [255, 255, 255]
+const TOP = [20, 149, 138], BOT = [10, 96, 90], WHITE = [255, 255, 255]
 
 // Returns [r,g,b,a] for a point in unit space (0..1)
 function shade(u, v, { rounded, pad }) {

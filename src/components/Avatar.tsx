@@ -9,10 +9,10 @@ function hue(s: string) {
 
 /**
  * A written index tab, not a rainbow bubble: board stock tinted a few degrees off the album's own
- * blues and indigos, so a list of thirty reads as one page rather than a colour chart.
+ * teals and greens, so a list of thirty reads as one page rather than a colour chart.
  */
 export default function Avatar({ name, size = 44 }: { name: string; size?: number }) {
-  const h = 205 + (hue(name || "?") % 45)   // steel through indigo: the palette's own range
+  const h = 165 + (hue(name || "?") % 40)   // teal through green: the palette's own range
   return (
     <span
       className="avatar"
