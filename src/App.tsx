@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { deleteCard, getCard, listCards, loadSettings, putCard, saveSettings, type Settings } from './lib/db'
+import { deleteCard, getCard, listCards, loadSettings, putCard, readerReady, saveSettings, type Settings } from './lib/db'
 import { log } from './lib/debug'
-import { extractCard } from './lib/gemini'
+import { extractCard, serverMode } from './lib/gemini'
 import { prepareImage } from './lib/image'
 import type { CardRecord, EventRec } from './lib/types'
 import { loadActiveEvent, loadEvents, saveActiveEvent, saveEvents } from './lib/events'
@@ -9,6 +9,8 @@ import { findDuplicates } from './lib/dupes'
 import Home from './components/Home'
 import Contacts from './components/Contacts'
 import Exhibition from './components/Exhibition'
+import Insights from './components/Insights'
+import ScanResult from './components/ScanResult'
 import ContactDetail from './components/ContactDetail'
 import Report from './components/Report'
 import SettingsPage from './components/SettingsPage'
@@ -17,8 +19,8 @@ import Icon from './components/Icon'
 import Toast, { type ToastData } from './components/Toast'
 import { useInstall } from './lib/useInstall'
 
-type Tab = 'home' | 'contacts' | 'exhibition' | 'settings' | 'accuracy'
-const TABS: Tab[] = ['home', 'contacts', 'exhibition', 'settings', 'accuracy']
+type Tab = 'home' | 'contacts' | 'exhibition' | 'insights' | 'settings' | 'accuracy'
+const TABS: Tab[] = ['home', 'contacts', 'exhibition', 'insights', 'settings', 'accuracy']
 const CONCURRENCY = 2
 
 export default function App() {
@@ -26,7 +28,7 @@ export default function App() {
   const [tab, setTabState] = useState<Tab>(() => { const t = sessionStorage.getItem('tab') as Tab; return TABS.includes(t) ? t : 'home' })
   const setTab = (t: Tab) => { setTabState(t); try { sessionStorage.setItem('tab', t) } catch { /* ignore */ } }
   const [cards, setCards] = useState<CardRecord[]>([])
-  const [open, setOpen] = useState<{ id: string; idx: number } | null>(null)
+  const [open, setOpen] = useState<{ id: string; idx: number; review?: boolean } | null>(null)
   const [settings, setSettings] = useState<Settings>(loadSettings)
   const [banner, setBanner] = useState('')
   const [events, setEvents] = useState<EventRec[]>(loadEvents)
@@ -48,6 +50,10 @@ export default function App() {
   const [toast, setToast] = useState<ToastData | null>(null)
   const toastAt = useRef({ at: 0, count: 0 })
   const install = useInstall()
+  useEffect(() => {
+    const t = settings.theme ?? 'system'
+    if (t === 'system') document.documentElement.removeAttribute('data-theme'); else document.documentElement.dataset.theme = t
+  }, [settings.theme])
   const fallbackInput = useRef<HTMLInputElement>(null)
   const queue = useRef<string[]>([])
   const active = useRef(0)
@@ -63,13 +69,13 @@ export default function App() {
     const t = toastAt.current
     t.count = Date.now() - t.at < 6000 ? t.count + n : n
     t.at = Date.now()
-    setToast({ id: t.at, title: `${t.count} contact${t.count === 1 ? '' : 's'} added`, sub: 'Ready to call, message or save', action: { label: 'View', run: () => setOpen({ id: cardId, idx: 0 }) } })
+    setToast({ id: t.at, title: `${t.count} contact${t.count === 1 ? '' : 's'} added`, sub: 'Ready to call, message or save', action: { label: 'View', run: () => setOpen({ id: cardId, idx: 0, review: n > 1 }) } })
   }, [])
 
   const runOne = useCallback(async (id: string) => {
     const card = await getCard(id)
     if (!card) return
-    const { apiKey, model, keepPhotos } = settingsRef.current
+    const { apiKey, model, keepPhotos, useOwnKey } = settingsRef.current
     if (!card.image || card.thumbOnly) {
       await putCard({ ...card, status: 'error', error: 'The full photo was not kept, so this card cannot be re-read.' })
       return refresh()
@@ -77,7 +83,7 @@ export default function App() {
     await putCard({ ...card, status: 'running', error: undefined })
     await refresh()
     try {
-      const r = await extractCard(card.back ? [card.image, card.back] : [card.image], apiKey, model)
+      const r = await extractCard(card.back ? [card.image, card.back] : [card.image], { apiKey, model, useOwnKey: !!useOwnKey })
       const fresh = (await getCard(id)) ?? card
       // Photo retention: shrink or drop the images now that the contacts are safely extracted.
       let image: Blob | undefined = fresh.image
@@ -90,7 +96,7 @@ export default function App() {
         back = undefined
       }
       await putCard({
-        ...fresh, image, back, thumbOnly: keepPhotos === 'thumb', status: 'done', error: undefined, model,
+        ...fresh, image, back, thumbOnly: keepPhotos === 'thumb', status: 'done', error: undefined, model: r.model ?? model,
         latencyMs: r.latencyMs, tokensIn: r.tokensIn, tokensOut: r.tokensOut,
         languages: r.languages, aiNotes: r.notes,
         extracted: r.contacts, corrected: structuredClone(r.contacts), reviewed: false,
@@ -116,7 +122,7 @@ export default function App() {
   const addFiles = useCallback(async (files: FileList | File[], prepared = false, oneCard = false) => {
     const { apiKey, model } = settingsRef.current
     log(`addFiles n=${Array.from(files).length} prepared=${prepared} oneCard=${oneCard} key=${!!apiKey} model=${model || 'none'}`)
-    if (!apiKey || !model) { setBanner('Add your Gemini API key in Settings first.'); setTab('settings'); return }
+    if (!readerReady(settingsRef.current)) { setBanner('Add your Gemini API key in Settings first.'); setTab('settings'); return }
     setBanner('Saving photo…')
     const ids: string[] = []
     const list = Array.from(files)
@@ -187,6 +193,13 @@ export default function App() {
     }
     await refresh()
   }
+  const keepPeople = async (cardId: string, keep: number[]) => {
+    const c = await getCard(cardId)
+    if (!c) return
+    const rest = (c.corrected ?? []).filter((_, i) => keep.includes(i))
+    if (rest.length) await putCard({ ...c, corrected: rest, reviewed: false }); else await deleteCard(cardId)
+    await refresh()
+  }
   const newEventPrompt = () => { const n = prompt('Exhibition / event name'); if (n?.trim()) newEvent(n.trim()) }
   const goto = (t: Tab, from?: Tab) => { if (from) setBackTab(from); setOpen(null); setTab(t) }
   const scanHere = (id: string) => {
@@ -194,14 +207,22 @@ export default function App() {
     try { localStorage.setItem('cardpulse.captureMode', 'many') } catch { /* ignore */ }
     scan()
   }
+  const batchScan = () => {
+    try { localStorage.setItem('cardpulse.captureMode', 'many') } catch { /* ignore */ }
+    scan()
+  }
   const retryFailed = () => enqueue(cards.filter((c) => c.status === 'error').map((c) => c.id))
-  const navActive: Tab = tab === 'accuracy' ? 'settings' : tab
+  const navActive: Tab = tab === 'accuracy' ? 'insights' : tab
 
   return (
     <div className="app">
       <main>
         {banner && <div className="banner">{banner}</div>}
-        {openCard && open ? (
+        {openCard && open?.review ? (
+          <ScanResult key={`r-${openCard.id}`} card={openCard} onBack={() => setOpen(null)}
+            onKeep={(keep) => { void keepPeople(openCard.id, keep); setOpen(null); goto('contacts') }}
+            onEdit={(idx) => setOpen({ id: openCard.id, idx })} />
+        ) : openCard && open ? (
           <ContactDetail
             key={openCard.id}
             card={openCard}
@@ -215,13 +236,15 @@ export default function App() {
             onMoveEvent={(eventId) => void moveToEvent([openCard.id], eventId)}
           />
         ) : tab === 'home' ? (
-          <Home cards={cards} events={events} dupes={dupes} hasKey={!!settings.apiKey && !!settings.model} install={install} onScan={scan} onExhibition={() => goto('exhibition')} onSetup={() => goto('settings')} onOpen={(id, idx) => setOpen({ id, idx })} onContacts={() => goto('contacts')} />
+          <Home cards={cards} events={events} dupes={dupes} hasKey={readerReady(settings)} needsKey={!serverMode || !!settings.useOwnKey} install={install} onScan={scan} onBatch={batchScan} onUpload={(f) => void addFiles(f)} onSettings={() => goto('settings', 'home')} onExhibition={() => goto('exhibition')} onSetup={() => goto('settings', 'home')} onOpen={(id, idx) => setOpen({ id, idx })} onContacts={() => goto('contacts')} />
         ) : tab === 'contacts' ? (
           <Contacts onScan={scan} cards={cards} events={events} activeEvent={activeEvent} onSelectEvent={setActiveEvent} onNewEvent={newEvent} dupes={dupes}
             onOpen={(id, idx) => setOpen({ id, idx })} onRetryFailed={retryFailed} onUpload={(f) => void addFiles(f)} onMoveToEvent={moveToEvent} onDeleteContacts={deleteContacts} />
         ) : tab === 'exhibition' ? (
           <Exhibition cards={cards} events={events} activeEvent={activeEvent} onNew={newEventPrompt} onRename={renameEvent} onDelete={removeEvent}
             onScanHere={scanHere} onView={(id) => { setActiveEvent(id); goto('contacts') }} />
+        ) : tab === 'insights' ? (
+          <Insights cards={cards} onSettings={() => goto('settings', 'insights')} onContacts={() => goto('contacts')} onAccuracy={() => goto('accuracy', 'insights')} onOpen={(id, idx) => setOpen({ id, idx })} />
         ) : tab === 'accuracy' ? (
           <Report cards={cards} events={events} dupes={dupes} onBack={() => setTab(backTab)} />
         ) : (
@@ -231,6 +254,7 @@ export default function App() {
             onChange={(s) => { setSettings(s); saveSettings(s) }}
             onWipe={async () => { await Promise.all(cards.map((c) => deleteCard(c.id))); await refresh() }}
             onOpenAccuracy={() => goto('accuracy', 'settings')}
+            onBack={() => setTab(backTab)}
           />
         )}
       </main>
@@ -242,15 +266,15 @@ export default function App() {
           <NavBtn id="home" label="Home" icon="home" active={navActive} go={goto} />
           <NavBtn id="contacts" label="Contacts" icon="users" active={navActive} go={goto} />
           <button className="nav-scan" onClick={scan} aria-label="Scan a card"><Icon name="camera" size={26} /></button>
-          <NavBtn id="exhibition" label="Exhibition" icon="booth" active={navActive} go={goto} />
-          <NavBtn id="settings" label="Settings" icon="sliders" active={navActive} go={goto} />
+          <NavBtn id="exhibition" label="Events" icon="booth" active={navActive} go={goto} />
+          <NavBtn id="insights" label="Insights" icon="chart" active={navActive} go={goto} />
         </nav>
       )}
     </div>
   )
 }
 
-function NavBtn({ id, label, icon, active, go }: { id: Tab; label: string; icon: 'home' | 'users' | 'booth' | 'sliders'; active: Tab; go: (t: Tab) => void }) {
+function NavBtn({ id, label, icon, active, go }: { id: Tab; label: string; icon: 'home' | 'users' | 'booth' | 'chart'; active: Tab; go: (t: Tab) => void }) {
   return (
     <button className={active === id ? 'on' : ''} onClick={() => go(id)}>
       <Icon name={icon} size={22} />

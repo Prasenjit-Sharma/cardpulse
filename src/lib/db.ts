@@ -1,4 +1,5 @@
 import { createStore, del, entries, get, set } from 'idb-keyval'
+import { serverMode } from './gemini'
 import type { CardRecord } from './types'
 
 const store = createStore('cardpulse', 'cards')
@@ -13,7 +14,11 @@ export async function listCards(): Promise<CardRecord[]> {
 
 const KEY = 'cardpulse.settings'
 export type KeepPhotos = 'full' | 'thumb' | 'none'
-export interface Settings { apiKey: string; model: string; keepPhotos: KeepPhotos }
+export type Theme = 'system' | 'light' | 'dark'
+export interface Settings { apiKey: string; model: string; keepPhotos: KeepPhotos; theme?: Theme; /** Developer option: bypass the CardPulse server and call Gemini directly. */ useOwnKey?: boolean }
+
+/** Can cards be read right now? Server mode needs nothing from the user; direct mode needs a key and a model. */
+export const readerReady = (s: Settings) => (serverMode && !s.useOwnKey) || (!!s.apiKey && !!s.model)
 export function loadSettings(): Settings {
   try {
     return { apiKey: '', model: '', keepPhotos: 'full', ...JSON.parse(localStorage.getItem(KEY) ?? '{}') }

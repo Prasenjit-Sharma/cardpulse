@@ -40,6 +40,8 @@ jobs:
       - name: Build (typecheck + bundle + PWA)
         env:
           VITE_BASE: ${{ steps.base.outputs.value }}
+          # Set once the API is deployed:  gh variable set API_URL --body https://cardpulse-api.<you>.workers.dev
+          VITE_API_URL: ${{ vars.API_URL }}
         run: npm run build
 
       - name: Prepare artifact

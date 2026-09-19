@@ -3,3 +3,5 @@ dist
 .env*
 tsconfig.tsbuildinfo
 .DS_Store
+server/.dev.vars
+server/.wrangler

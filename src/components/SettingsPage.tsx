@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { clearLog, readLog, subscribe } from '../lib/debug'
-import { DEFAULT_MODEL, listModels } from '../lib/gemini'
-import type { Settings } from '../lib/db'
+import { DEFAULT_MODEL, listModels, serverMode } from '../lib/gemini'
+import type { Settings, Theme } from '../lib/db'
 import Icon from './Icon'
 import Logo from './Logo'
 
@@ -9,12 +9,13 @@ const MODELS_KEY = 'cardpulse.models'
 
 interface Install { mode: 'native' | 'ios' | null; install: () => void }
 
-export default function SettingsPage({ settings, install, onChange, onWipe, onOpenAccuracy }: {
+export default function SettingsPage({ settings, install, onChange, onWipe, onOpenAccuracy, onBack }: {
   settings: Settings
   install: Install
   onChange: (s: Settings) => void
   onWipe: () => void
   onOpenAccuracy: () => void
+  onBack: () => void
 }) {
   const [lines, setLines] = useState(readLog)
   useEffect(() => subscribe(() => setLines(readLog())), [])
@@ -53,13 +54,27 @@ export default function SettingsPage({ settings, install, onChange, onWipe, onOp
     } finally { setBusy(false) }
   }
 
+  const own = !serverMode || !!settings.useOwnKey
   const connected = !!settings.apiKey && !!settings.model
 
   return (
     <>
-      <header className="page-head"><h1>Settings</h1></header>
+      <header className="page-head"><div className="head-left"><button className="icon-btn" onClick={onBack} aria-label="Back"><Icon name="back" /></button><h1>Settings</h1></div></header>
 
-      <h3 className="group">Gemini</h3>
+      {serverMode && (
+        <section className="card">
+          <div className="row-top"><strong>Card reading</strong><span className="status ok">Ready</span></div>
+          <p className="hint" style={{ margin: 0 }}>Cards are read by the CardPulse service. There is nothing to set up. Photos are sent to it only when you scan, and are not stored there.</p>
+          <label className="check">
+            <input type="checkbox" checked={!!settings.useOwnKey} onChange={(e) => onChange({ ...settings, useOwnKey: e.target.checked })} />
+            Developer: use my own Gemini key instead
+          </label>
+        </section>
+      )}
+
+      {own && (
+        <>
+      <h3 className="group">Gemini key</h3>
       <section className="card">
         <div className="row-top">
           <strong>API key</strong>
@@ -83,6 +98,21 @@ export default function SettingsPage({ settings, install, onChange, onWipe, onOp
             </select>
           </label>
         )}
+      </section>
+
+        </>
+      )}
+
+      <h3 className="group">Appearance</h3>
+      <section className="card">
+        <label>
+          <span>Theme</span>
+          <select value={settings.theme ?? 'system'} onChange={(e) => onChange({ ...settings, theme: e.target.value as Theme })}>
+            <option value="system">Match my phone</option>
+            <option value="dark">Dark</option>
+            <option value="light">Light</option>
+          </select>
+        </label>
       </section>
 
       <h3 className="group">Photos</h3>

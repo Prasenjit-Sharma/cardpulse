@@ -7,7 +7,7 @@ import EmptyState from './EmptyState'
 import Icon from './Icon'
 
 type Sort = 'recent' | 'name' | 'company'
-type Flt = 'all' | 'review' | 'dupes' | 'followup'
+type Flt = 'all' | 'priority' | 'review' | 'dupes' | 'followup'
 interface Row { card: CardRecord; p: Contact; i: number; key: string }
 
 function Thumb({ blob, name }: { blob?: Blob; name: string }) {
@@ -23,7 +23,7 @@ function dayLabel(t: number): string {
   return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: d.getFullYear() === new Date().getFullYear() ? undefined : 'numeric' })
 }
 
-const haystack = (p: Contact) => [p.name, p.title, p.company, p.address, p.note, ...p.phones, ...p.emails].join(' ').toLowerCase()
+const haystack = (p: Contact) => [p.name, p.title, p.company, p.address, p.note, ...(p.tags ?? []), ...p.phones, ...p.emails].join(' ').toLowerCase()
 
 export default function Contacts({ onScan, cards: allCards, events, activeEvent, onSelectEvent, onNewEvent, dupes, onOpen, onRetryFailed, onUpload, onMoveToEvent, onDeleteContacts }: {
   onScan: () => void
@@ -54,7 +54,7 @@ export default function Contacts({ onScan, cards: allCards, events, activeEvent,
     .filter((c) => c.status === 'done')
     .flatMap((c) => (c.corrected ?? []).map((p, i) => ({ card: c, p, i, key: `${c.id}:${i}` })))
     .filter((r) => !q || haystack(r.p).includes(q))
-    .filter((r) => flt === 'all' || (flt === 'review' ? !r.card.reviewed : flt === 'dupes' ? dupes.has(r.card.id) : !!r.p.followUp))
+    .filter((r) => flt === 'all' || (flt === 'priority' ? !!r.p.priority : flt === 'review' ? !r.card.reviewed : flt === 'dupes' ? dupes.has(r.card.id) : !!r.p.followUp))
   if (sort === 'name') rows = [...rows].sort((a, b) => a.p.name.localeCompare(b.p.name))
   if (sort === 'company') rows = [...rows].sort((a, b) => a.p.company.localeCompare(b.p.company))
 
@@ -89,7 +89,7 @@ export default function Contacts({ onScan, cards: allCards, events, activeEvent,
 
       {showFilter && (
         <div className="chips">
-          {([['all', 'All'], ['review', 'Needs review'], ['dupes', 'Duplicates'], ['followup', 'Follow-ups']] as const).map(([id, label]) => (
+          {([['all', 'All'], ['priority', 'Priority'], ['review', 'Needs review'], ['dupes', 'Duplicates'], ['followup', 'Follow-ups']] as const).map(([id, label]) => (
             <button key={id} className={flt === id ? 'chip on' : 'chip'} onClick={() => setFlt(id)}>{label}</button>
           ))}
         </div>
@@ -144,6 +144,7 @@ export default function Contacts({ onScan, cards: allCards, events, activeEvent,
                   <span className="muted">{[r.p.title, r.p.company].filter(Boolean).join(', ') || r.p.phones[0] || r.p.emails[0] || ''}</span>
                 </div>
                 <span className="tags">
+                  {r.p.priority && <em className="warn"><Icon name="star" size={12} /></em>}
                   {dupes.has(r.card.id) && <em className="warn">duplicate?</em>}
                   {r.card.reviewed && <em className="ok"><Icon name="check" size={12} /></em>}
                 </span>

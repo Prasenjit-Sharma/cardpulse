@@ -21,11 +21,14 @@ npm run build      # production PWA in dist/
 
 Deploying under a sub-path (e.g. GitHub Pages project site): `VITE_BASE=/cardpulse/ npm run build`.
 
-## Setup
+## Card reading
 
-Open **Settings**, paste a free Gemini API key from https://aistudio.google.com/apikey, tap **Save & connect**, pick a model.
+Two modes:
+
+- **Server (production):** the app calls the CardPulse API in `server/` and users need nothing. See `server/README.md` to deploy it, then set `VITE_API_URL`.
+- **Own key (development):** with no `VITE_API_URL`, open **Settings**, paste a free Gemini key from https://aistudio.google.com/apikey, and tap **Save and connect**.
 
 ## Notes
 
-- The API key and all cards live in the browser (localStorage / IndexedDB). The only network call is to Google's Gemini API. Do not ship this to end users as-is: the key must move behind a server first.
-- On the free tier Google may use submitted images to improve its products — test with sample cards.
+- Contacts and photos live only in the browser (IndexedDB). In server mode the only network call is to the CardPulse API; in own-key mode it is to Google.
+- On the free Gemini tier Google may use submitted images to improve its products. Use sample cards, or a paid tier for real users.

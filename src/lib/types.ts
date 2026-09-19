@@ -12,6 +12,9 @@ export interface Contact {
   note?: string
   /** ISO date (yyyy-mm-dd) to follow up on. */
   followUp?: string
+  /** Why this contact matters: Customer, Supplier, Hot lead, or anything custom. */
+  tags?: string[]
+  priority?: boolean
 }
 
 export type Status = 'pending' | 'running' | 'done' | 'error'

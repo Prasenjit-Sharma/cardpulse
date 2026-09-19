@@ -1,0 +1,123 @@
+// CardPulse API — a thin, locked-down proxy in front of Gemini.
+// The app sends card photos; the prompt, schema and API key live here, so this endpoint cannot be used as a general Gemini gateway.
+import { buildRequest, GeminiError, parseResponse, type ImageInput } from '../shared/extract-core.ts'
+
+export interface Env {
+  GEMINI_API_KEY: string
+  GEMINI_MODEL?: string
+  /** Comma-separated exact origins allowed to call this API, e.g. https://you.github.io */
+  ALLOWED_ORIGINS?: string
+  /** "1" also allows localhost and private-LAN origins (local development only). */
+  ALLOW_LAN?: string
+  /** Override the upstream, used by tests. */
+  GEMINI_BASE?: string
+}
+
+const DEFAULT_MODEL = 'gemini-2.5-flash'
+const UPSTREAM = 'https://generativelanguage.googleapis.com/v1beta'
+const MAX_IMAGES = 2
+const MAX_BASE64_CHARS = 8_000_000 // ~6 MB of image data per request
+const MIMES = new Set(['image/jpeg', 'image/png', 'image/webp'])
+const WINDOW_MS = 10 * 60_000
+const MAX_PER_WINDOW = 30 // per client IP, per isolate: a best-effort brake, not a billing guarantee
+
+const LAN = /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+)(:\d+)?$/
+const hits = new Map<string, number[]>()
+
+/** Seconds until the caller may retry, or 0 if under the limit. */
+export function checkRate(ip: string, now = Date.now()): number {
+  const recent = (hits.get(ip) ?? []).filter((t) => now - t < WINDOW_MS)
+  if (recent.length >= MAX_PER_WINDOW) { hits.set(ip, recent); return Math.ceil((WINDOW_MS - (now - recent[0]!)) / 1000) }
+  recent.push(now)
+  hits.set(ip, recent)
+  if (hits.size > 5000) for (const [k, v] of hits) if (!v.some((t) => now - t < WINDOW_MS)) hits.delete(k)
+  return 0
+}
+
+function originAllowed(origin: string | null, env: Env): boolean {
+  if (!origin) return false
+  if ((env.ALLOWED_ORIGINS ?? '').split(',').map((s) => s.trim()).filter(Boolean).includes(origin)) return true
+  return env.ALLOW_LAN === '1' && LAN.test(origin)
+}
+
+function json(body: unknown, status: number, origin: string | null, extra: Record<string, string> = {}): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      'Content-Type': 'application/json',
+      'Cache-Control': 'no-store',
+      ...(origin ? { 'Access-Control-Allow-Origin': origin, Vary: 'Origin' } : {}),
+      ...extra,
+    },
+  })
+}
+const fail = (status: number, code: string, message: string, origin: string | null, extra?: Record<string, string>) =>
+  json({ error: { code, message } }, status, origin, extra)
+
+function validImages(v: unknown): ImageInput[] | null {
+  if (!Array.isArray(v) || v.length < 1 || v.length > MAX_IMAGES) return null
+  let total = 0
+  const out: ImageInput[] = []
+  for (const x of v) {
+    if (!x || typeof x !== 'object') return null
+    const { mime, data } = x as { mime?: unknown; data?: unknown }
+    if (typeof mime !== 'string' || !MIMES.has(mime) || typeof data !== 'string' || !/^[A-Za-z0-9+/=]+$/.test(data)) return null
+    total += data.length
+    out.push({ mime, data })
+  }
+  return total <= MAX_BASE64_CHARS ? out : null
+}
+
+export default {
+  async fetch(req: Request, env: Env): Promise<Response> {
+    const url = new URL(req.url)
+    const origin = req.headers.get('Origin')
+
+    if (req.method === 'OPTIONS') {
+      if (!originAllowed(origin, env)) return new Response(null, { status: 403 })
+      return new Response(null, { status: 204, headers: {
+        'Access-Control-Allow-Origin': origin!, Vary: 'Origin', 'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type', 'Access-Control-Max-Age': '86400',
+      } })
+    }
+
+    if (url.pathname === '/health' && req.method === 'GET') return json({ ok: true }, 200, originAllowed(origin, env) ? origin : null)
+
+    if (url.pathname !== '/v1/extract' || req.method !== 'POST') return fail(404, 'not_found', 'Not found', null)
+    if (!originAllowed(origin, env)) return fail(403, 'forbidden_origin', 'This origin is not allowed.', null)
+    if (!env.GEMINI_API_KEY) return fail(500, 'not_configured', 'The reading service is not configured.', origin)
+
+    const ip = req.headers.get('cf-connecting-ip') ?? 'local'
+    const wait = checkRate(ip)
+    if (wait) return fail(429, 'rate_limited', `Too many scans. Try again in ${Math.ceil(wait / 60)} min.`, origin, { 'Retry-After': String(wait) })
+
+    if (Number(req.headers.get('content-length') ?? 0) > MAX_BASE64_CHARS + 2048) return fail(413, 'too_large', 'Photo is too large.', origin)
+    let body: { images?: unknown }
+    try { body = await req.json() } catch { return fail(400, 'bad_request', 'Invalid request.', origin) }
+    const images = validImages(body.images)
+    if (!images) return fail(400, 'bad_images', 'Send 1 or 2 JPEG, PNG or WebP photos, under 6 MB in total.', origin)
+
+    const model = env.GEMINI_MODEL || DEFAULT_MODEL
+    let upstream: Response
+    try {
+      upstream = await fetch(`${env.GEMINI_BASE ?? UPSTREAM}/models/${encodeURIComponent(model)}:generateContent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
+        body: JSON.stringify(buildRequest(images)),
+      })
+    } catch {
+      return fail(502, 'upstream_unreachable', 'The reading service is unavailable. Try again.', origin)
+    }
+
+    if (upstream.status === 429) return fail(429, 'busy', 'The reading service is busy. Try again in a moment.', origin, { 'Retry-After': '20' })
+    // Anything else from upstream (bad key, quota, outage) is our problem, not the user's: don't leak details.
+    if (!upstream.ok) return fail(502, 'upstream_error', 'The reading service had a problem. Try again.', origin)
+
+    try {
+      const parsed = parseResponse(await upstream.json())
+      return json({ ...parsed, model }, 200, origin)
+    } catch (e) {
+      return fail(502, 'unreadable', e instanceof GeminiError ? 'Could not read that photo. Try a clearer one.' : 'Unexpected response.', origin)
+    }
+  },
+}

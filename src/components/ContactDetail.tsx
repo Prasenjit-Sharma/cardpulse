@@ -8,6 +8,7 @@ import Avatar from './Avatar'
 import Camera from './Camera'
 import Icon from './Icon'
 
+const SUGGESTED_TAGS = ['Customer', 'Supplier', 'Partner', 'Investor', 'Hot lead']
 const withProtocol = (w: string) => (/^https?:\/\//i.test(w) ? w : `https://${w}`)
 
 function Row({ label, edited, children }: { label: string; edited?: boolean; children: ReactNode }) {
@@ -51,7 +52,6 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
   const [slide, setSlide] = useState(0)
   const [light, setLight] = useState('')
   const [menu, setMenu] = useState(false)
-  const [fab, setFab] = useState(false)
   const [camOpen, setCamOpen] = useState(false)
   const [listening, setListening] = useState(false)
   const stopRef = useRef<(() => void) | null>(null)
@@ -150,14 +150,36 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
           <button onClick={() => { commit([emptyContact()], false); setIdx(0) }}><Icon name="plus" size={16} /> Add a contact</button></div>
       ) : (
         <>
-          <div className="hero"><Avatar name={c.name} size={52} /><div className="grow"><h2>{c.name || '(no name)'}</h2><span className="muted">{[c.title, c.company].filter(Boolean).join(' · ')}</span></div></div>
+          <div className="profile">
+            <div className="avatar-wrap"><Avatar name={c.name} size={64} />{c.priority && <span className="star"><Icon name="star" size={12} /></span>}</div>
+            <h2>{c.name || '(no name)'}</h2>
+            <span className="muted">{[c.title, c.company].filter(Boolean).join(' · ')}</span>
+            <span className="met">Met {eventName ? `at ${eventName} · ` : ''}{new Date(card.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+          </div>
 
-          <div className="circles">
-            <a className={phone ? '' : 'off'} href={phone ? telHref(phone) : undefined} aria-label="Call"><Icon name="phone" /></a>
-            <a className={phone ? '' : 'off'} href={phone ? `https://wa.me/${waNumber(phone)}` : undefined} target="_blank" rel="noreferrer" aria-label="WhatsApp"><Icon name="chat" /></a>
-            <a className={email ? '' : 'off'} href={email ? `mailto:${email}` : undefined} aria-label="Email"><Icon name="mail" /></a>
-            <a className={c.address ? '' : 'off'} href={c.address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.address)}` : undefined} target="_blank" rel="noreferrer" aria-label="Map"><Icon name="pin" /></a>
-            <a className={c.website ? '' : 'off'} href={c.website ? withProtocol(c.website) : undefined} target="_blank" rel="noreferrer" aria-label="Website"><Icon name="globe" /></a>
+          <div className="qa5">
+            <a className={phone ? '' : 'off'} href={phone ? telHref(phone) : undefined}><Icon name="phone" size={20} /><span>Call</span></a>
+            <a className={phone ? '' : 'off'} href={phone ? `https://wa.me/${waNumber(phone)}` : undefined} target="_blank" rel="noreferrer"><Icon name="chat" size={20} /><span>WhatsApp</span></a>
+            <a className={email ? '' : 'off'} href={email ? `mailto:${email}` : undefined}><Icon name="mail" size={20} /><span>Email</span></a>
+            <a className={c.address ? '' : 'off'} href={c.address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.address)}` : undefined} target="_blank" rel="noreferrer"><Icon name="pin" size={20} /><span>Map</span></a>
+            <a className={c.website ? '' : 'off'} href={c.website ? withProtocol(c.website) : undefined} target="_blank" rel="noreferrer"><Icon name="globe" size={20} /><span>Web</span></a>
+          </div>
+
+          <div className="trio">
+            <button className={c.priority ? 'tile on' : 'tile'} onClick={() => patch({ priority: !c.priority }, false)}><Icon name="star" size={18} /><span>{c.priority ? 'Priority' : 'Mark priority'}</span></button>
+            <button className="tile" onClick={() => download(`${c.name || 'contact'}.vcf`, toVCard(c, [eventName, c.note].filter(Boolean).join(' — ')), 'text/vcard')}><Icon name="download" size={18} /><span>Save to phone</span></button>
+            <button className="tile" onClick={() => void share()}><Icon name="share" size={18} /><span>Share</span></button>
+          </div>
+
+          <div className="panel tags-panel">
+            <span className="lab">Why this connection matters</span>
+            <div className="chips">
+              {[...SUGGESTED_TAGS, ...(c.tags ?? []).filter((t) => !SUGGESTED_TAGS.includes(t))].map((t) => {
+                const on = (c.tags ?? []).includes(t)
+                return <button key={t} className={on ? 'chip on' : 'chip'} onClick={() => patch({ tags: on ? (c.tags ?? []).filter((x) => x !== t) : [...(c.tags ?? []), t] }, false)}>{t}</button>
+              })}
+              <button className="chip" onClick={() => { const t = prompt('New tag')?.trim(); if (t) patch({ tags: [...new Set([...(c.tags ?? []), t])] }, false) }}><Icon name="plus" size={14} /> Tag</button>
+            </div>
           </div>
 
           {dupes.length > 0 && <p className="note">Possible duplicate — shares a phone or email with: {dupes.map((d) => d.corrected?.map((p) => p.name).filter(Boolean).join(' & ') || 'unnamed card').join('; ')}</p>}
@@ -194,6 +216,13 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
             <Row label="GSTIN" edited={changed('gstin')}><input value={c.gstin} onChange={(e) => patch({ gstin: e.target.value })} /></Row>
           </div>
 
+          <h3 className="group">Recent activity</h3>
+          <div className="panel timeline">
+            <div><i /><span><strong>Card scanned</strong><small>{new Date(card.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}{eventName ? ` · ${eventName}` : ''}</small></span></div>
+            {c.note && <div><i /><span><strong>Note added</strong><small>{c.note.length > 60 ? `${c.note.slice(0, 60)}…` : c.note}</small></span></div>}
+            {c.followUp && <div className="warm"><i /><span><strong>Follow-up {c.followUp <= new Date().toISOString().slice(0, 10) ? 'due' : 'planned'}</strong><small>{c.followUp}</small></span></div>}
+          </div>
+
           <p className="hint meta">
             {card.model} · {((card.latencyMs ?? 0) / 1000).toFixed(1)}s{card.tokensIn != null && ` · ${card.tokensIn}+${card.tokensOut ?? 0} tokens`}
             {card.languages?.length ? ` · ${card.languages.join(', ')}` : ''}. Highlighted fields were corrected by you.
@@ -204,20 +233,6 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
         </>
       ))}
 
-      {card.status === 'done' && c && (
-        <>
-          {fab && <div className="scrim" onClick={() => setFab(false)} />}
-          <div className="fab-menu">
-            {fab && (
-              <>
-                <button className="fab-item" onClick={() => { setFab(false); download(`${c.name || 'contact'}.vcf`, toVCard(c, [eventName, c.note].filter(Boolean).join(' — ')), 'text/vcard') }}><span>Save to phone</span><i><Icon name="download" /></i></button>
-                <button className="fab-item" onClick={() => { setFab(false); void share() }}><span>Share contact</span><i><Icon name="share" /></i></button>
-              </>
-            )}
-            <button className={`fab-main${fab ? ' open' : ''}`} onClick={() => setFab(!fab)} aria-label="Actions"><Icon name={fab ? 'x' : 'more'} size={24} /></button>
-          </div>
-        </>
-      )}
     </div>
   )
 }
