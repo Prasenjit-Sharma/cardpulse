@@ -310,15 +310,10 @@ export default function Camera({ onCard, onSubmit, onClose, onGallery, eventLabe
 
         {hasFront && <button className="skip" onClick={flushFront}>Skip back</button>}
 
-        {struggling && auto && mode !== 'many' && tray.length === 0 && (
-          <div className="tips" onClick={() => setStruggling(false)}>
-            <strong>Having trouble?</strong>
-            <span>• Use a plain, higher-contrast background</span>
-            <span>• Turn off Auto Detect and use the frame</span>
-          </div>
-        )}
-
         <div className="cam-bottom">
+          {struggling && auto && mode !== 'many' && tray.length === 0 && (
+            <button className="tips" onClick={() => setStruggling(false)}>Trouble? Use a plain background, or turn off Auto Detect</button>
+          )}
           <div className="toggles">
             {torchOk && (
               <label className="toggle"><button className={`round dark${torch ? ' on' : ''}`} onClick={() => void toggleTorch()} aria-pressed={torch} aria-label="Flash"><Icon name={torch ? 'bolt' : 'boltoff'} size={20} /></button><span>Flash</span></label>
@@ -329,6 +324,8 @@ export default function Camera({ onCard, onSubmit, onClose, onGallery, eventLabe
           </div>
 
           {!single && (
+            <div className="tray-wrap">
+            <div className="tray-cap" aria-hidden="true"><span>Min 1</span><span>Max {MAX_CARDS}</span></div>
             <div className="tray" role="list" aria-label={`Captured cards, ${tray.length} of ${MAX_CARDS}`}>
               {Array.from({ length: MAX_CARDS }, (_, i) => {
                 const t = tray[i]
@@ -346,6 +343,7 @@ export default function Camera({ onCard, onSubmit, onClose, onGallery, eventLabe
                 }
                 return <div key={`e${i}`} className="slot" aria-hidden="true"><i>{i + 1}</i></div>
               })}
+            </div>
             </div>
           )}
 
