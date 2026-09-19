@@ -4,9 +4,15 @@ import { prepareImage } from '../lib/image'
 import { download, telHref, toVCard, waNumber } from '../lib/actions'
 import { speechSupported, startDictation } from '../lib/speech'
 import { emptyContact, type CardRecord, type Contact, type EventRec, type FieldKey } from '../lib/types'
-import Avatar from './Avatar'
 import Camera from './Camera'
 import Icon from './Icon'
+
+/** Card-shaped photos fill the frame; anything else (tables of cards, tall photos) is shown whole. */
+const fitImage = (e: React.SyntheticEvent<HTMLImageElement>) => {
+  const im = e.currentTarget
+  const r = im.naturalWidth / im.naturalHeight
+  im.dataset.fit = r > 1.3 && r < 2.3 ? 'cover' : 'contain'
+}
 
 const SUGGESTED_TAGS = ['Customer', 'Supplier', 'Partner', 'Investor', 'Hot lead']
 const withProtocol = (w: string) => (/^https?:\/\//i.test(w) ? w : `https://${w}`)
@@ -53,6 +59,7 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
   const [light, setLight] = useState('')
   const [menu, setMenu] = useState(false)
   const [camOpen, setCamOpen] = useState(false)
+  const [tagsOpen, setTagsOpen] = useState(false)
   const [listening, setListening] = useState(false)
   const stopRef = useRef<(() => void) | null>(null)
   const hasLiveCamera = !!navigator.mediaDevices?.getUserMedia
@@ -108,6 +115,9 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
       <header className="bar-top">
         <button className="icon-btn" onClick={onClose} aria-label="Back"><Icon name="back" /></button>
         <h2 className="title">{c?.name || 'Contact'}</h2>
+        {c && card.status === 'done' && (
+          <button className={`icon-btn star-btn${c.priority ? ' on' : ''}`} onClick={() => patch({ priority: !c.priority }, false)} aria-label={c.priority ? 'Remove priority' : 'Mark as priority'} aria-pressed={!!c.priority}><Icon name="star" size={18} /></button>
+        )}
         <div className="menu-wrap">
           <button className="icon-btn" onClick={() => setMenu(!menu)} aria-label="More"><Icon name="more" /></button>
           {menu && (
@@ -134,7 +144,7 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
       {slides.length > 0 && (
         <>
           <div className="carousel" onScroll={(e) => setSlide(Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth))}>
-            {slides.map((s, i) => <img key={i} src={s} alt={i ? 'Back of card' : 'Front of card'} onClick={() => setLight(s)} />)}
+            {slides.map((s, i) => <img key={i} src={s} alt={i ? 'Back of card' : 'Front of card'} onClick={() => setLight(s)} onLoad={fitImage} />)}
           </div>
           {slides.length > 1 && <div className="dots">{slides.map((_, i) => <i key={i} className={i === slide ? 'on' : ''} />)}</div>}
         </>
@@ -150,36 +160,22 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
           <button onClick={() => { commit([emptyContact()], false); setIdx(0) }}><Icon name="plus" size={16} /> Add a contact</button></div>
       ) : (
         <>
-          <div className="profile">
-            <div className="avatar-wrap"><Avatar name={c.name} size={64} />{c.priority && <span className="star"><Icon name="star" size={12} /></span>}</div>
-            <h2>{c.name || '(no name)'}</h2>
-            <span className="muted">{[c.title, c.company].filter(Boolean).join(' · ')}</span>
-            <span className="met">Met {eventName ? `at ${eventName} · ` : ''}{new Date(card.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+          <p className="subline">
+            {[c.title, c.company].filter(Boolean).join(' · ')}
+            <span>Met {eventName ? `at ${eventName} · ` : ''}{new Date(card.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+          </p>
+
+          <div className="circles">
+            <a className={phone ? '' : 'off'} href={phone ? telHref(phone) : undefined} aria-label="Call"><Icon name="phone" size={22} /></a>
+            <a className={phone ? '' : 'off'} href={phone ? `https://wa.me/${waNumber(phone)}` : undefined} target="_blank" rel="noreferrer" aria-label="WhatsApp"><Icon name="chat" size={22} /></a>
+            <a className={email ? '' : 'off'} href={email ? `mailto:${email}` : undefined} aria-label="Email"><Icon name="mail" size={22} /></a>
+            <a className={c.address ? '' : 'off'} href={c.address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.address)}` : undefined} target="_blank" rel="noreferrer" aria-label="Map"><Icon name="pin" size={22} /></a>
+            <a className={c.website ? '' : 'off'} href={c.website ? withProtocol(c.website) : undefined} target="_blank" rel="noreferrer" aria-label="Website"><Icon name="globe" size={22} /></a>
           </div>
 
-          <div className="qa5">
-            <a className={phone ? '' : 'off'} href={phone ? telHref(phone) : undefined}><Icon name="phone" size={20} /><span>Call</span></a>
-            <a className={phone ? '' : 'off'} href={phone ? `https://wa.me/${waNumber(phone)}` : undefined} target="_blank" rel="noreferrer"><Icon name="chat" size={20} /><span>WhatsApp</span></a>
-            <a className={email ? '' : 'off'} href={email ? `mailto:${email}` : undefined}><Icon name="mail" size={20} /><span>Email</span></a>
-            <a className={c.address ? '' : 'off'} href={c.address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.address)}` : undefined} target="_blank" rel="noreferrer"><Icon name="pin" size={20} /><span>Map</span></a>
-            <a className={c.website ? '' : 'off'} href={c.website ? withProtocol(c.website) : undefined} target="_blank" rel="noreferrer"><Icon name="globe" size={20} /><span>Web</span></a>
-          </div>
-
-          <div className="trio">
-            <button className={c.priority ? 'tile on' : 'tile'} onClick={() => patch({ priority: !c.priority }, false)}><Icon name="star" size={18} /><span>{c.priority ? 'Priority' : 'Mark priority'}</span></button>
-            <button className="tile" onClick={() => download(`${c.name || 'contact'}.vcf`, toVCard(c, [eventName, c.note].filter(Boolean).join(' — ')), 'text/vcard')}><Icon name="download" size={18} /><span>Save to phone</span></button>
-            <button className="tile" onClick={() => void share()}><Icon name="share" size={18} /><span>Share</span></button>
-          </div>
-
-          <div className="panel tags-panel">
-            <span className="lab">Why this connection matters</span>
-            <div className="chips">
-              {[...SUGGESTED_TAGS, ...(c.tags ?? []).filter((t) => !SUGGESTED_TAGS.includes(t))].map((t) => {
-                const on = (c.tags ?? []).includes(t)
-                return <button key={t} className={on ? 'chip on' : 'chip'} onClick={() => patch({ tags: on ? (c.tags ?? []).filter((x) => x !== t) : [...(c.tags ?? []), t] }, false)}>{t}</button>
-              })}
-              <button className="chip" onClick={() => { const t = prompt('New tag')?.trim(); if (t) patch({ tags: [...new Set([...(c.tags ?? []), t])] }, false) }}><Icon name="plus" size={14} /> Tag</button>
-            </div>
+          <div className="pair">
+            <button className="tinted" onClick={() => download(`${c.name || 'contact'}.vcf`, toVCard(c, [eventName, c.note].filter(Boolean).join(' — ')), 'text/vcard')}><Icon name="download" size={18} /> Save to phone</button>
+            <button className="tinted" onClick={() => void share()}><Icon name="share" size={18} /> Share contact</button>
           </div>
 
           {dupes.length > 0 && <p className="note">Possible duplicate — shares a phone or email with: {dupes.map((d) => d.corrected?.map((p) => p.name).filter(Boolean).join(' & ') || 'unnamed card').join('; ')}</p>}
@@ -191,6 +187,18 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
                 <option value="">None</option>
                 {events.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
               </select>
+            </Row>
+            <Row label="Tags">
+              <div className="taglist">
+                {(c.tags ?? []).map((t) => <button key={t} className="chip on" onClick={() => patch({ tags: (c.tags ?? []).filter((x) => x !== t) }, false)}>{t} <Icon name="x" size={12} /></button>)}
+                <button className="chip" onClick={() => setTagsOpen(!tagsOpen)}><Icon name="plus" size={14} /> Add</button>
+              </div>
+              {tagsOpen && (
+                <div className="taglist suggest">
+                  {SUGGESTED_TAGS.filter((t) => !(c.tags ?? []).includes(t)).map((t) => <button key={t} className="chip" onClick={() => patch({ tags: [...(c.tags ?? []), t] }, false)}>{t}</button>)}
+                  <button className="chip" onClick={() => { const t = prompt('New tag')?.trim(); if (t) patch({ tags: [...new Set([...(c.tags ?? []), t])] }, false) }}>Custom…</button>
+                </div>
+              )}
             </Row>
             <Row label="Follow up"><input type="date" value={c.followUp ?? ''} onChange={(e) => patch({ followUp: e.target.value }, false)} /></Row>
           </div>
