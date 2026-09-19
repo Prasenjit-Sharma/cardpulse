@@ -5,25 +5,27 @@ import Icon from './Icon'
 interface Install { mode: 'native' | 'ios' | null; visible: boolean; install: () => void; dismiss: () => void }
 
 
+const startOfToday = () => new Date().setHours(0, 0, 0, 0)
+
 function when(t: number) {
   return new Date(t).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })
 }
 
-/** Dashed rings around a scan frame: the empty state. */
-function Rings() {
+/** An open album page: three empty sleeves on punched board, waiting for cards. */
+function EmptySleeves() {
   return (
-    <svg className="rings" viewBox="0 0 240 240" aria-hidden="true">
-      {[110, 82, 54].map((r, i) => <circle key={r} cx="120" cy="120" r={r} fill="none" stroke="var(--line-strong)" strokeWidth="2" strokeDasharray={`${4 + i * 2} ${7 + i * 2}`} />)}
-      <g fill="none" stroke="var(--slate)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="54" y="54" width="34" height="26" rx="5" /><path d="M62 66h12M62 72h18" />
-        <rect x="152" y="46" width="26" height="26" rx="5" /><circle cx="165" cy="56" r="4" /><path d="M158 68c1-4 12-4 14 0" />
-        <rect x="46" y="150" width="26" height="26" rx="5" /><circle cx="59" cy="160" r="4" /><path d="M52 172c1-4 12-4 14 0" />
-        <rect x="150" y="150" width="40" height="28" rx="5" /><circle cx="162" cy="163" r="5" /><path d="M172 160h12M172 167h10" />
-      </g>
-      <g fill="none" stroke="var(--accent-solid)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M92 104V94a6 6 0 0 1 6-6h10 M132 88h10a6 6 0 0 1 6 6v10 M148 136v10a6 6 0 0 1-6 6h-10 M108 152H98a6 6 0 0 1-6-6v-10" />
-        <path d="M100 114h6l3-4h22l3 4h6v20H100z" fill="var(--accent-solid)" stroke="none" opacity=".92" /><circle cx="120" cy="124" r="6" fill="#fff" stroke="none" />
-      </g>
+    <svg className="empty-sleeves" viewBox="0 0 260 200" aria-hidden="true">
+      <rect x="10" y="8" width="240" height="184" rx="4" fill="var(--board-2)" stroke="var(--board-edge)" />
+      {[34, 100, 166].map((cy) => <circle key={cy} cx="22" cy={cy} r="4" fill="var(--punch-hole)" stroke="var(--punch)" />)}
+      {[22, 86, 150].map((y, i) => (
+        <g key={y} opacity={1 - i * 0.26}>
+          <rect x="38" y={y} width="198" height="52" rx="3" fill="var(--sleeve)" stroke="var(--board-edge)" />
+          <rect x="38" y={y} width="198" height="2" fill="var(--sleeve-lip)" />
+          <rect x="46" y={y + 8} width="60" height="36" rx="2" fill="var(--board-2)" stroke="var(--board-edge)" strokeDasharray="3 3" />
+          <rect x="116" y={y + 16} width="78" height="4" rx="2" fill="var(--rule)" />
+          <rect x="116" y={y + 26} width="52" height="3" rx="1.5" fill="var(--rule-soft)" />
+        </g>
+      ))}
     </svg>
   )
 }
@@ -45,10 +47,14 @@ export default function ScanHome({ cards, events, activeEvent, onSelectEvent, re
   const recent = cards.filter((c) => Date.now() - c.createdAt < 30 * 86_400_000)
   const shown = recent.slice(0, 6)
   const people = cards.reduce((n, c) => n + (c.corrected?.length ?? 0), 0)
+  const todayCount = cards.filter((c) => c.createdAt >= startOfToday()).length
 
   return (
     <>
-      <header className="page-head"><h1>My scans</h1></header>
+      <header className="album-head">
+        <span className="wordmark">CardPulse</span>
+        <span className="tally num">{people > 0 ? <><b>{people}</b> filed</> : 'new album'}</span>
+      </header>
 
       {needsKey && !ready && (
         <button className="banner-row" onClick={onSetup}><Icon name="spark" size={18} /><span className="grow"><strong>Add your Gemini key</strong><small>Needed to read cards</small></span><Icon name="chevron" size={18} /></button>
@@ -64,9 +70,9 @@ export default function ScanHome({ cards, events, activeEvent, onSelectEvent, re
 
       {cards.length === 0 ? (
         <div className="empty-scan">
-          <Rings />
-          <h2>Scan any contact information</h2>
-          <p>Scan a business card and instantly create a digital contact.</p>
+          <EmptySleeves />
+          <h2>The album is empty</h2>
+          <p>Scan a card and it is seated in the first sleeve, with everything on it read and filed.</p>
         </div>
       ) : (
         <>
@@ -75,8 +81,9 @@ export default function ScanHome({ cards, events, activeEvent, onSelectEvent, re
             <div className="grow"><strong>{people} {people === 1 ? 'contact' : 'contacts'} saved</strong><p className="muted">in the last 30 days</p></div>
           </div>
 
-          <h3 className="group">Recent scans</h3>
-          <div className="plain-list">
+          <div className="band">
+            <span className="band-label">{todayCount > 0 ? 'under the band' : 'recent'}</span>
+            <div className="plain-list">
             {shown.map((c, i) => {
               const names = (c.corrected ?? []).map((p) => p.name).filter(Boolean)
               const isNew = Date.now() - c.createdAt < 10 * 60_000 && !c.reviewed
@@ -101,6 +108,7 @@ export default function ScanHome({ cards, events, activeEvent, onSelectEvent, re
                 </div>
               )
             })}
+            </div>
           </div>
           <button className="outline center" onClick={onContacts}>View all <Icon name="chevron" size={16} /></button>
         </>

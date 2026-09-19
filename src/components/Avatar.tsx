@@ -7,10 +7,20 @@ function hue(s: string) {
   return h
 }
 
+/**
+ * A written index tab, not a rainbow bubble: board stock tinted a few degrees off the album's own
+ * greens and browns, so a list of thirty reads as one page rather than a colour chart.
+ */
 export default function Avatar({ name, size = 44 }: { name: string; size?: number }) {
-  const h = hue(name || '?')
+  const h = 60 + (hue(name || '?') % 110)   // olive through green to teal: the album's own range
   return (
-    <span className="avatar" style={{ width: size, height: size, fontSize: size * 0.38, background: `hsl(${h} 55% 92%)`, color: `hsl(${h} 45% 32%)` }}>
+    <span
+      className="avatar"
+      style={{
+        width: size, height: size, fontSize: size * 0.34,
+        background: `hsl(${h} 16% 88%)`, color: `hsl(${h} 32% 26%)`,
+      }}
+    >
       {initials(name)}
     </span>
   )
