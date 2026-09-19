@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useObjectUrl } from '../lib/useObjectUrl'
 import { prepareCardImage } from '../lib/cardImage'
-import { browserEnv, saveToPhone, shareContact, telHref, waNumber } from '../lib/actions'
+import { browserEnv, download, saveToPhone, shareContact, telHref, toVCard, waNumber } from '../lib/actions'
 import { log } from '../lib/debug'
 import { speechSupported, startDictation } from '../lib/speech'
 import { emptyContact, type CardRecord, type Contact, type EventRec, type FieldKey } from '../lib/types'
@@ -144,6 +144,7 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
           {menu && (
             <div className="menu" onClick={() => setMenu(false)}>
               {c && <button onClick={() => patch({ priority: !c.priority }, false)}>{c.priority ? 'Remove priority' : 'Mark as priority'}</button>}
+              {c && <button onClick={() => { download(`${c.name || 'contact'}.vcf`, toVCard(c, noteFor()), 'text/x-vcard'); setFlash('Downloaded. Open the file to choose Contacts.') }}>Download contact file (.vcf)</button>}
               {canRead && <button onClick={onRetry}>Re-read card</button>}
               {canRead && !card.back && hasLiveCamera && <button onClick={() => setCamOpen(true)}>Add back side (camera)</button>}
               {canRead && !card.back && <button onClick={() => document.getElementById('back-file')?.click()}>Add back side (photo)</button>}

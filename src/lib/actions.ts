@@ -56,6 +56,8 @@ export const browserEnv = (log?: (m: string) => void): ActionEnv => ({ nav: navi
 export type ActionResult = 'shared' | 'copied' | 'downloaded' | 'cancelled'
 export interface ActionOutcome { result: ActionResult; /** Why the share sheet could not be used, if it could not. */ problem?: string }
 
+/** Contact-file MIME types, most widely supported first. */
+const VCARD_TYPES = ['text/x-vcard', 'text/vcard']
 const errName = (e: unknown) => (e instanceof Error ? e.name : String(e))
 
 /**
@@ -64,13 +66,19 @@ const errName = (e: unknown) => (e instanceof Error ? e.name : String(e))
  * NOTE: browser methods must be called ON `navigator` (a detached canShare throws "Illegal invocation").
  */
 export async function shareVcf(name: string, vcf: string, title: string, text: string | undefined, env: ActionEnv, textOnlyFallback = true): Promise<ActionOutcome> {
-  const file = new File([vcf], name, { type: 'text/vcard' })
   const nav = env.nav
   let problem: string | undefined
 
+  // Android's own contact files are text/x-vcard (what Covve sends), which is what Contacts, Truecaller and others
+  // register for. Some browsers only allow text/vcard, so try both and use whichever the browser will share.
+  let file = new File([vcf], name, { type: VCARD_TYPES[0] })
   let canFiles = false
-  try { canFiles = !!nav.canShare?.({ files: [file] }) } catch (e) { problem = `canShare: ${errName(e)}`; env.log?.(`share: ${problem}`) }
-  env.log?.(`share: hasShare=${typeof nav.share === 'function'} canShareFiles=${canFiles}`)
+  for (const type of VCARD_TYPES) {
+    const candidate = new File([vcf], name, { type })
+    try { if (nav.canShare?.({ files: [candidate] })) { file = candidate; canFiles = true; break } }
+    catch (e) { problem = `canShare: ${errName(e)}`; env.log?.(`share: ${problem}`); break }
+  }
+  env.log?.(`share: hasShare=${typeof nav.share === 'function'} canShareFiles=${canFiles} type=${file.type}`)
 
   if (typeof nav.share === 'function' && canFiles) {
     try { await nav.share({ files: [file], title, ...(text ? { text } : {}) }); return { result: 'shared' } }
@@ -84,7 +92,7 @@ export async function shareVcf(name: string, vcf: string, title: string, text: s
   if (text && nav.clipboard) {
     try { await nav.clipboard.writeText(text); return { result: 'copied', problem } } catch (e) { env.log?.(`clipboard: ${errName(e)}`) }
   }
-  env.download(name, vcf, 'text/vcard')
+  env.download(name, vcf, VCARD_TYPES[0]!)
   return { result: 'downloaded', problem }
 }
 
