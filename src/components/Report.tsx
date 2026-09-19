@@ -3,6 +3,7 @@ import { download } from '../lib/actions'
 import { currentNameFormat } from '../lib/db'
 import { buildCsv, buildVcf, fileSafe } from '../lib/export'
 import Icon from './Icon'
+import Picker from './Picker'
 import { ALL_FIELDS, type CardRecord, type EventRec } from '../lib/types'
 import { accuracy, overall, scoreCard, sumTallies, type CardScore } from '../lib/score'
 
@@ -39,10 +40,7 @@ export default function Report({ cards: allCards, events, dupes, onBack }: { car
       <header className="bar-top"><button className="icon-btn" onClick={onBack} aria-label="Back"><Icon name="back" /></button></header>
       <h1>Accuracy lab</h1>
       <div className="eventbar">
-        <select value={evId} onChange={(e) => setEvId(e.target.value)} aria-label="Event">
-          <option value="">All events</option>
-          {events.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
-        </select>
+<Picker title="Event" value={evId} onChange={setEvId} options={[{ value: '', label: 'All events' }, ...events.map((e) => ({ value: e.id, label: e.name }))]} />
       </div>
       <p className="muted">
         {done.length} cards read · {reviewed.length} reviewed. Scores use only reviewed cards — open a card, fix mistakes, tap “Mark as reviewed”.

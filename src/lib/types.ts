@@ -32,6 +32,8 @@ export interface CardRecord {
   error?: string
   model?: string
   latencyMs?: number
+  /** How many cards shared the Gemini call that read this one (1 = read on its own). Time and tokens are that call's share. */
+  batchSize?: number
   tokensIn?: number
   tokensOut?: number
   languages?: string[]

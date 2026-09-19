@@ -32,3 +32,20 @@ export async function decode(file: Blob): Promise<Decoded> {
     return { source: img, width: img.naturalWidth, height: img.naturalHeight, release: () => URL.revokeObjectURL(url) }
   }
 }
+
+/** Total photo bytes one batch request may carry. Keeps the request inside the server's limits (and its free CPU budget). */
+export const BATCH_TOTAL_BYTES = 3_000_000
+
+/**
+ * Re-encode a photo so `n` of them fit in one batch request. Photos already small enough are sent untouched, so a
+ * clean 1800px card is never degraded; only the heavy ones (textured backgrounds, tables of cards) are shrunk, stepwise.
+ */
+export async function fitForBatch(b: Blob, n: number): Promise<Blob> {
+  const budget = Math.min(1_200_000, Math.floor(BATCH_TOTAL_BYTES / Math.max(1, n)))
+  if (b.size <= budget) return b
+  for (const [side, q] of [[1800, 0.86], [1600, 0.82], [1400, 0.78], [1200, 0.74], [1000, 0.7]] as const) {
+    const out = await prepareImage(b, side, q)
+    if (out.size <= budget) return out
+  }
+  return prepareImage(b, 900, 0.65)
+}

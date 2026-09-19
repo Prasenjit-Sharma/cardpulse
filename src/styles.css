@@ -57,13 +57,13 @@
   --r-sleeve: 5px;
   --r-tab: 3px 10px 10px 3px;  /* a divider tab: square at the spine, round outside */
 
-  /* type: 13 / 15 / 18 / 26, two weights */
-  --t-s: 13px; --t-m: 15px; --t-l: 18px; --t-xl: 26px;
+  /* type: a fixed five-role scale, one family. label 11 / meta 12 / body 14 / title 16 / display 22 */
+  --t-xs: 11px; --t-s: 12px; --t-m: 14px; --t-l: 16px; --t-xl: 22px;
   --wdth-label: 78;            /* condensed, for tabs and labels */
   --wdth-body: 100;
 
   --spine: 18px;               /* the punched binding edge */
-  --rail-h: 60px;
+  --rail-h: 56px;
   --ease: cubic-bezier(.2,.6,.2,1);
   --dur-1: 120ms; --dur-2: 200ms; --dur-3: 320ms;
 }
@@ -126,7 +126,7 @@ body {
     linear-gradient(90deg, var(--board-2) 0 calc(100% - 1px), var(--board-edge) calc(100% - 1px));
 }
 main {
-  flex: 1; padding: 16px 16px calc(var(--rail-h) + 118px + env(safe-area-inset-bottom)) calc(var(--spine) + 14px);
+  flex: 1; padding: 14px 14px calc(var(--rail-h) + 108px + env(safe-area-inset-bottom)) calc(var(--spine) + 12px);
   padding-top: calc(14px + env(safe-area-inset-top));
 }
 
@@ -141,7 +141,7 @@ a { color: var(--green); text-underline-offset: 3px; text-decoration-thickness: 
 
 /* the stamped label: tabs, section heads, buttons all speak in condensed caps */
 .group, .filters-label, .eyebrow {
-  font-size: 11px; font-weight: 600; letter-spacing: .13em; text-transform: uppercase;
+  font-size: var(--t-xs); font-weight: 600; letter-spacing: .13em; text-transform: uppercase;
   font-variation-settings: 'wdth' var(--wdth-label); color: var(--ink-3);
   margin: 22px 0 8px; display: flex; align-items: center; gap: 8px;
 }
@@ -150,7 +150,7 @@ a { color: var(--green); text-underline-offset: 3px; text-decoration-thickness: 
 
 /* ---------- controls: pressed into board, not floating on it ---------- */
 button {
-  font: inherit; font-weight: 600; font-size: var(--t-m); min-height: 44px; padding: 0 16px;
+  font: inherit; font-weight: 600; font-size: var(--t-m); min-height: 40px; padding: 0 14px;
   border-radius: var(--r-sleeve); border: 1px solid var(--board-edge); background: var(--sleeve); color: var(--ink);
   cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   box-shadow: 0 1px 0 rgba(255,255,255,.6) inset, 0 1px 1px rgba(40,34,20,.07);
@@ -161,8 +161,8 @@ button:disabled { opacity: .45; cursor: default }
 
 /* the press bar: the one green slab, full width, in the thumb zone */
 button.cta {
-  width: 100%; min-height: 54px; background: var(--green); color: var(--green-ink); border: 0;
-  border-radius: var(--r-sleeve); font-size: var(--t-l); letter-spacing: .08em; text-transform: uppercase;
+  width: 100%; min-height: 50px; background: var(--green); color: var(--green-ink); border: 0;
+  border-radius: var(--r-sleeve); font-size: var(--t-m); letter-spacing: .1em; text-transform: uppercase;
   font-variation-settings: 'wdth' 84;
   box-shadow: 0 1px 0 rgba(255,255,255,.22) inset, 0 2px 0 rgba(12,60,38,.55), 0 8px 18px rgba(31,111,74,.26);
 }
@@ -176,11 +176,6 @@ button.danger, button.bad { background: var(--red-wash); border-color: transpare
 button.link { border: 0; background: none; min-height: 0; padding: 0; color: var(--green); display: inline; font-size: inherit; box-shadow: none; font-weight: 600 }
 button.link.bad { color: var(--red) }
 button.wide { width: 100%; margin-top: 12px }
-button.dashed {
-  border: 1px dashed var(--board-edge); background: transparent; box-shadow: none; min-height: 40px;
-  padding: 0 14px; font-weight: 600; font-size: var(--t-s); color: var(--ink-2); gap: 6px;
-  letter-spacing: .06em; text-transform: uppercase; font-variation-settings: 'wdth' 84;
-}
 .icon-btn { width: 42px; height: 42px; min-height: 42px; padding: 0; border-radius: 50%; flex: none }
 .icon-btn.ghost { border: 0; background: none; box-shadow: none; color: var(--ink) }
 .icon-btn.ghost.small { width: 32px; height: 32px; min-height: 32px }
@@ -202,7 +197,7 @@ button.dashed {
 .card { padding: 14px 16px; margin-bottom: 12px }
 .card.flush { padding: 0; overflow: hidden }
 .row-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px }
-.status { font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; font-variation-settings: 'wdth' 84; padding: 3px 9px; border-radius: 2px; background: var(--board-2); color: var(--ink-3) }
+.status { font-size: var(--t-xs); font-weight: 600; letter-spacing: .1em; text-transform: uppercase; font-variation-settings: 'wdth' 84; padding: 3px 9px; border-radius: 2px; background: var(--board-2); color: var(--ink-3) }
 .status.ok { background: var(--green-wash); color: var(--green) }
 .inline-msg { font-size: var(--t-s); margin: 8px 0 0 } .inline-msg.ok { color: var(--green) } .inline-msg.bad { color: var(--red) }
 
@@ -215,9 +210,10 @@ button.dashed {
 
 /* ---------- the register: ruled lines you write on ---------- */
 label { display: block; margin: 10px 0 }
-label > span:not(.sr) { display: block; font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; font-variation-settings: 'wdth' var(--wdth-label); color: var(--ink-3); margin-bottom: 5px }
+label > span:not(.sr) { display: block; font-size: var(--t-xs); font-weight: 600; letter-spacing: .1em; text-transform: uppercase; font-variation-settings: 'wdth' var(--wdth-label); color: var(--ink-3); margin-bottom: 5px }
+/* inputs stay at title size (16px): anything smaller makes iPhone Safari zoom the page on focus */
 input, textarea, select {
-  width: 100%; font: inherit; min-height: 44px; padding: 0 12px; color: var(--ink);
+  width: 100%; font: inherit; font-size: var(--t-l); min-height: 42px; padding: 0 12px; color: var(--ink);
   background: var(--board-2); border: 1px solid transparent; border-bottom: 1px solid var(--rule); border-radius: 3px 3px 0 0;
   transition: border-color var(--dur-1) linear, background var(--dur-1) linear;
 }
@@ -227,12 +223,11 @@ input::placeholder, textarea::placeholder { color: var(--ink-3) }
 input[inputmode='tel'], .num input { font-variant-numeric: tabular-nums }
 label.check { display: flex; align-items: center; gap: 9px; font-size: var(--t-s); margin: 14px 0 0 } label.check input { width: auto; min-height: 0 }
 .field-box { padding: 10px 14px; margin: 12px 0 }
-.field-box > span { display: block; font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; font-variation-settings: 'wdth' var(--wdth-label); color: var(--ink-3); margin-bottom: 2px }
+.field-box > span { display: block; font-size: var(--t-xs); font-weight: 600; letter-spacing: .1em; text-transform: uppercase; font-variation-settings: 'wdth' var(--wdth-label); color: var(--ink-3); margin-bottom: 2px }
 .field-box select, .field-box input, .field-box textarea { border: 0; background: none; padding: 0; min-height: 30px; font-size: var(--t-l); font-weight: 600 }
 .field-box textarea { font-weight: 400; font-size: var(--t-m); padding: 3px 0 }
-.field-box .due { position: absolute; right: 13px; top: 12px; color: var(--red); font-weight: 600; font-size: 11px; letter-spacing: .1em; text-transform: uppercase }
-.notebox .mic { position: absolute; right: 9px; bottom: 9px }
-.mic { width: 36px; height: 36px; min-height: 36px; padding: 0; border-radius: 50%; border: 0; background: var(--green-wash); color: var(--green); box-shadow: none }
+.field-box .due { position: absolute; right: 13px; top: 12px; color: var(--red); font-weight: 600; font-size: var(--t-xs); letter-spacing: .1em; text-transform: uppercase }
+.mic { width: 30px; height: 30px; min-height: 30px; padding: 0; border-radius: 50%; border: 0; background: var(--green-wash); color: var(--green); box-shadow: none }
 .mic.on { background: var(--red); color: #fff; animation: pulse 1.2s ease-in-out infinite }
 
 /* ---------- page chrome ---------- */
@@ -248,10 +243,10 @@ label.check { display: flex; align-items: center; gap: 9px; font-size: var(--t-s
 /* ---------- the masthead: stamped into the board ---------- */
 .album-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 18px }
 .album-head .wordmark {
-  font-size: 22px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase;
+  font-size: var(--t-xl); font-weight: 600; letter-spacing: .2em; text-transform: uppercase;
   font-variation-settings: 'wdth' 76; color: var(--ink); line-height: 1;
 }
-.album-head .tally { font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; font-variation-settings: 'wdth' 80; color: var(--ink-3) }
+.album-head .tally { font-size: var(--t-xs); font-weight: 600; letter-spacing: .12em; text-transform: uppercase; font-variation-settings: 'wdth' 80; color: var(--ink-3) }
 .album-head .tally b { color: var(--ink); font-size: var(--t-m) }
 
 /* ---------- the band: a rubber band around today's stack, rows tucked under it ---------- */
@@ -267,14 +262,14 @@ label.check { display: flex; align-items: center; gap: 9px; font-size: var(--t-s
 /* where the band bites into the stack */
 .band::after { content: ''; position: absolute; left: -7px; right: -7px; top: 19px; height: 7px; z-index: 1; background: linear-gradient(180deg, rgba(40,26,14,.2), transparent); pointer-events: none }
 .band-label {
-  position: absolute; right: 4px; top: -6px; z-index: 3; font-size: 9px; font-weight: 600; letter-spacing: .14em;
+  position: absolute; right: 4px; top: -6px; z-index: 3; font-size: var(--t-xs); font-weight: 600; letter-spacing: .14em;
   text-transform: uppercase; font-variation-settings: 'wdth' 76; color: var(--ink-3);
 }
 
 /* ---------- sleeve rows: a pocket cut into the page, the card seated inside ---------- */
-.plain-list { display: flex; flex-direction: column; gap: 9px }
+.plain-list { display: flex; flex-direction: column; gap: 7px }
 .scan-row, .contact-row {
-  display: flex; align-items: center; gap: 13px; padding: 9px 12px 9px 10px; min-height: 74px;
+  display: flex; align-items: center; gap: 13px; padding: 7px 10px 7px 8px; min-height: 62px;
   cursor: pointer; min-width: 0; border-radius: var(--r-sleeve); position: relative; overflow: hidden;
   /* the mouth's lit edge, then the pocket's own depth. No drop shadow: the row is cut in, not laid on. */
   background: var(--well);
@@ -285,18 +280,18 @@ label.check { display: flex; align-items: center; gap: 9px; font-size: var(--t-s
 .scan-row:active, .contact-row:active { box-shadow: inset 0 2px 0 var(--sleeve-lip), inset 0 7px 12px rgba(40,30,12,.24), inset 0 0 0 1px rgba(27,30,36,.09) }
 .contact-row.off { opacity: .45 }
 .scan-row .grow, .contact-row .grow { display: flex; flex-direction: column; gap: 1px }
-.scan-row strong, .contact-row strong { font-size: var(--t-l); font-weight: 600; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; align-items: center; gap: 6px }
+.scan-row strong, .contact-row strong { font-size: var(--t-l); font-weight: 600; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; align-items: center; gap: 6px }
 .contact-row strong svg { color: var(--red); fill: var(--red); flex: none }
 /* the name sits on a register line, as the world says */
 .scan-row .grow::after, .contact-row .grow::after { content: ''; display: block; height: 1px; background: var(--rule-soft); margin: 3px 0 4px }
-.scan-row .muted, .contact-row .muted { font-size: var(--t-m); color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.scan-row .muted, .contact-row .muted { font-size: var(--t-s); color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
 .contact-row .muted.sm, .scan-row .time { font-size: var(--t-s); color: var(--ink-3) }
 .contact-row > svg:last-child { color: var(--ink-3); flex: none }
 .plus { color: var(--ink-3); font-weight: 400 }
 
 /* the card itself: the object, at true 3.5:2, seated inside the pocket with its own edge */
 .scan-thumb, .thumb {
-  width: 96px; height: 55px; object-fit: cover; flex: none; border-radius: var(--r-card);
+  width: 84px; height: 48px; object-fit: cover; flex: none; border-radius: var(--r-card);
   background: var(--board-2);
   box-shadow: 0 0 0 1px rgba(27,30,36,.16), 0 2px 3px rgba(40,30,12,.3), 0 0 0 3px rgba(255,255,255,.28) inset;
 }
@@ -312,13 +307,13 @@ label.check { display: flex; align-items: center; gap: 9px; font-size: var(--t-s
 
 /* a flag, in the register's own marks */
 .new-tag, .tag-warn {
-  font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; font-variation-settings: 'wdth' 78;
+  font-size: var(--t-xs); font-weight: 600; letter-spacing: .1em; text-transform: uppercase; font-variation-settings: 'wdth' 78;
   padding: 3px 7px; border-radius: 2px; flex: none;
 }
 .new-tag { background: var(--green); color: var(--green-ink) }
 .tag-warn { background: var(--amber-wash); color: var(--amber) }
 .tags { display: flex; gap: 4px; flex: none }
-.tags em { font-style: normal; font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; padding: 3px 7px; border-radius: 2px; background: var(--board-2); color: var(--ink-3) }
+.tags em { font-style: normal; font-size: var(--t-xs); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; padding: 3px 7px; border-radius: 2px; background: var(--board-2); color: var(--ink-3) }
 .tags em.warn { background: var(--amber-wash); color: var(--amber) }
 .dots { display: flex; gap: 4px; margin-top: 4px } .dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--green); opacity: .3; animation: ink 1.1s cubic-bezier(.4,0,.2,1) infinite } .dots i:nth-child(2) { animation-delay: .15s } .dots i:nth-child(3) { animation-delay: .3s }
 
@@ -330,7 +325,7 @@ label.check { display: flex; align-items: center; gap: 9px; font-size: var(--t-s
   display: flex; flex-direction: column; align-items: center; justify-content: center;
 }
 .ring::before { content: ''; position: absolute; inset: 6px; background: var(--sleeve); border-radius: 50% }
-.ring > * { position: relative } .ring b { font-size: var(--t-l); font-weight: 600 } .ring span { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3) }
+.ring > * { position: relative } .ring b { font-size: var(--t-l); font-weight: 600 } .ring span { font-size: var(--t-xs); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3) }
 .summary-card p { margin: 2px 0 0 }
 .banner-row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px; margin-bottom: 12px; text-align: left; font-weight: 400; min-height: 0; border: 0 }
 .banner-row .grow { display: flex; flex-direction: column } .banner-row small { color: var(--ink-3) } .banner-row > svg:first-child { color: var(--green); flex: none }
@@ -349,11 +344,6 @@ label.check { display: flex; align-items: center; gap: 9px; font-size: var(--t-s
   background: linear-gradient(transparent, var(--board) 30%);
   display: flex; flex-direction: column; gap: 9px;
 }
-.event-pick {
-  display: flex; align-items: center; gap: 8px; margin: 0; align-self: center; color: var(--ink-2);
-  background: var(--board-2); border: 1px solid var(--board-edge); border-radius: 2px; padding: 0 10px;
-}
-.event-pick select { border: 0; background: none; min-height: 34px; width: auto; padding: 0; font-size: var(--t-s); font-weight: 600; color: var(--ink) }
 
 /* ---------- contacts: search slip, filters, sleeve rows ---------- */
 .searchbox { display: flex; align-items: center; gap: 9px; background: var(--sleeve); border-radius: var(--r-sleeve); padding: 0 13px; color: var(--ink-3); box-shadow: var(--seat) }
@@ -405,7 +395,7 @@ label.check { display: flex; align-items: center; gap: 9px; font-size: var(--t-s
 .lightbox { position: fixed; inset: 0; z-index: 20; background: rgba(12,10,6,.94); display: flex; align-items: center; justify-content: center; animation: fade-in var(--dur-2) var(--ease) both } .lightbox img { max-width: 100%; max-height: 100% }
 
 /* the name, written across the register's head */
-.namecard { padding: 2px 0 11px; margin: 16px 0 20px; position: relative; display: flex; flex-direction: column; gap: 3px; border-bottom: 1px solid var(--rule) }
+.namecard { padding: 2px 0 9px; margin: 8px 0 12px; position: relative; display: flex; flex-direction: column; gap: 3px; border-bottom: 1px solid var(--rule) }
 
 .namecard h1 { display: flex; align-items: center; gap: 9px }
 .namecard strong { font-size: var(--t-m); font-weight: 600; color: var(--ink-2) }
@@ -413,21 +403,19 @@ label.check { display: flex; align-items: center; gap: 9px; font-size: var(--t-s
 .star-mark { color: var(--red); display: inline-flex } .star-mark svg { fill: var(--red) }
 
 /* register entries: a ruled line, a stamped label, the value */
-.infos { display: flex; flex-direction: column; margin: 0 0 18px }
-.info { display: flex; align-items: center; gap: 13px; padding: 11px 0; border-bottom: 1px solid var(--rule-soft) }
+.infos { display: flex; flex-direction: column; margin: 0 0 12px }
+.info { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--rule-soft) }
 .info:last-child { border-bottom: 0 }
 .info .grow { display: flex; flex-direction: column; word-break: break-word }
-.info .val { font-size: var(--t-m); line-height: 1.35 }
-.info small { margin-top: 1px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; font-variation-settings: 'wdth' 82 }
-.badge { width: 36px; height: 36px; border-radius: 2px; background: var(--board-2); border: 1px solid var(--board-edge); color: var(--ink-2); display: inline-flex; align-items: center; justify-content: center; flex: none }
+.info .val { font-size: var(--t-m); line-height: 1.3 }
+.info small { margin-top: 1px; font-size: var(--t-xs); letter-spacing: .08em; text-transform: uppercase; font-variation-settings: 'wdth' 82 }
+.badge { width: 32px; height: 32px; border-radius: 2px; background: var(--board-2); border: 1px solid var(--board-edge); color: var(--ink-2); display: inline-flex; align-items: center; justify-content: center; flex: none }
 .acts { display: flex; gap: 7px; flex: none }
-.act { width: 38px; height: 38px; border-radius: 2px; border: 1px solid var(--green-edge); background: var(--green-wash); display: inline-flex; align-items: center; justify-content: center; color: var(--green); text-decoration: none }
+.act { width: 34px; height: 34px; border-radius: 2px; border: 1px solid var(--green-edge); background: var(--green-wash); display: inline-flex; align-items: center; justify-content: center; color: var(--green); text-decoration: none }
 .line { display: flex; align-items: center; gap: 12px; color: var(--ink-2); padding: 7px 0; font-size: var(--t-s) } .line svg { color: var(--ink-3); flex: none }
-.add-row { display: flex; flex-wrap: wrap; gap: 7px; margin: 0 0 14px } .add-row.suggest { margin-top: -6px }
-.tagchip { min-height: 38px; padding: 0 13px; border-radius: var(--r-tab); background: var(--green-wash); border: 1px solid var(--green-edge); color: var(--green); gap: 6px; box-shadow: none; font-size: var(--t-s); letter-spacing: .04em }
 .panel { padding: 2px 14px; margin: 10px 0 }
 .frow { display: grid; grid-template-columns: 92px 1fr; gap: 8px; align-items: start; padding: 2px 0; border-top: 1px solid var(--rule-soft) } .frow:first-child { border-top: 0 }
-.frow > span { color: var(--ink-3); font-size: 11px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; font-variation-settings: 'wdth' var(--wdth-label); padding-top: 16px } .frow > div { min-width: 0 }
+.frow > span { color: var(--ink-3); font-size: var(--t-xs); font-weight: 600; letter-spacing: .09em; text-transform: uppercase; font-variation-settings: 'wdth' var(--wdth-label); padding-top: 16px } .frow > div { min-width: 0 }
 .frow input, .frow textarea, .frow select { border: 0; border-bottom: 1px solid transparent; background: none; padding: 0 2px; min-height: 44px; border-radius: 0 }
 .frow input:focus, .frow textarea:focus { border-bottom-color: var(--green); background: none }
 .frow textarea { padding: 10px 2px }
@@ -443,10 +431,10 @@ button.add { min-height: 36px; padding: 0 2px; font-size: var(--t-s); background
 /* ---------- events: tab dividers ---------- */
 .event-card { padding: 15px 16px; margin-bottom: 11px }
 .event-card { margin-top: 20px }
-.event-card::after { content: 'EVENT'; position: absolute; left: 15px; top: -11px; padding: 2px 9px 3px; font-size: 9px; font-weight: 600; letter-spacing: .14em; font-variation-settings: 'wdth' 76; background: var(--board-edge); color: var(--ink-2); border-radius: 3px 3px 0 0 }
+.event-card::after { content: 'EVENT'; position: absolute; left: 15px; top: -11px; padding: 2px 9px 3px; font-size: var(--t-xs); font-weight: 600; letter-spacing: .14em; font-variation-settings: 'wdth' 76; background: var(--board-edge); color: var(--ink-2); border-radius: 3px 3px 0 0 }
 .event-card.live::after { content: 'SCANNING HERE'; background: var(--green); color: var(--green-ink) }
 .event-head { display: flex; align-items: center; gap: 9px; cursor: pointer } .event-head .grow { display: flex; flex-direction: column } .event-head strong { font-size: var(--t-l); font-weight: 600 }
-.event-stats { display: flex; flex-wrap: wrap; gap: 3px 18px; margin: 13px 0; color: var(--ink-3); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; font-variation-settings: 'wdth' 82 }
+.event-stats { display: flex; flex-wrap: wrap; gap: 3px 18px; margin: 13px 0; color: var(--ink-3); font-size: var(--t-xs); letter-spacing: .08em; text-transform: uppercase; font-variation-settings: 'wdth' 82 }
 .event-stats b { color: var(--ink); font-size: var(--t-l); letter-spacing: 0; margin-right: 4px; font-variation-settings: 'wdth' 100 }
 .event-stats .warm b { color: var(--red) }
 
@@ -463,18 +451,18 @@ button.add { min-height: 36px; padding: 0 2px; font-size: var(--t-s); background
 .radio .dot::after { content: ''; position: absolute; inset: 3px; border-radius: 1px; background: var(--green); transform: scale(0); transition: transform var(--dur-2) var(--ease) }
 .radio.on .dot { border-color: var(--green) } .radio.on .dot::after { transform: scale(1) }
 .call-preview { display: flex; align-items: center; gap: 13px; background: var(--board-2); border-radius: var(--r-sleeve); padding: 13px 15px; margin: 10px 0 14px; border: 1px solid var(--board-edge) }
-.call-preview div { display: flex; flex-direction: column } .call-preview small { color: var(--ink-3); font-size: 11px; letter-spacing: .08em; text-transform: uppercase } .call-preview strong { font-size: var(--t-l); font-weight: 600 }
+.call-preview div { display: flex; flex-direction: column } .call-preview small { color: var(--ink-3); font-size: var(--t-xs); letter-spacing: .08em; text-transform: uppercase } .call-preview strong { font-size: var(--t-l); font-weight: 600 }
 .call-ico { width: 36px; height: 36px; border-radius: 50%; background: var(--green); color: var(--green-ink); display: inline-flex; align-items: center; justify-content: center; flex: none }
 .soon-row { display: flex; align-items: center; gap: 13px; padding: 13px 0; border-top: 1px solid var(--rule-soft) } .soon-row > svg { color: var(--green); flex: none } .soon-row .grow { display: flex; flex-direction: column } .soon-row small { color: var(--ink-3) }
-.stats2 { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-bottom: 13px } .stats2 > div { padding: 13px; display: flex; flex-direction: column; gap: 2px } .stats2 svg { color: var(--green) } .stats2 b { font-size: var(--t-xl); font-weight: 600; line-height: 1.1 } .stats2 span { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3) } .stats2 .warm b, .stats2 .warm svg { color: var(--red) }
+.stats2 { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-bottom: 13px } .stats2 > div { padding: 13px; display: flex; flex-direction: column; gap: 2px } .stats2 svg { color: var(--green) } .stats2 b { font-size: var(--t-xl); font-weight: 600; line-height: 1.1 } .stats2 span { font-size: var(--t-xs); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3) } .stats2 .warm b, .stats2 .warm svg { color: var(--red) }
 .insight { display: flex; align-items: flex-start; gap: 13px } .insight p { margin: 2px 0 0; font-size: var(--t-s); color: var(--ink-2) } .insight .grow strong { display: block }
 .insight-icon { width: 36px; height: 36px; border-radius: 2px; background: var(--amber-wash); color: var(--amber); display: inline-flex; align-items: center; justify-content: center; flex: none }
 .menu-row { width: 100%; margin-top: 16px; justify-content: flex-start; gap: 13px; text-align: left; min-height: 58px } .menu-row .grow { display: flex; flex-direction: column } .menu-row small { color: var(--ink-3); font-weight: 400 } .menu-row svg:last-child { transform: rotate(180deg); color: var(--ink-3) } .menu-row > svg:first-child { color: var(--green) }
 .row { display: flex; align-items: center; gap: 13px; padding: 12px 0; border-bottom: 1px solid var(--rule-soft); min-width: 0 } .row .grow { display: flex; flex-direction: column } .row .muted { overflow: hidden; text-overflow: ellipsis; white-space: nowrap } .row.static { cursor: default }
 .list { display: flex; flex-direction: column }
-.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 9px; margin: 13px 0 } .stats > div { padding: 13px } .stats b { display: block; font-size: var(--t-l); font-weight: 600 } .stats span { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3) }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 9px; margin: 13px 0 } .stats > div { padding: 13px } .stats b { display: block; font-size: var(--t-l); font-weight: 600 } .stats span { font-size: var(--t-xs); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3) }
 table { width: 100%; border-collapse: collapse; background: var(--sleeve); border-radius: var(--r-sleeve); overflow: hidden; font-size: var(--t-s); box-shadow: var(--seat) }
-th, td { padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--rule-soft) } th { color: var(--ink-3); font-weight: 600; font-size: 11px; letter-spacing: .08em; text-transform: uppercase }
+th, td { padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--rule-soft) } th { color: var(--ink-3); font-weight: 600; font-size: var(--t-xs); letter-spacing: .08em; text-transform: uppercase }
 td { font-variant-numeric: tabular-nums }
 .eventbar { display: flex; gap: 8px; margin-bottom: 13px } .eventbar select { flex: 1; min-width: 0 }
 
@@ -486,7 +474,7 @@ nav {
 }
 nav button {
   flex: 1; flex-direction: column; gap: 3px; border: 0; border-radius: 0; background: none; box-shadow: none;
-  min-height: var(--rail-h); padding: 9px 0 8px; color: var(--ink-3); font-size: 10px; font-weight: 600;
+  min-height: var(--rail-h); padding: 8px 0 7px; color: var(--ink-3); font-size: var(--t-xs); font-weight: 600;
   letter-spacing: .1em; text-transform: uppercase; font-variation-settings: 'wdth' 80; position: relative;
 }
 nav button::before { content: ''; position: absolute; inset: 4px 5px; border-radius: var(--r-tab); background: transparent; transition: background var(--dur-2) var(--ease) }
@@ -497,7 +485,7 @@ nav button svg, nav button span { position: relative }
 nav button:active::before { background: var(--green-wash) }
 
 /* ---------- transient surfaces ---------- */
-.view { animation: view-in var(--dur-3) var(--ease) both }
+.view { animation: view-in var(--dur-3) var(--ease) backwards }  /* backwards only: a filled opacity animation would keep a stacking layer alive and put the tab bar above every sheet */
 /* opacity only: a transform here would become the containing block for every fixed child */
 .toast {
   position: fixed; left: calc(var(--spine) + 10px); right: 12px; bottom: calc(var(--rail-h) + 78px + env(safe-area-inset-bottom));
@@ -518,9 +506,9 @@ nav button:active::before { background: var(--green-wash) }
 }
 .sheet-wrap.out .sheet { animation: sheet-out var(--dur-2) var(--ease) both }
 .handle { display: block; width: 34px; height: 4px; border-radius: 2px; background: var(--board-edge); margin: 5px auto 9px }
-.sheet h3 { padding: 4px 14px 9px; color: var(--ink-3); font-size: 11px; font-weight: 600; letter-spacing: .11em; text-transform: uppercase; font-variation-settings: 'wdth' 80 }
+.sheet h3 { padding: 4px 14px 9px; color: var(--ink-3); font-size: var(--t-xs); font-weight: 600; letter-spacing: .11em; text-transform: uppercase; font-variation-settings: 'wdth' 80 }
 .sheet-list { display: flex; flex-direction: column }
-.sheet-item { width: 100%; justify-content: flex-start; gap: 15px; min-height: 54px; padding: 0 14px; border: 0; background: none; box-shadow: none; border-radius: 3px; font-weight: 400; font-size: var(--t-m); text-align: left }
+.sheet-item { width: 100%; justify-content: flex-start; gap: 12px; min-height: 46px; padding: 0 12px; border: 0; background: none; box-shadow: none; border-radius: 3px; font-weight: 400; font-size: var(--t-m); text-align: left }
 .sheet-item svg { color: var(--ink-2); flex: none } .sheet-item.danger, .sheet-item.danger svg { color: var(--red) } .sheet-item:active:not(:disabled) { background: var(--board-2); transform: none }
 
 .fab-menu { position: fixed; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 9; display: flex; flex-direction: column; align-items: flex-end; gap: 14px }
@@ -554,7 +542,7 @@ nav button:active::before { background: var(--green-wash) }
 /* the guide is four photo corners, the way a card is mounted into an album page */
 .camera .guide {
   position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); pointer-events: none;
-  border-radius: 2px; box-shadow: 0 0 0 100vmax rgba(8,7,5,.44);
+  border-radius: 2px;
   background:
     linear-gradient(135deg, rgba(251,250,247,.92) 0 18px, transparent 18px) left 0 top 0 / 30px 30px no-repeat,
     linear-gradient(225deg, rgba(251,250,247,.92) 0 18px, transparent 18px) right 0 top 0 / 30px 30px no-repeat,
@@ -573,23 +561,23 @@ nav button:active::before { background: var(--green-wash) }
 .camera .round.accent { background: var(--green); color: #FBFAF7 }
 .camera .round.ghost { background: none }
 .camera .pillbar { background: rgba(20,18,12,.62); backdrop-filter: blur(6px); padding: 6px 15px; border-radius: 2px; font-size: var(--t-m); font-weight: 600; white-space: nowrap; color: #FBFAF7; letter-spacing: .04em }
-.camera .pillbar.sub { font-size: 11px; font-weight: 600; padding: 3px 10px; letter-spacing: .1em; text-transform: uppercase; font-variation-settings: 'wdth' 80 }
+.camera .pillbar.sub { font-size: var(--t-xs); font-weight: 600; padding: 3px 10px; letter-spacing: .1em; text-transform: uppercase; font-variation-settings: 'wdth' 80 }
 .camera .seg { display: flex; background: rgba(20,18,12,.62); backdrop-filter: blur(6px); border-radius: 3px; padding: 3px }
-.camera .seg button { border: 0; background: none; color: #FBFAF7; min-height: 32px; padding: 0 12px; border-radius: 2px; font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; font-variation-settings: 'wdth' 80; white-space: nowrap; box-shadow: none }
+.camera .seg button { border: 0; background: none; color: #FBFAF7; min-height: 32px; padding: 0 12px; border-radius: 2px; font-size: var(--t-xs); font-weight: 600; letter-spacing: .1em; text-transform: uppercase; font-variation-settings: 'wdth' 80; white-space: nowrap; box-shadow: none }
 .camera .seg button.on { background: #FBFAF7; color: #14120C }
-.camera .skip { position: absolute; top: calc(148px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); min-height: 32px; padding: 0 15px; background: #FBFAF7; color: #14120C; border: 0; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; box-shadow: none }
+.camera .skip { position: absolute; top: calc(148px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); min-height: 32px; padding: 0 15px; background: #FBFAF7; color: #14120C; border: 0; font-size: var(--t-xs); letter-spacing: .1em; text-transform: uppercase; box-shadow: none }
 .camera .tips { position: absolute; left: 16px; right: 16px; top: 50%; transform: translateY(-10%); background: rgba(20,18,12,.84); backdrop-filter: blur(8px); border-radius: var(--r-sleeve); padding: 13px 16px; display: flex; flex-direction: column; gap: 5px; font-size: var(--t-m) }
 .camera .tips strong { font-size: var(--t-l) } .camera .tips span { color: rgba(251,250,247,.86) }
 .camera .cam-bottom { position: absolute; left: 0; right: 0; bottom: 0; padding: 16px 16px calc(16px + env(safe-area-inset-bottom)); background: linear-gradient(transparent, rgba(8,7,5,.65)); display: flex; flex-direction: column; align-items: center; gap: 15px }
 .camera .toggles { display: flex; gap: 24px }
-.camera .toggle { display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 0; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; font-variation-settings: 'wdth' 80; color: #FBFAF7; cursor: pointer }
-.camera .toggle > span:not(.round) { color: #FBFAF7; margin: 0; font-size: 10px; letter-spacing: .1em; text-transform: uppercase }
+.camera .toggle { display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 0; font-size: var(--t-xs); letter-spacing: .1em; text-transform: uppercase; font-variation-settings: 'wdth' 80; color: #FBFAF7; cursor: pointer }
+.camera .toggle > span:not(.round) { color: #FBFAF7; margin: 0; font-size: var(--t-xs); letter-spacing: .1em; text-transform: uppercase }
 .camera .shutter-row { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; width: 100% }
 .camera .thumb-slot { display: flex; align-items: center } .camera .thumb-slot.right { justify-content: flex-end }
 /* the last pull, seated in its sleeve with a tally */
 .camera .last { position: relative; background: none; border: 0; padding: 0; min-height: 0; display: block; box-shadow: none }
 .camera .last img { width: 68px; height: 44px; object-fit: cover; border-radius: var(--r-card); border: 2px solid #FBFAF7; display: block }
-.camera .last b { position: absolute; top: -8px; right: -8px; min-width: 22px; height: 22px; border-radius: 2px; background: var(--green); color: #FBFAF7; font-size: 11px; display: flex; align-items: center; justify-content: center; padding: 0 6px; border: 2px solid #0C0B08; font-variant-numeric: tabular-nums }
+.camera .last b { position: absolute; top: -8px; right: -8px; min-width: 22px; height: 22px; border-radius: 2px; background: var(--green); color: #FBFAF7; font-size: var(--t-xs); display: flex; align-items: center; justify-content: center; padding: 0 6px; border: 2px solid #0C0B08; font-variant-numeric: tabular-nums }
 .camera .shutter { width: 70px; height: 70px; min-height: 70px; padding: 0; border-radius: 50%; border: 0; background: #FBFAF7; box-shadow: 0 0 0 4px rgba(251,250,247,.34); transition: transform var(--dur-1) var(--ease) }
 .camera .shutter:active { transform: scale(.92) } .camera .shutter:disabled { opacity: .4 }
 .camera .err { padding: 32px; text-align: center; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center }
@@ -608,9 +596,9 @@ nav button:active::before { background: var(--green-wash) }
 .tab-strip button {
   flex: none; min-height: 34px; padding: 0 14px; border: 0; border-radius: 9px 9px 0 0;
   background: var(--board-2); color: var(--ink-2); box-shadow: inset 0 1px 0 rgba(255,255,255,.5);
-  font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
+  font-size: var(--t-xs); font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
   font-variation-settings: 'wdth' 78; white-space: nowrap; max-width: 46vw; overflow: hidden; text-overflow: ellipsis;
-  transition: background var(--dur-2) var(--ease), color var(--dur-2) var(--ease), min-height var(--dur-2) var(--ease);
+  transition: background var(--dur-2) var(--ease), color var(--dur-2) var(--ease);
 }
 .tab-strip button.on { background: var(--green); color: var(--green-ink); min-height: 40px; box-shadow: inset 0 1px 0 rgba(255,255,255,.22) }
 .tab-strip button:active { min-height: 40px }
@@ -620,7 +608,7 @@ nav button:active::before { background: var(--green-wash) }
 /* the event card's tab is real text, not a CSS string */
 .event-card::after { content: none }
 .event-tab {
-  position: absolute; left: 15px; top: -11px; padding: 2px 9px 3px; font-size: 9px; font-weight: 600;
+  position: absolute; left: 15px; top: -11px; padding: 2px 9px 3px; font-size: var(--t-xs); font-weight: 600;
   letter-spacing: .14em; text-transform: uppercase; font-variation-settings: 'wdth' 76;
   background: var(--board-edge); color: var(--ink-2); border-radius: 3px 3px 0 0;
 }
@@ -635,7 +623,7 @@ nav button:active::before { background: var(--green-wash) }
 .stats > div::before, .stats2 > div::before { content: none }
 .stats > div > svg, .stats2 > div > svg { display: none }
 .stats b, .stats2 b { order: 2; font-size: var(--t-l); font-variant-numeric: tabular-nums }
-.stats span, .stats2 span { order: 1; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; font-variation-settings: 'wdth' 80; color: var(--ink-3) }
+.stats span, .stats2 span { order: 1; font-size: var(--t-xs); letter-spacing: .1em; text-transform: uppercase; font-variation-settings: 'wdth' 80; color: var(--ink-3) }
 .stats2 .warm b { color: var(--red) }
 
 /* FIX 6: one indicator on the active tab, not the prior world's pill behind it */
@@ -664,3 +652,86 @@ nav button.on::after { content: ''; position: absolute; left: 50%; top: 0; width
   .tabbed .plain-list { grid-template-columns: 1fr 1fr }
   .stats, .stats2 { display: grid; grid-template-columns: 1fr 1fr; column-gap: 28px }
 }
+
+/* ================= compact pass: picker, tags/notes/follow-up, tray, veil ================= */
+
+/* the app's own option picker (replaces every native <select>): a trigger, and a compact sheet */
+.pick, .event-pick {
+  flex: none; min-height: 34px; padding: 0 10px; gap: 6px; background: var(--board-2); border: 1px solid var(--board-edge);
+  border-radius: 2px; font-size: var(--t-s); font-weight: 600; color: var(--ink); letter-spacing: .02em; box-shadow: none; max-width: 100%;
+}
+.pick svg:last-child, .event-pick svg:last-child { color: var(--ink-3); transform: rotate(90deg) }
+.pick .pick-label, .event-pick .pick-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 46vw }
+.event-pick { align-self: center; color: var(--ink-2) }
+.pick.flat { background: none; border: 0; padding: 0; min-height: 30px; width: 100%; justify-content: space-between; font-size: var(--t-l) }
+.pick.wide { width: 100%; justify-content: space-between; min-height: 42px; font-size: var(--t-m); background: var(--board-2) }
+.pick.onbar { background: rgba(255,255,255,.1); border-color: transparent; color: var(--board) }
+.field-box.pickbox { padding: 8px 12px; margin: 10px 0 }
+.sheet-item .grow { display: flex; flex-direction: column; text-align: left }
+.sheet-item .lbl { font-weight: 400 } .sheet-item small { color: var(--ink-3); font-weight: 400 }
+.sheet-item.checked { color: var(--green) } .sheet-item.checked .lbl { font-weight: 600 } .sheet-item.checked svg { color: var(--green) }
+
+/* tags, notes, follow-up: one small row, editors below that dismiss themselves */
+.adders { display: flex; flex-wrap: nowrap; gap: 6px; margin: 0 0 8px }
+.adder {
+  flex: none; min-height: 30px; padding: 0 10px; gap: 5px; border: 1px dashed var(--board-edge); background: transparent; box-shadow: none;
+  border-radius: 3px; font-size: var(--t-xs); font-weight: 600; letter-spacing: .09em; text-transform: uppercase;
+  font-variation-settings: 'wdth' 80; color: var(--ink-2);
+}
+.adder.on { border-style: solid; border-color: var(--green-edge); background: var(--green-wash); color: var(--green) }
+.adder b { font-size: var(--t-xs); background: var(--green); color: var(--green-ink); border-radius: 2px; padding: 0 5px; min-width: 16px; text-align: center }
+.chipline { display: flex; flex-wrap: wrap; gap: 5px; margin: 0 0 8px }
+.tagchip {
+  min-height: 28px; padding: 0 9px; gap: 5px; border-radius: var(--r-tab); background: var(--green-wash); border: 1px solid var(--green-edge);
+  color: var(--green); font-size: var(--t-s); font-weight: 600; letter-spacing: .02em; box-shadow: none;
+}
+.tagchip.add { background: transparent; border-style: dashed }
+.editor-box { position: relative; background: var(--sleeve); border-radius: var(--r-sleeve); box-shadow: var(--seat); padding: 8px 10px; margin: 0 0 8px; animation: seat .2s var(--ease) both }
+.editor-box textarea { border: 0; background: none; padding: 0 64px 0 0; min-height: 0; resize: none; line-height: 1.35 }
+.editor-acts { position: absolute; right: 5px; top: 4px; display: flex; gap: 2px }
+.x-btn { width: 30px; height: 30px; min-height: 30px; padding: 0; border: 0; background: none; box-shadow: none; color: var(--ink-3); border-radius: 50%; flex: none }
+.followbox { display: flex; align-items: center; gap: 8px; padding: 2px 4px 2px 12px }
+.followbox .lbl { font-size: var(--t-xs); font-weight: 600; letter-spacing: .1em; text-transform: uppercase; font-variation-settings: 'wdth' 80; color: var(--ink-3); flex: none }
+.followbox input { flex: 1; border: 0; background: none; min-height: 38px; padding: 0; min-width: 0 }
+.followbox .due { color: var(--red); font-weight: 600; font-size: var(--t-xs); letter-spacing: .1em; text-transform: uppercase; flex: none }
+.newtag { display: flex; gap: 6px } .newtag input { min-height: 34px; padding: 0 10px } .newtag button { min-height: 34px; flex: none }
+
+/* a duplicate is a footnote under the name, never a badge beside it */
+.dup-note { font-size: var(--t-xs); font-weight: 600; letter-spacing: .09em; text-transform: uppercase; font-variation-settings: 'wdth' 80; color: var(--amber); line-height: 1.3 }
+.contact-row.reading strong { color: var(--ink-3) }
+
+/* camera: everything outside the card is blurred and dimmed; the hole follows the card */
+.camera .veil {
+  position: absolute; inset: 0; pointer-events: none; background: rgba(8,7,5,.2);
+  -webkit-backdrop-filter: blur(9px) brightness(.62) saturate(.85); backdrop-filter: blur(9px) brightness(.62) saturate(.85);
+  transition: clip-path .12s linear;
+}
+/* a capture must be unmistakable: the screen flashes, the tally names the count, the slot fills */
+.camera .shot-flash { position: absolute; inset: 0; background: #fff; pointer-events: none; animation: shot-flash .3s ease-out both }
+.camera .pillbar { transition: background var(--dur-2) var(--ease) }
+.camera .pillbar.notice { background: var(--green); color: #FBFAF7 }
+.camera .tray { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; width: 100% }
+.camera .slot {
+  position: relative; aspect-ratio: 1.75; border-radius: 3px; border: 1px dashed rgba(251,250,247,.38);
+  background: rgba(20,18,12,.42); display: flex; align-items: center; justify-content: center;
+}
+.camera .slot i { font-style: normal; font-size: var(--t-xs); color: rgba(251,250,247,.5); font-variant-numeric: tabular-nums }
+.camera .slot img { width: 100%; height: 100%; object-fit: cover; border-radius: 2px; display: block }
+.camera .slot.filled { border: 1.5px solid #FBFAF7; background: none; animation: slot-in .28s var(--ease) both }
+.camera .slot.pending { border: 1.5px dashed #FBFAF7; background: none } .camera .slot.pending img { opacity: .55 }
+.camera .slot em { position: absolute; left: 3px; bottom: 2px; font-style: normal; font-size: var(--t-xs); font-weight: 600; letter-spacing: .04em; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.8) }
+.camera .slot .rm {
+  position: absolute; top: -8px; right: -8px; width: 18px; height: 18px; min-height: 0; padding: 0; border-radius: 50%;
+  background: #14120C; color: #fff; border: 1.5px solid #FBFAF7; box-shadow: none; z-index: 1;
+}
+.camera .slot .rm::after { content: ''; position: absolute; inset: -9px }
+.camera .readbtn {
+  min-height: 44px; padding: 0 10px 0 14px; border-radius: 3px; background: var(--green); color: #FBFAF7; border: 0; font-size: var(--t-m);
+  letter-spacing: .02em; white-space: nowrap; box-shadow: 0 1px 0 rgba(255,255,255,.22) inset, 0 2px 0 rgba(12,60,38,.6); animation: slot-in .25s var(--ease) both;
+}
+.camera .readbtn:active { transform: translateY(1px) }
+.camera .round { width: 42px; height: 42px; min-height: 42px }
+.camera .cam-bottom { gap: 10px }
+
+@keyframes shot-flash { from { opacity: .85 } to { opacity: 0 } }
+@keyframes slot-in { from { opacity: 0; transform: scale(.7) } to { opacity: 1; transform: none } }

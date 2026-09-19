@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { CARD_GUIDE, cropRect } from '../lib/crop'
 import { log } from '../lib/debug'
 import { detectCard, isStable, type Detection } from '../lib/detect'
+import { useBackClose } from '../lib/useBackClose'
 import { growQuad, quadSize, warpQuad, type Pt, type Quad } from '../lib/warp'
 import { useObjectUrl } from '../lib/useObjectUrl'
 import Icon from './Icon'
@@ -14,22 +15,29 @@ const MODES: { id: Mode; label: string }[] = [
   { id: 'sided', label: 'Front + back' },
   { id: 'many', label: 'Many' },
 ]
+const MAX_CARDS = 6         // photos held in the tray before they must be read
 const HOLD_MS = 300         // how long the card must hold still before Auto Detect captures
 const ANALYSE_WIDTH = 160
 const MIN_GAP_MS = 55       // detect at most ~18 times a second
 const PAD = 0.03            // breathing room around a detected card
 
+/** One card in the tray: its photo(s) (front, and back when shot as front + back) waiting to be read. */
+interface Shot { id: number; files: File[]; url: string }
+
 interface VideoDet extends Detection { fw: number; fh: number; progress: number } // detection in VIDEO pixels
 
 /**
- * Full-screen scanner. With Auto Detect on, the card is found, outlined and captured straightened
- * when the phone is held still. Otherwise a frame guides the shot and the photo is cropped to it.
+ * Full-screen scanner. Photos are collected in a tray of up to six; nothing is sent for reading until the user taps
+ * "Read N cards", so a batch costs one deliberate step, not one AI call per shutter press.
+ * With Auto Detect on, the card is found, outlined and captured straightened when the phone is held still.
+ * `single` (adding a back side to an existing card) skips the tray and hands the photo straight back.
  */
-export default function Camera({ onCard, onClose, onGallery, onOpenLast, eventLabel = '', single = false, sidedOnly = false }: {
-  onCard: (files: File[]) => void
+export default function Camera({ onCard, onSubmit, onClose, onGallery, eventLabel = '', single = false, sidedOnly = false }: {
+  /** Single-photo mode only. */
+  onCard?: (files: File[]) => void
+  /** Tray mode: the batch of cards to read. Each card is its photo(s): [front] or [front, back]. */
+  onSubmit?: (cards: File[][]) => void
   onClose: () => void
-  /** Tapping the last-shot thumbnail: leave the camera and open what was just scanned. */
-  onOpenLast?: () => void
   onGallery?: (files: FileList) => void
   eventLabel?: string
   single?: boolean
@@ -39,9 +47,15 @@ export default function Camera({ onCard, onClose, onGallery, onOpenLast, eventLa
   const view = useRef<HTMLDivElement>(null)
   const track = useRef<MediaStreamTrack | null>(null)
   const [error, setError] = useState('')
-  const [count, setCount] = useState(0)
-  const [last, setLast] = useState<File | null>(null)
-  const lastUrl = useObjectUrl(last ?? undefined)
+  const [tray, setTray] = useState<Shot[]>([])
+  const trayRef = useRef<Shot[]>([])
+  trayRef.current = tray
+  const shotId = useRef(0)
+  const submitted = useRef(false)
+  const [flashKey, setFlashKey] = useState(0)
+  const [notice, setNotice] = useState('')
+  const noticeTimer = useRef(0)
+  const full = !single && tray.length >= MAX_CARDS
   const [mode, setMode] = useState<Mode>(() => {
     try { const m = localStorage.getItem(MODE_KEY) as Mode; return MODES.some((x) => x.id === m) ? m : 'single' } catch { return 'single' }
   })
@@ -54,7 +68,9 @@ export default function Camera({ onCard, onClose, onGallery, onOpenLast, eventLa
   const [struggling, setStruggling] = useState(false)
   const sided = mode === 'sided' && !sidedOnly
   const front = useRef<File | null>(null)
-  const [hasFront, setHasFront] = useState(false)
+  const [frontFile, setFrontFile] = useState<File | null>(null)
+  const frontUrl = useObjectUrl(frontFile ?? undefined)
+  const hasFront = !!frontFile
   const detRef = useRef<VideoDet | null>(null)
   detRef.current = det
   const shootRef = useRef<(d?: VideoDet) => void>(() => {})
@@ -138,16 +154,62 @@ export default function Camera({ onCard, onClose, onGallery, onOpenLast, eventLa
     return () => { stopped = true; clearTimeout(timer); if (vfc && 'cancelVideoFrameCallback' in v) (v as HTMLVideoElement & { cancelVideoFrameCallback: (h: number) => void }).cancelVideoFrameCallback(vfc) }
   }, [auto, mode, error])
 
-  const finish = (files: File[]) => {
-    onCard(files)
-    setCount((n) => n + 1)
-    setLast(files[0] ?? null)
-    navigator.vibrate?.(30)
-    if (single) onClose()
+  const say = (msg: string) => {
+    setNotice(msg)
+    clearTimeout(noticeTimer.current)
+    noticeTimer.current = window.setTimeout(() => setNotice(''), 1700)
   }
-  const flushFront = () => { if (front.current) { finish([front.current]); front.current = null; setHasFront(false) } }
+
+  /** A shot is complete: single mode hands it back at once; otherwise it drops into the tray, with unmistakable feedback. */
+  const finish = (files: File[]) => {
+    navigator.vibrate?.(30)
+    if (single) { onCard?.(files); onClose(); return }
+    if (trayRef.current.length >= MAX_CARDS) return
+    const shot: Shot = { id: ++shotId.current, files, url: URL.createObjectURL(files[0]!) }
+    trayRef.current = [...trayRef.current, shot]     // update at once so two quick captures can never exceed the cap
+    setTray(trayRef.current)
+    setFlashKey((k) => k + 1)
+    const n = trayRef.current.length
+    say(n >= MAX_CARDS ? `Captured ${n} of ${MAX_CARDS}. Tray full` : `Captured ${n} of ${MAX_CARDS}`)
+  }
+  const removeShot = (id: number) => {
+    const gone = trayRef.current.find((t) => t.id === id)
+    if (gone) URL.revokeObjectURL(gone.url)
+    trayRef.current = trayRef.current.filter((t) => t.id !== id)
+    setTray(trayRef.current)
+  }
+  useEffect(() => () => { trayRef.current.forEach((t) => URL.revokeObjectURL(t.url)); clearTimeout(noticeTimer.current) }, [])
+
+  const setFront = (f: File | null) => { front.current = f; setFrontFile(f) }
+  const flushFront = () => { if (front.current) { const f = front.current; setFront(null); finish([f]) } }
+
+  /** Everything captured so far, as cards (a front still waiting for its back counts as a one-sided card). */
+  const collect = (): File[][] => {
+    const cards = trayRef.current.map((t) => t.files)
+    if (front.current) cards.push([front.current])
+    return cards
+  }
+  const submit = () => {
+    const cards = collect()
+    if (!cards.length) return
+    submitted.current = true
+    onSubmit?.(cards)
+    onClose()
+  }
+  /** Closing with unread photos asks first. Also used by the Android back button, which may be told to stay. */
+  const requestClose = (): boolean => {
+    if (!single && !submitted.current && collect().length > 0) {
+      const n = collect().length
+      if (!window.confirm(`Discard ${n} unread ${n === 1 ? 'photo' : 'photos'}?`)) return false
+    }
+    log('camera closed')
+    onClose()
+    return true
+  }
+  useBackClose(true, requestClose)
 
   const shoot = (d?: VideoDet) => {
+    if (!single && trayRef.current.length >= MAX_CARDS) { say('Tray full. Read these cards first'); return }
     const v = video.current
     log(`shutter, video=${v?.videoWidth}x${v?.videoHeight} detected=${!!(d ?? detRef.current)}`)
     if (!v?.videoWidth) { setError('Camera not ready yet. Wait a second and try again.'); return }
@@ -182,7 +244,7 @@ export default function Camera({ onCard, onClose, onGallery, onOpenLast, eventLa
       if (!b) return
       const file = new File([b], `card-${Date.now()}.jpg`, { type: 'image/jpeg' })
       if (sidedOnly || !sided) return finish([file])
-      if (front.current) { finish([front.current, file]); front.current = null; setHasFront(false) } else { front.current = file; setHasFront(true); setLast(file) }
+      if (front.current) { const f = front.current; setFront(null); finish([f, file]) } else setFront(file)
     }, 'image/jpeg', 0.92)
   }
   shootRef.current = shoot
@@ -193,47 +255,62 @@ export default function Camera({ onCard, onClose, onGallery, onOpenLast, eventLa
     const n = !torch
     try { await track.current?.applyConstraints({ advanced: [{ torch: n } as MediaTrackConstraintSet] }); setTorch(n) } catch { /* torch not available */ }
   }
-  const close = () => { log('camera closed'); flushFront(); onClose() }
 
   // Map a video-pixel point onto the viewfinder (the video is drawn with object-fit: cover).
-  const toView = ([x, y]: [number, number]) => {
+  const toView = ([x, y]: Pt): Pt => {
     const s = Math.max(size.w / size.vw, size.h / size.vh)
-    return `${(size.w - size.vw * s) / 2 + x * s},${(size.h - size.vh * s) / 2 + y * s}`
+    return [(size.w - size.vw * s) / 2 + x * s, (size.h - size.vh * s) / 2 + y * s]
   }
-  const canOutline = det && size.vw > 0 && auto && mode !== 'many'
-  const status = hasFront ? 'Now the back' : sidedOnly ? 'Back side' : det ? (hold >= 1 ? 'Got it' : 'Hold steady') : mode === 'many' ? 'Lay cards flat, then tap' : count ? 'Scan next card' : auto ? 'Point at a card' : 'Fit the card in the frame'
+  const canOutline = !!det && size.vw > 0 && auto && mode !== 'many'
+
+  // Everything outside the card is blurred and dimmed. The hole follows the detected card, or the guide frame when
+  // nothing is detected. Both are four points so the browser can animate one into the other.
+  const showVeil = !error && mode !== 'many' && size.w > 0 && size.h > 0
+  const gw = size.w * CARD_GUIDE.widthFrac, gh = gw / CARD_GUIDE.aspect
+  const guidePts: Pt[] = [[(size.w - gw) / 2, (size.h - gh) / 2], [(size.w + gw) / 2, (size.h - gh) / 2], [(size.w + gw) / 2, (size.h + gh) / 2], [(size.w - gw) / 2, (size.h + gh) / 2]]
+  const holePts: Pt[] = canOutline && det ? det.quad.map(toView) : guidePts
+  const px = (p: Pt) => `${p[0].toFixed(1)}px ${p[1].toFixed(1)}px`
+  const veilClip = showVeil
+    ? `polygon(evenodd, 0px 0px, ${size.w}px 0px, ${size.w}px ${size.h}px, 0px ${size.h}px, 0px 0px, ${holePts.map(px).join(', ')}, ${px(holePts[0]!)})`
+    : undefined
+
+  const n = tray.length + (hasFront ? 1 : 0)
+  const derived = hasFront ? 'Now the back' : sidedOnly ? 'Back side' : full ? 'Tray full. Tap Read' : det ? (hold >= 1 ? 'Got it' : 'Hold steady') : mode === 'many' ? 'Lay cards flat, then tap' : tray.length ? `Next card · ${tray.length} of ${MAX_CARDS}` : auto ? 'Point at a card' : 'Fit the card in the frame'
+  const status = notice || derived
 
   return (
     <div className="camera">
       <div className="viewfinder" ref={view}>
         {error ? <div className="err">{error}</div> : <video ref={video} playsInline muted />}
 
+        {showVeil && <div className="veil" style={{ clipPath: veilClip }} aria-hidden="true" />}
         {!error && mode !== 'many' && !canOutline && (
           <div className={`guide${auto ? ' faint' : ''}`} style={{ width: `${CARD_GUIDE.widthFrac * 100}%`, aspectRatio: CARD_GUIDE.aspect }} />
         )}
-        {canOutline && (
+        {canOutline && det && (
           <svg className="outline" width={size.w} height={size.h} aria-hidden="true">
-            <polygon points={det.quad.map(toView).join(' ')} className={hold >= 0.5 ? 'lock' : ''} />
+            <polygon points={det.quad.map(toView).map((p) => p.map((v) => v.toFixed(1)).join(',')).join(' ')} className={hold >= 0.5 ? 'lock' : ''} />
           </svg>
         )}
+        {flashKey > 0 && <div key={flashKey} className="shot-flash" aria-hidden="true" />}
 
         <div className="cam-top">
-          <button className="round dark" onClick={close} aria-label="Close"><Icon name="x" size={22} /></button>
+          <button className="round dark" onClick={requestClose} aria-label="Close"><Icon name="x" size={22} /></button>
           <div className="cam-mid">
             {!sidedOnly && !single && (
               <div className="seg" role="tablist">
                 {MODES.map((m) => <button key={m.id} className={mode === m.id ? 'on' : ''} onClick={() => pickMode(m.id)}>{m.label}</button>)}
               </div>
             )}
-            <span className="pillbar">{status}</span>
+            <span className={`pillbar${notice ? ' notice' : ''}`} role="status" aria-live="polite">{status}</span>
             {eventLabel && <span className="pillbar sub">{eventLabel}</span>}
           </div>
-          {count > 0 && !single ? <button className="round accent" onClick={close} aria-label={`Done, ${count} scanned`}><Icon name="check" size={22} /></button> : <span className="round ghost" />}
+          <span className="round ghost" />
         </div>
 
         {hasFront && <button className="skip" onClick={flushFront}>Skip back</button>}
 
-        {struggling && auto && mode !== 'many' && count === 0 && (
+        {struggling && auto && mode !== 'many' && tray.length === 0 && (
           <div className="tips" onClick={() => setStruggling(false)}>
             <strong>Having trouble?</strong>
             <span>• Use a plain, higher-contrast background</span>
@@ -244,26 +321,56 @@ export default function Camera({ onCard, onClose, onGallery, onOpenLast, eventLa
         <div className="cam-bottom">
           <div className="toggles">
             {torchOk && (
-              <label className="toggle"><button className={`round dark${torch ? ' on' : ''}`} onClick={() => void toggleTorch()} aria-pressed={torch} aria-label="Flash"><Icon name={torch ? 'bolt' : 'boltoff'} size={22} /></button><span>Flash</span></label>
+              <label className="toggle"><button className={`round dark${torch ? ' on' : ''}`} onClick={() => void toggleTorch()} aria-pressed={torch} aria-label="Flash"><Icon name={torch ? 'bolt' : 'boltoff'} size={20} /></button><span>Flash</span></label>
             )}
             {mode !== 'many' && (
-              <label className="toggle"><button className={`round dark${auto ? ' on' : ''}`} onClick={toggleAuto} aria-pressed={auto} aria-label="Auto Detect"><Icon name="frame" size={22} /></button><span>Auto Detect</span></label>
+              <label className="toggle"><button className={`round dark${auto ? ' on' : ''}`} onClick={toggleAuto} aria-pressed={auto} aria-label="Auto Detect"><Icon name="frame" size={20} /></button><span>Auto Detect</span></label>
             )}
           </div>
+
+          {!single && (
+            <div className="tray" role="list" aria-label={`Captured cards, ${tray.length} of ${MAX_CARDS}`}>
+              {Array.from({ length: MAX_CARDS }, (_, i) => {
+                const t = tray[i]
+                if (t) {
+                  return (
+                    <div key={t.id} className="slot filled" role="listitem">
+                      <img src={t.url} alt={`Card ${i + 1}`} />
+                      {t.files.length > 1 && <em>F+B</em>}
+                      <button className="rm" onClick={() => removeShot(t.id)} aria-label={`Remove card ${i + 1}`}><Icon name="x" size={11} /></button>
+                    </div>
+                  )
+                }
+                if (i === tray.length && frontUrl) {
+                  return <div key="pending" className="slot pending" role="listitem"><img src={frontUrl} alt="Front, waiting for the back" /><em>BACK?</em></div>
+                }
+                return <div key={`e${i}`} className="slot" aria-hidden="true"><i>{i + 1}</i></div>
+              })}
+            </div>
+          )}
+
           <div className="shutter-row">
             <div className="thumb-slot">
-              {lastUrl && (
-                <button className="last" onClick={() => { flushFront(); onOpenLast?.(); onClose() }} aria-label={`Open last scan (${count} scanned)`}>
-                  <img src={lastUrl} alt="" />{count > 0 && <b key={count}>{count}</b>}
-                </button>
+              {onGallery && !single && (
+                <label className="toggle gallery"><span className="round dark"><Icon name="image" size={20} /></span><span>Gallery</span>
+                  <input type="file" accept="image/*" multiple hidden onChange={(e) => {
+                    const files = e.target.files
+                    if (files && files.length) {
+                      submitted.current = true
+                      const cards = collect()
+                      if (cards.length) onSubmit?.(cards)          // keep what was already captured
+                      onGallery(files)
+                      onClose()
+                    }
+                    e.target.value = ''
+                  }} />
+                </label>
               )}
             </div>
-            <button className="shutter" onClick={() => shoot()} disabled={!!error} aria-label="Take photo" />
+            <button className="shutter" onClick={() => shoot()} disabled={!!error || full} aria-label="Take photo" />
             <div className="thumb-slot right">
-              {onGallery && !single && (
-                <label className="toggle gallery"><span className="round dark"><Icon name="image" size={22} /></span><span>Gallery</span>
-                  <input type="file" accept="image/*" multiple hidden onChange={(e) => { if (e.target.files) { onGallery(e.target.files); close() } e.target.value = '' }} />
-                </label>
+              {!single && n > 0 && (
+                <button className="readbtn" onClick={submit}>Read {n} {n === 1 ? 'card' : 'cards'}<Icon name="chevron" size={16} /></button>
               )}
             </div>
           </div>

@@ -1,6 +1,6 @@
 // CardPulse API — a thin, locked-down proxy in front of Gemini.
 // The app sends card photos; the prompt, schema and API key live here, so this endpoint cannot be used as a general Gemini gateway.
-import { buildRequest, GeminiError, parseResponse, type ImageInput } from '../shared/extract-core.ts'
+import { buildRequest, GeminiError, MAX_IMAGES, parseResponse, type ImageInput, type Layout } from '../shared/extract-core.ts'
 
 export interface Env {
   GEMINI_API_KEY: string
@@ -15,8 +15,9 @@ export interface Env {
 
 const DEFAULT_MODEL = 'gemini-2.5-flash'
 const UPSTREAM = 'https://generativelanguage.googleapis.com/v1beta'
-const MAX_IMAGES = 2
-const MAX_BASE64_CHARS = 8_000_000 // ~6 MB of image data per request
+// Size caps per layout. The free Workers plan allows ~10 ms of CPU per request and handling a request costs roughly
+// 1 ms per MB of base64, so a six-photo batch is capped well below what two front/back photos may use.
+const MAX_BASE64_CHARS: Record<Layout, number> = { sides: 8_000_000, batch: 4_400_000 }
 const MIMES = new Set(['image/jpeg', 'image/png', 'image/webp'])
 const WINDOW_MS = 10 * 60_000
 const MAX_PER_WINDOW = 30 // per client IP, per isolate: a best-effort brake, not a billing guarantee
@@ -54,8 +55,8 @@ function json(body: unknown, status: number, origin: string | null, extra: Recor
 const fail = (status: number, code: string, message: string, origin: string | null, extra?: Record<string, string>) =>
   json({ error: { code, message } }, status, origin, extra)
 
-function validImages(v: unknown): ImageInput[] | null {
-  if (!Array.isArray(v) || v.length < 1 || v.length > MAX_IMAGES) return null
+function validImages(v: unknown, layout: Layout): ImageInput[] | null {
+  if (!Array.isArray(v) || v.length < 1 || v.length > MAX_IMAGES[layout]) return null
   let total = 0
   const out: ImageInput[] = []
   for (const x of v) {
@@ -65,7 +66,7 @@ function validImages(v: unknown): ImageInput[] | null {
     total += data.length
     out.push({ mime, data })
   }
-  return total <= MAX_BASE64_CHARS ? out : null
+  return total <= MAX_BASE64_CHARS[layout] ? out : null
 }
 
 export default {
@@ -91,11 +92,13 @@ export default {
     const wait = checkRate(ip)
     if (wait) return fail(429, 'rate_limited', `Too many scans. Try again in ${Math.ceil(wait / 60)} min.`, origin, { 'Retry-After': String(wait) })
 
-    if (Number(req.headers.get('content-length') ?? 0) > MAX_BASE64_CHARS + 2048) return fail(413, 'too_large', 'Photo is too large.', origin)
-    let body: { images?: unknown }
+    if (Number(req.headers.get('content-length') ?? 0) > MAX_BASE64_CHARS.sides + 2048) return fail(413, 'too_large', 'Photo is too large.', origin)
+    let body: { images?: unknown; layout?: unknown }
     try { body = await req.json() } catch { return fail(400, 'bad_request', 'Invalid request.', origin) }
-    const images = validImages(body.images)
-    if (!images) return fail(400, 'bad_images', 'Send 1 or 2 JPEG, PNG or WebP photos, under 6 MB in total.', origin)
+    const layout: Layout | null = body.layout === undefined || body.layout === 'sides' ? 'sides' : body.layout === 'batch' ? 'batch' : null
+    if (!layout) return fail(400, 'bad_layout', 'Unknown layout.', origin)
+    const images = validImages(body.images, layout)
+    if (!images) return fail(400, 'bad_images', layout === 'batch' ? 'Send 1 to 6 JPEG, PNG or WebP photos, under 3 MB in total.' : 'Send 1 or 2 JPEG, PNG or WebP photos, under 6 MB in total.', origin)
 
     const model = env.GEMINI_MODEL || DEFAULT_MODEL
     let upstream: Response
@@ -103,7 +106,7 @@ export default {
       upstream = await fetch(`${env.GEMINI_BASE ?? UPSTREAM}/models/${encodeURIComponent(model)}:generateContent`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
-        body: JSON.stringify(buildRequest(images)),
+        body: JSON.stringify(buildRequest(images, layout)),
       })
     } catch {
       return fail(502, 'upstream_unreachable', 'The reading service is unavailable. Try again.', origin)

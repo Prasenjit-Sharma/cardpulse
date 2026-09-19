@@ -1,5 +1,6 @@
 import type { CardRecord, EventRec } from '../lib/types'
 import CardThumb from './CardThumb'
+import Picker from './Picker'
 import Icon from './Icon'
 
 interface Install { mode: 'native' | 'ios' | null; visible: boolean; install: () => void; dismiss: () => void }
@@ -123,13 +124,8 @@ export default function ScanHome({ cards, events, activeEvent, onSelectEvent, re
 
       <div className="scan-cta">
         {events.length > 0 && (
-          <label className="event-pick">
-            <Icon name="booth" size={16} />
-            <select value={activeEvent} onChange={(e) => onSelectEvent(e.target.value)} aria-label="Scan into event">
-              <option value="">No event</option>
-              {events.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
-            </select>
-          </label>
+          <Picker className="event-pick" title="Scan into" icon="booth" value={activeEvent} onChange={onSelectEvent}
+            options={[{ value: '', label: 'No event', hint: 'Cards are not filed under anything' }, ...events.map((e) => ({ value: e.id, label: e.name }))]} />
         )}
         <button className="cta" onClick={onScan}><Icon name="camera" size={22} /> Scan a card</button>
       </div>

@@ -8,7 +8,7 @@ import { useEffect, useRef } from 'react'
  *  - Closed from the UI: when the last one closes, remove the sentinel, on the next tick, so "one screen closes as
  *    another opens" never does a back and a push in the same instant (which corrupts history).
  */
-interface Entry { close: () => void }
+interface Entry { close: () => void | boolean }
 const stack: Entry[] = []
 let sentinel = false
 let ignore = 0
@@ -23,7 +23,7 @@ function listen() {
     sentinel = false                              // the browser just consumed it
     const top = stack.pop()
     if (!top) return
-    top.close()
+    if (top.close() === false) stack.push(top)      // the screen refused to close: it stays on top of the stack
     if (stack.length > 0) { history.pushState({ cardpulse: 1 }, ''); sentinel = true }
   })
 }
@@ -47,7 +47,7 @@ function unregister(entry: Entry) {
   }
 }
 
-export function useBackClose(active: boolean, onClose: () => void) {
+export function useBackClose(active: boolean, onClose: () => void | boolean) {
   const closeRef = useRef(onClose)
   closeRef.current = onClose
   useEffect(() => {

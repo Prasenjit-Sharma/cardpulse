@@ -10,6 +10,7 @@ import Camera from './Camera'
 import Sheet, { SheetItem } from './Sheet'
 import { useBackClose } from '../lib/useBackClose'
 import Icon from './Icon'
+import Picker from './Picker'
 
 const SUGGESTED_TAGS = ['Customer', 'Supplier', 'Partner', 'Investor', 'Hot lead']
 const withProtocol = (w: string) => (/^https?:\/\//i.test(w) ? w : `https://${w}`)
@@ -80,12 +81,17 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
   const [tagsOpen, setTagsOpen] = useState(false)
   const [noteOpen, setNoteOpen] = useState(false)
   const [followOpen, setFollowOpen] = useState(false)
+  const [newTag, setNewTag] = useState('')
+  const tagsRef = useRef<HTMLDivElement>(null)
+  const noteRef = useRef<HTMLDivElement>(null)
+  const noteInput = useRef<HTMLTextAreaElement>(null)
+  const followRef = useRef<HTMLDivElement>(null)
+  const followInput = useRef<HTMLInputElement>(null)
   const [fab, setFab] = useState(false)
   const [flash, setFlash] = useState('')
   const stopRef = useRef<(() => void) | null>(null)
   useBackClose(fab, () => setFab(false))
   useBackClose(!!light, () => setLight(''))
-  useBackClose(camOpen, () => setCamOpen(false))
   const hasLiveCamera = !!navigator.mediaDevices?.getUserMedia
   const canRead = !!card.image && !card.thumbOnly
   const busy = card.status === 'pending' || card.status === 'running'
@@ -93,6 +99,19 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
   const c = contacts[idx]
 
   useEffect(() => () => stopRef.current?.(), [])
+  useEffect(() => {
+    if (!tagsOpen && !noteOpen && !followOpen) return
+    const onDown = (e: PointerEvent) => {
+      const t = e.target as HTMLElement
+      if (t.closest?.('[data-adder]')) return                                   // the toggle buttons handle themselves
+      const within = (r: { current: HTMLElement | null }) => !!r.current?.contains(t)
+      if (tagsOpen && !within(tagsRef)) setTagsOpen(false)
+      if (noteOpen && !within(noteRef) && !(contacts[idx]?.note ?? '').trim()) setNoteOpen(false)
+      if (followOpen && !within(followRef) && !contacts[idx]?.followUp) setFollowOpen(false)
+    }
+    document.addEventListener('pointerdown', onDown)
+    return () => document.removeEventListener('pointerdown', onDown)
+  }, [tagsOpen, noteOpen, followOpen, contacts, idx])
   // Opened while still being read (or after a re-read): take the new contacts as soon as the reading finishes.
   useEffect(() => {
     if (card.status !== 'done') return
@@ -142,7 +161,7 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
     <div className="page-plain">
       <header className="bar-top">
         <button className="icon-btn ghost" onClick={onClose} aria-label="Back"><Icon name="back" /></button>
-        <h2 className="title">{c?.name || 'Contact'}</h2>
+        <span className="grow" />
         {card.status === 'done' && c && (
           <button className={`icon-btn ghost${editing ? ' on' : ''}`} onClick={() => setEditing(!editing)} aria-label={editing ? 'Done editing' : 'Edit'}><Icon name={editing ? 'check' : 'edit'} size={20} /></button>
         )}
@@ -203,30 +222,54 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
             {!c.address && !c.phones.length && !c.emails.length && !c.website && <p className="muted">No contact details yet. Tap the pencil to add some.</p>}
           </div>
 
-          <div className="add-row">
-            {(c.tags ?? []).map((t) => <button key={t} className="tagchip" onClick={() => patch({ tags: (c.tags ?? []).filter((x) => x !== t) }, false)}>{t} <Icon name="x" size={12} /></button>)}
-            <button className="dashed" onClick={() => setTagsOpen(!tagsOpen)}><Icon name="plus" size={16} /> Tags</button>
-            {!(c.note || noteOpen) && <button className="dashed" onClick={() => setNoteOpen(true)}><Icon name="plus" size={16} /> Notes</button>}
-            {!(c.followUp || followOpen) && <button className="dashed" onClick={() => setFollowOpen(true)}><Icon name="plus" size={16} /> Follow-up</button>}
+          <div className="adders" role="group" aria-label="Add to this contact">
+            <button data-adder className={`adder${tagsOpen || (c.tags ?? []).length ? ' on' : ''}`} aria-pressed={tagsOpen} onClick={() => setTagsOpen(!tagsOpen)}>
+              <Icon name="tag" size={13} /> Tags{(c.tags ?? []).length > 0 && <b>{(c.tags ?? []).length}</b>}
+            </button>
+            <button data-adder className={`adder${noteOpen || c.note ? ' on' : ''}`} aria-pressed={noteOpen || !!c.note}
+              onClick={() => (c.note ? noteInput.current?.focus() : setNoteOpen(!noteOpen))}>
+              <Icon name="note" size={13} /> Notes
+            </button>
+            <button data-adder className={`adder${followOpen || c.followUp ? ' on' : ''}`} aria-pressed={followOpen || !!c.followUp}
+              onClick={() => (c.followUp ? (followInput.current?.showPicker?.() ?? followInput.current?.focus()) : setFollowOpen(!followOpen))}>
+              <Icon name="calendar" size={13} /> Follow-up
+            </button>
           </div>
+
+          {(c.tags ?? []).length > 0 && (
+            <div className="chipline">
+              {(c.tags ?? []).map((t) => <button key={t} className="tagchip" onClick={() => patch({ tags: (c.tags ?? []).filter((x) => x !== t) }, false)} aria-label={`Remove tag ${t}`}>{t}<Icon name="x" size={11} /></button>)}
+            </div>
+          )}
           {tagsOpen && (
-            <div className="add-row suggest">
-              {SUGGESTED_TAGS.filter((t) => !(c.tags ?? []).includes(t)).map((t) => <button key={t} className="chip" onClick={() => patch({ tags: [...(c.tags ?? []), t] }, false)}>{t}</button>)}
-              <button className="chip" onClick={() => { const t = prompt('New tag')?.trim(); if (t) patch({ tags: [...new Set([...(c.tags ?? []), t])] }, false) }}>Custom…</button>
+            <div className="editor-box" ref={tagsRef}>
+              <div className="chipline">
+                {SUGGESTED_TAGS.filter((t) => !(c.tags ?? []).includes(t)).map((t) => <button key={t} className="tagchip add" onClick={() => patch({ tags: [...(c.tags ?? []), t] }, false)}>+ {t}</button>)}
+              </div>
+              <form className="newtag" onSubmit={(e) => { e.preventDefault(); const t = newTag.trim(); if (t) { patch({ tags: [...new Set([...(c.tags ?? []), t])] }, false); setNewTag('') } }}>
+                <input value={newTag} onChange={(e) => setNewTag(e.target.value)} placeholder="Your own tag" maxLength={24} aria-label="New tag" />
+                <button type="submit" className="tinted small" disabled={!newTag.trim()}>Add</button>
+              </form>
             </div>
           )}
           {(c.note || noteOpen) && (
-            <div className="field-box notebox">
-              <span>Notes</span>
-              <textarea rows={3} autoFocus={noteOpen && !c.note} placeholder="Just like writing on the back of a business card." value={c.note ?? ''} onChange={(e) => patch({ note: e.target.value }, false)} />
-              {speechSupported && <button className={`mic${listening ? ' on' : ''}`} onClick={dictate} aria-label="Dictate note"><Icon name="mic" size={18} /></button>}
+            <div className="editor-box notebox" ref={noteRef}>
+              <textarea ref={noteInput} rows={2} autoFocus={noteOpen && !c.note} placeholder="Note, like writing on the back of a card"
+                value={c.note ?? ''} onChange={(e) => patch({ note: e.target.value }, false)}
+                onBlur={(e) => { if (!e.target.value.trim()) setNoteOpen(false) }} aria-label="Note" />
+              <div className="editor-acts">
+                {speechSupported && <button className={`mic${listening ? ' on' : ''}`} onClick={dictate} aria-label="Dictate note"><Icon name="mic" size={16} /></button>}
+                <button className="x-btn" onClick={() => { patch({ note: '' }, false); setNoteOpen(false) }} aria-label="Remove note"><Icon name="x" size={16} /></button>
+              </div>
             </div>
           )}
           {(c.followUp || followOpen) && (
-            <label className="field-box"><span>Follow up on</span>
-              <input type="date" value={c.followUp ?? ''} onChange={(e) => patch({ followUp: e.target.value }, false)} />
+            <div className="editor-box followbox" ref={followRef}>
+              <span className="lbl">Follow up on</span>
+              <input ref={followInput} type="date" value={c.followUp ?? ''} autoFocus={followOpen && !c.followUp} onChange={(e) => { patch({ followUp: e.target.value }, false); if (!e.target.value) setFollowOpen(false) }} aria-label="Follow-up date" />
               {c.followUp && c.followUp <= today && <small className="due">Due</small>}
-            </label>
+              <button className="x-btn" onClick={() => { patch({ followUp: '' }, false); setFollowOpen(false) }} aria-label="Remove follow-up"><Icon name="x" size={16} /></button>
+            </div>
           )}
 
           <h3 className="section">Connection</h3>
@@ -234,13 +277,11 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
             <div className="line"><Icon name="clock" size={18} /><span>Added on {when(card.createdAt)}</span></div>
             <div className="line"><Icon name="camera" size={18} /><span>{eventName ? `Scanned at ${eventName}` : 'Scanned contact'}</span></div>
           </div>
-          <label className="field-box">
+          <div className="field-box pickbox">
             <span>Associated event</span>
-            <select value={card.eventId ?? ''} onChange={(e) => onMoveEvent(e.target.value)}>
-              <option value="">None</option>
-              {events.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
-            </select>
-          </label>
+            <Picker className="pick flat" title="Associated event" value={card.eventId ?? ''} onChange={onMoveEvent}
+              options={[{ value: '', label: 'None' }, ...events.map((e) => ({ value: e.id, label: e.name }))]} />
+          </div>
 
           {slides.length > 0 && (
             <>

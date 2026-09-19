@@ -1,4 +1,4 @@
-import { buildRequest, GeminiError, parseResponse, type ImageInput, type Parsed } from '../../shared/extract-core'
+import { buildRequest, GeminiError, parseResponse, type ImageInput, type Layout, type Parsed } from '../../shared/extract-core'
 
 export { GeminiError }
 export const DEFAULT_MODEL = 'gemini-2.5-flash'
@@ -50,12 +50,13 @@ async function withRetry(send: () => Promise<Response>): Promise<{ res: Response
   throw lastErr ?? new GeminiError('Extraction failed')
 }
 
-export async function extractCard(blobs: Blob[], opts: ReadOptions): Promise<ExtractionResult> {
+/** `layout`: 'sides' reads 1-2 photos as one card; 'batch' reads up to 6 photos as different cards, in a single call. */
+export async function extractCard(blobs: Blob[], opts: ReadOptions, layout: Layout = 'sides'): Promise<ExtractionResult> {
   const images: ImageInput[] = await Promise.all(blobs.map(async (b) => ({ mime: b.type || 'image/jpeg', data: await toBase64(b) })))
 
   if (serverMode && !opts.useOwnKey) {
     const { json, ms } = await withRetry(() =>
-      fetch(`${API_URL}/v1/extract`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ images }) }))
+      fetch(`${API_URL}/v1/extract`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ images, layout }) }))
     return { ...(json as Parsed), latencyMs: ms, model: json.model }
   }
 
@@ -63,7 +64,7 @@ export async function extractCard(blobs: Blob[], opts: ReadOptions): Promise<Ext
     fetch(`${BASE}/models/${encodeURIComponent(opts.model)}:generateContent`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': opts.apiKey },
-      body: JSON.stringify(buildRequest(images)),
+      body: JSON.stringify(buildRequest(images, layout)),
     }))
   return { ...parseResponse(json), latencyMs: ms, model: opts.model }
 }

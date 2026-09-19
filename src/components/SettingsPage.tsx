@@ -4,6 +4,7 @@ import { DEFAULT_MODEL, listModels, serverMode } from '../lib/gemini'
 import type { Settings, Theme } from '../lib/db'
 import { DEFAULT_NAME_FORMAT, displayName, NAME_FORMATS, type NameFormat } from '../lib/naming'
 import Icon from './Icon'
+import Picker from './Picker'
 import Logo from './Logo'
 
 const MODELS_KEY = 'cardpulse.models'
@@ -95,9 +96,7 @@ export default function SettingsPage({ settings, install, onChange, onWipe, onOp
         {models.length > 0 && (
           <label>
             <span>Model</span>
-            <select value={settings.model} onChange={(e) => onChange({ ...settings, model: e.target.value })}>
-              {models.map((m) => <option key={m}>{m}</option>)}
-            </select>
+            <Picker className="pick wide" title="Model" value={settings.model} onChange={(v) => onChange({ ...settings, model: v })} options={models.map((m) => ({ value: m, label: m }))} />
           </label>
         )}
       </section>
@@ -130,11 +129,7 @@ export default function SettingsPage({ settings, install, onChange, onWipe, onOp
       <section className="card">
         <label>
           <span>Theme</span>
-          <select value={settings.theme ?? 'system'} onChange={(e) => onChange({ ...settings, theme: e.target.value as Theme })}>
-            <option value="system">Match my phone</option>
-            <option value="dark">Dark</option>
-            <option value="light">Light</option>
-          </select>
+          <Picker className="pick wide" title="Theme" value={settings.theme ?? 'system'} onChange={(v) => onChange({ ...settings, theme: v as Theme })} options={[{ value: 'system', label: 'Match my phone' }, { value: 'dark', label: 'Dark' }, { value: 'light', label: 'Light' }]} />
         </label>
       </section>
 
@@ -142,11 +137,7 @@ export default function SettingsPage({ settings, install, onChange, onWipe, onOp
       <section className="card">
         <label>
           <span>After a card is read, keep its photo</span>
-          <select value={settings.keepPhotos} onChange={(e) => onChange({ ...settings, keepPhotos: e.target.value as Settings['keepPhotos'] })}>
-            <option value="full">Full photo</option>
-            <option value="thumb">Small thumbnail only</option>
-            <option value="none">Don't keep photos</option>
-          </select>
+          <Picker className="pick wide" title="Keep photos" value={settings.keepPhotos} onChange={(v) => onChange({ ...settings, keepPhotos: v as Settings['keepPhotos'] })} options={[{ value: 'full', label: 'Full photo' }, { value: 'thumb', label: 'Small thumbnail only' }, { value: 'none', label: "Don't keep photos" }]} />
         </label>
         <p className="hint">Saves storage at exhibitions. Without the full photo a card can't be re-read or have a back side added.</p>
       </section>

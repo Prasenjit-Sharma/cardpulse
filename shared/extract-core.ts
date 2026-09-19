@@ -3,6 +3,16 @@ import type { Contact } from '../src/lib/types'
 
 export interface ImageInput { mime: string; data: string } // data = base64, no data: prefix
 
+/**
+ * sides: 1-2 photos of ONE card (front, back).
+ * batch: 1-6 photos, each a DIFFERENT card (or a photo of several). Read in ONE request, so the instructions and the round trip are paid once.
+ */
+export type Layout = 'sides' | 'batch'
+export const MAX_IMAGES: Record<Layout, number> = { sides: 2, batch: 6 }
+
+/** A person as read from the photos, plus the number (1-based) of the photo they came from. */
+export interface ParsedContact extends Contact { image?: number }
+
 const str = { type: 'STRING' }
 const strList = { type: 'ARRAY', items: str }
 
@@ -19,8 +29,9 @@ export const responseSchema = {
           name: str, title: str, company: str,
           phones: strList, emails: strList,
           website: str, address: str, gstin: str, social: strList,
+          image: { type: 'INTEGER', description: 'Number of the photo this person was read from (1 for a single card).' },
         },
-        required: ['name', 'title', 'company', 'phones', 'emails', 'website', 'address', 'gstin', 'social'],
+        required: ['name', 'title', 'company', 'phones', 'emails', 'website', 'address', 'gstin', 'social', 'image'],
       },
     },
   },
@@ -40,11 +51,12 @@ Rules:
 - "title" is the job designation only. "company" is the organisation only (no tagline). "address" is one line, comma-separated, including pincode.
 - "social" holds LinkedIn/Twitter/Instagram URLs or handles.
 - Emails lowercase. Websites as printed.
-- "notes": mention anything you could not read or were unsure about.`
+- "notes": mention anything you could not read or were unsure about.
+- "image": for every person, the number of the photo you read them from (1 when only one photo, or for the front of a card).`
 
 
 export interface Parsed {
-  contacts: Contact[]
+  contacts: ParsedContact[]
   languages: string[]
   notes: string
   tokensIn?: number
@@ -59,11 +71,20 @@ export class GeminiError extends Error {
   }
 }
 
+const SIDES_RULE_START = '- If two images are given, they are the FRONT and BACK of the SAME card.'
+
+/** The instructions for a layout. Batch replaces the front/back rule, because in a batch two photos are two different cards. */
+export function promptFor(layout: Layout, n = 1): string {
+  if (layout !== 'batch') return PROMPT
+  const rule = `- BATCH: ${n} photo${n === 1 ? ' is' : 's are'} given, labelled "Photo 1 of ${n}" and so on. Each photo is a DIFFERENT card, or a photo showing several cards. Never merge people across photos. If the same person appears on two photos, return them once, for the first photo. A photo with no readable card gives no contacts.\n`
+  return PROMPT.split('\n').map((l) => (l.startsWith(SIDES_RULE_START) ? rule.trimEnd() : l)).join('\n')
+}
+
 /** Request body for Gemini generateContent. */
-export function buildRequest(images: ImageInput[]) {
-  const parts: unknown[] = [{ text: PROMPT }]
+export function buildRequest(images: ImageInput[], layout: Layout = 'sides') {
+  const parts: unknown[] = [{ text: promptFor(layout, images.length) }]
   images.forEach((img, i) => {
-    parts.push({ text: images.length > 1 ? (i === 0 ? 'Image 1 — FRONT of the card:' : 'Image 2 — BACK of the card:') : 'The card:' })
+    parts.push({ text: layout === 'batch' ? `Photo ${i + 1} of ${images.length}:` : images.length > 1 ? (i === 0 ? 'Image 1 — FRONT of the card:' : 'Image 2 — BACK of the card:') : 'The card:' })
     parts.push({ inline_data: { mime_type: img.mime || 'image/jpeg', data: img.data } })
   })
   return {
@@ -92,6 +113,7 @@ export function parseResponse(json: any): Parsed {
       name: str1(c.name), title: str1(c.title), company: str1(c.company),
       phones: strs(c.phones), emails: strs(c.emails).map((e) => e.toLowerCase()),
       website: str1(c.website), address: str1(c.address), gstin: str1(c.gstin).toUpperCase(), social: strs(c.social),
+      image: Number.isInteger(c.image) && (c.image as number) > 0 ? (c.image as number) : undefined,
     })),
     languages: strs(parsed.languages),
     notes: str1(parsed.notes),

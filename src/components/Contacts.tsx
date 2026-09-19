@@ -5,6 +5,7 @@ import type { CardRecord, Contact, EventRec } from '../lib/types'
 import CardThumb from './CardThumb'
 import EmptyState from './EmptyState'
 import Icon from './Icon'
+import Picker from './Picker'
 
 type Sort = 'recent' | 'name' | 'company'
 type Flt = 'all' | 'priority' | 'review' | 'dupes' | 'followup'
@@ -34,6 +35,7 @@ export default function Contacts({ onScan, cards: allCards, events, activeEvent,
 
   const inEvent = activeEvent ? allCards.filter((c) => c.eventId === activeEvent) : allCards
   const failed = inEvent.filter((c) => c.status === 'error')
+  const reading = inEvent.filter((c) => c.status === 'pending' || c.status === 'running')
   const q = query.trim().toLowerCase()
   const allTags = [...new Set(inEvent.flatMap((c) => (c.corrected ?? []).flatMap((p) => p.tags ?? [])))].sort()
 
@@ -79,31 +81,42 @@ export default function Contacts({ onScan, cards: allCards, events, activeEvent,
       <div className="filters">
         <span className={`filter-ico${flt !== 'all' || tag || activeEvent ? ' on' : ''}`}><Icon name="filter" size={16} /></span>
         {allTags.length > 0 && (
-          <select className="pill-select" value={tag} onChange={(e) => setTag(e.target.value)} aria-label="Tags">
-            <option value="">Tags</option>{allTags.map((t) => <option key={t}>{t}</option>)}
-          </select>
+          <Picker title="Tag" label={tag || 'Tags'} value={tag} onChange={setTag}
+            options={[{ value: '', label: 'All tags' }, ...allTags.map((t) => ({ value: t, label: t }))]} />
         )}
-        <select className="pill-select" value={flt} onChange={(e) => setFlt(e.target.value as Flt)} aria-label="Show">
-          <option value="all">Show all</option><option value="priority">Priority</option><option value="review">Needs review</option><option value="dupes">Duplicates</option><option value="followup">Follow-ups</option>
-        </select>
-        <select className="pill-select" value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label="Sort by">
-          <option value="recent">Recent</option><option value="name">Name</option><option value="company">Company</option>
-        </select>
+        <Picker title="Show" value={flt} onChange={(v) => setFlt(v as Flt)}
+          options={[{ value: 'all', label: 'Show all' }, { value: 'priority', label: 'Priority' }, { value: 'review', label: 'Needs review' }, { value: 'dupes', label: 'Possible duplicates' }, { value: 'followup', label: 'Follow-ups' }]} />
+        <Picker title="Sort by" value={sort} onChange={(v) => setSort(v as Sort)}
+          options={[{ value: 'recent', label: 'Recent' }, { value: 'name', label: 'Name' }, { value: 'company', label: 'Company' }]} />
       </div>
 
       {events.length > 0 && (
         <>
-          <nav className="tab-strip" aria-label="Event dividers">
+          <div className="tab-strip" role="group" aria-label="Event dividers">
             <button className={activeEvent === '' ? 'on' : ''} onClick={() => onSelectEvent('')} aria-current={activeEvent === '' ? 'true' : undefined}>All</button>
             {events.map((e) => (
               <button key={e.id} className={activeEvent === e.id ? 'on' : ''} onClick={() => onSelectEvent(e.id)} aria-current={activeEvent === e.id ? 'true' : undefined} title={e.name}>{e.name}</button>
             ))}
-          </nav>
+          </div>
           <div className="tab-sheet" />
         </>
       )}
 
       {failed.length > 0 && <div className="note">{failed.length} card{failed.length > 1 ? 's' : ''} failed. <button className="link" onClick={onRetryFailed}>Retry all</button></div>}
+
+      {reading.length > 0 && (
+        <section>
+          <h3 className="group">Reading {reading.length} {reading.length === 1 ? 'card' : 'cards'}</h3>
+          <div className="plain-list">
+            {reading.map((c, i) => (
+              <div key={c.id} className="contact-row reading" style={{ ['--i' as string]: i }}>
+                <CardThumb blob={c.image} name="" />
+                <div className="grow"><strong>Reading…</strong><span className="dots"><i /><i /><i /></span></div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {allCards.length === 0 && (
         <EmptyState icon="users" title="No contacts yet" text="Scan a card, or lay several on a table and scan them in one shot."
@@ -122,8 +135,8 @@ export default function Contacts({ onScan, cards: allCards, events, activeEvent,
                 <div className="grow">
                   <strong>{r.p.name || '(no name)'}{r.p.priority && <Icon name="star" size={13} />}</strong>
                   <span className="muted">{[r.p.company, r.p.title].filter(Boolean).join(' | ') || r.p.phones[0] || r.p.emails[0] || ''}</span>
+                  {dupes.has(r.card.id) && <span className="dup-note">Possible duplicate</span>}
                 </div>
-                {dupes.has(r.card.id) && <span className="tag-warn">duplicate?</span>}
                 {!sel && <Icon name="chevron" size={18} />}
               </div>
             ))}
@@ -135,10 +148,9 @@ export default function Contacts({ onScan, cards: allCards, events, activeEvent,
         <div className="selbar">
           <span>{chosen.length} selected</span>
           <button className="link" onClick={() => setSel(new Set(rows.map((r) => r.key)))}>All</button>
-          <select value="" disabled={!chosen.length} onChange={(e) => { onMoveToEvent([...new Set(chosen.map((r) => r.card.id))], e.target.value === '__none' ? '' : e.target.value); exit() }} aria-label="Move to event">
-            <option value="" disabled>Move to…</option><option value="__none">No event</option>
-            {events.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
-          </select>
+<Picker className="pick onbar" title="Move to" label="Move to…" value="" disabled={!chosen.length}
+            onChange={(v) => { onMoveToEvent([...new Set(chosen.map((r) => r.card.id))], v === '__none' ? '' : v); exit() }}
+            options={[{ value: '__none', label: 'No event' }, ...events.map((e) => ({ value: e.id, label: e.name }))]} />
           <button disabled={!chosen.length} onClick={() => { void shareVcf('contacts.vcf', chosen.map((r) => toVCard(r.p, [eventName(r.card.eventId), r.p.note].filter(Boolean).join(' — '), currentNameFormat())).join('\r\n'), `${chosen.length} contacts`, undefined, browserEnv(), false); exit() }} aria-label="Save to phone"><Icon name="download" size={18} /></button>
           <button className="bad" disabled={!chosen.length} onClick={() => { if (confirm(`Delete ${chosen.length} contact(s)?`)) { onDeleteContacts(chosen.map((r) => r.key)); exit() } }} aria-label="Delete"><Icon name="trash" size={18} /></button>
         </div>

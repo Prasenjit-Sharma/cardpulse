@@ -3,6 +3,7 @@ import type { CardRecord, EventRec } from '../lib/types'
 import { useObjectUrl } from '../lib/useObjectUrl'
 import Avatar from './Avatar'
 import Icon from './Icon'
+import Picker from './Picker'
 
 /** After a read: confirm who belongs, file them under an event, add a note, save. */
 export default function ScanResult({ card, events, onBack, onKeep, onEdit }: {
@@ -46,13 +47,11 @@ export default function ScanResult({ card, events, onBack, onKeep, onEdit }: {
         ))}
       </div>
 
-      <label className="field-box">
+      <div className="field-box pickbox">
         <span>Associated event</span>
-        <select value={eventId} onChange={(e) => setEventId(e.target.value)}>
-          <option value="">None</option>
-          {events.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
-        </select>
-      </label>
+        <Picker className="pick flat" title="Associated event" value={eventId} onChange={setEventId}
+          options={[{ value: '', label: 'None' }, ...events.map((e) => ({ value: e.id, label: e.name }))]} />
+      </div>
       <label className="field-box">
         <span>Notes (optional)</span>
         <textarea rows={3} placeholder="Just like writing on the back of a business card." value={note} onChange={(e) => setNote(e.target.value)} />
