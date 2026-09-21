@@ -32,28 +32,35 @@ export default function LogSheet({ name, onSave, onClose }: { name: string; onSa
   return (
     <Sheet open onClose={onClose} title={`Log with ${name || 'this contact'}`}>
       <div className="log-form">
-        <div className="choice-row" role="group" aria-label="What happened">
-          {KINDS.map((k) => <button key={k.id} className="choice" aria-pressed={kind === k.id} onClick={() => { setKind(k.id); if (k.id !== 'call') setOutcome(undefined) }}>{k.label}</button>)}
+        {/* level one: what kind of contact. One connected control, like a tab strip. */}
+        <div className="seg" role="group" aria-label="What happened">
+          {KINDS.map((k) => <button key={k.id} aria-pressed={kind === k.id} onClick={() => { setKind(k.id); if (k.id !== 'call') setOutcome(undefined) }}>{k.label}</button>)}
         </div>
 
+        {/* level two, calls only: how it went. Lighter and smaller, so it reads as a detail of the call. */}
         {kind === 'call' && (
-          <div className="choice-row" role="group" aria-label="How it went">
-            {OUTCOMES.map((o) => <button key={o.id} className="choice" aria-pressed={outcome === o.id} onClick={() => setOutcome(outcome === o.id ? undefined : o.id)}>{o.label}</button>)}
+          <div className="log-field">
+            <span className="log-label" id="log-outcome">How it went</span>
+            <div className="pills" role="group" aria-labelledby="log-outcome">
+              {OUTCOMES.map((o) => <button key={o.id} className="pill" aria-pressed={outcome === o.id} onClick={() => setOutcome(outcome === o.id ? undefined : o.id)}>{o.label}</button>)}
+            </div>
           </div>
         )}
 
         <div className="log-note">
-          <textarea rows={3} value={note} maxLength={MAX_NOTE} onChange={(e) => setNote(e.target.value)} placeholder="What was said? Like writing on the back of a card" aria-label="Note" />
+          <textarea rows={2} value={note} maxLength={MAX_NOTE} onChange={(e) => setNote(e.target.value)} placeholder="What was said?" aria-label="Note" />
           {speechSupported && <button className={`mic${listening ? ' on' : ''}`} onClick={dictate} aria-label={listening ? 'Stop dictating' : 'Dictate note'} aria-pressed={listening}><Icon name="mic" size={16} /></button>}
         </div>
 
-        <span className="accent-label">Follow up again</span>
-        <div className="choice-row" role="group" aria-label="Next follow-up">
-          <button className="choice" aria-pressed={next === 'none'} onClick={() => setNext('none')}>No follow-up</button>
-          {PRESETS.map((p) => <button key={p.id} className="choice" aria-pressed={next === p.id} onClick={() => setNext(p.id)}>{p.label}</button>)}
-          <button className="choice" aria-pressed={next === 'date'} onClick={() => setNext('date')}>Pick a date</button>
+        <div className="log-field">
+          <span className="log-label" id="log-next">Follow up</span>
+          <div className="pills" role="group" aria-labelledby="log-next">
+            <button className="pill" aria-pressed={next === 'none'} onClick={() => setNext('none')}>None</button>
+            {PRESETS.map((p) => <button key={p.id} className="pill" aria-pressed={next === p.id} onClick={() => setNext(p.id)}>{p.short}</button>)}
+            <button className="pill" aria-pressed={next === 'date'} onClick={() => setNext('date')}>Pick date</button>
+          </div>
+          {next === 'date' && <input className="log-date" type="date" value={date} min={localISO()} onChange={(e) => setDate(e.target.value)} aria-label="Follow-up date" autoFocus />}
         </div>
-        {next === 'date' && <input type="date" value={date} min={localISO()} onChange={(e) => setDate(e.target.value)} aria-label="Follow-up date" autoFocus />}
 
         <button className="cta wide" disabled={!canSave} onClick={save}>Save</button>
       </div>

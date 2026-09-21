@@ -14,8 +14,10 @@ const two = (n: number) => String(n).padStart(2, '0')
 export const localISO = (d: Date = new Date()): string => `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}`
 
 export type Preset = 'tomorrow' | '3d' | 'week' | '2w' | 'month'
-export const PRESETS: { id: Preset; label: string }[] = [
-  { id: 'tomorrow', label: 'Tomorrow' }, { id: '3d', label: 'In 3 days' }, { id: 'week', label: 'Next week' }, { id: '2w', label: 'In 2 weeks' }, { id: 'month', label: 'In a month' },
+/** `label` reads in a sentence; `short` fits a compact chip. */
+export const PRESETS: { id: Preset; label: string; short: string }[] = [
+  { id: 'tomorrow', label: 'Tomorrow', short: 'Tomorrow' }, { id: '3d', label: 'In 3 days', short: '3 days' }, { id: 'week', label: 'Next week', short: '1 week' },
+  { id: '2w', label: 'In 2 weeks', short: '2 weeks' }, { id: 'month', label: 'In a month', short: '1 month' },
 ]
 
 /** A day counted forward from `from`. "In a month" keeps the day of the month, or the last day when that month is shorter (30 Jan gives 28 Feb). */

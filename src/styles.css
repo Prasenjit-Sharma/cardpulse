@@ -880,7 +880,21 @@ h3.section .link { float: right; min-height: 0; padding: 0; font-size: var(--t-x
 .act-row small { display: block; margin-top: 3px; font-size: var(--t-xs); color: var(--ink-3) }
 .act-row .x-btn { width: 32px; height: 32px; min-height: 32px }
 .followbox .due { color: var(--amber); font-weight: 600 } .followbox .due.soon { color: var(--ink-3); font-weight: 500 }
-/* the log sheet */
-.log-form { display: flex; flex-direction: column; gap: 12px; padding: 4px 16px 18px }
-.log-note { position: relative } .log-note textarea { width: 100%; padding-right: 52px }
-.log-note .mic { position: absolute; right: 8px; bottom: 8px }
+/* the log sheet: compact, two clear levels */
+.log-form { display: flex; flex-direction: column; gap: 12px; padding: 2px 16px 16px }
+.log-field { display: flex; flex-direction: column; gap: 6px }
+.log-label { font-size: var(--t-xs); font-weight: 600; letter-spacing: .1em; text-transform: uppercase; font-variation-settings: 'wdth' 80; color: var(--ink-3) }
+/* one connected control: the chosen segment is lifted, the rest sit flat in the track */
+.seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; padding: 3px; background: var(--board-2); border-radius: var(--r-sleeve); box-shadow: inset 0 1px 2px rgba(22,25,29,.10) }
+.seg button { min-height: 38px; padding: 0 8px; border: 0; border-radius: 3px; background: none; box-shadow: none; color: var(--ink-2); font-size: var(--t-m); font-weight: 600 }
+.seg button[aria-pressed='true'] { background: var(--sleeve); color: var(--ink); box-shadow: 0 1px 2px rgba(22,25,29,.18), 0 0 0 1px rgba(22,25,29,.06) }
+.seg button:active:not(:disabled) { transform: none }
+/* small outlined tags: a choice within the choice above, or a way to pick a date */
+.pills { display: flex; flex-wrap: wrap; gap: 6px }
+.pill { min-height: 32px; padding: 0 11px; border: 1px solid var(--rule); border-radius: 16px; background: none; box-shadow: none; color: var(--ink-2); font-size: var(--t-s); font-weight: 600 }
+.pill[aria-pressed='true'] { background: var(--brand-wash); border-color: var(--brand-edge); color: var(--brand) }
+.pill:active:not(:disabled) { transform: none; box-shadow: none }
+.log-note { position: relative } .log-note textarea { width: 100%; min-height: 0; padding: 9px 44px 9px 12px; font-size: var(--t-m); line-height: 1.4; resize: none }
+@supports (-webkit-touch-callout: none) { .log-note textarea, .log-date { font-size: 16px } }   /* iPhone zooms into fields under 16px */
+.log-note .mic { position: absolute; right: 6px; bottom: 6px; width: 32px; height: 32px; min-height: 32px }
+.log-date { align-self: flex-start; min-height: 38px; padding: 0 10px; font-size: var(--t-m) }
