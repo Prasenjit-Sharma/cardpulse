@@ -12,7 +12,8 @@ import { applyAccent } from './lib/accents'
 import { classifyFailure } from './lib/errors'
 import { useOnline } from './lib/useOnline'
 import MyCards from './components/MyCards'
-import { listMyCards, MAX_CARDS, type MyCard } from './lib/mycards'
+import CardEditor from './components/CardEditor'
+import { deleteMyCard, emptyCard, listMyCards, MAX_CARDS, putMyCard, type MyCard } from './lib/mycards'
 import Companies from './components/Companies'
 import Home from './components/Home'
 import Contacts, { type Flt } from './components/Contacts'
@@ -69,6 +70,8 @@ export default function App() {
   const [editingCard, setEditingCard] = useState<string | null>(null)      // a card id, or 'new'
   const [sharingCard, setSharingCard] = useState<string | null>(null)
   const [stallCard, setStallCard] = useState<string | null>(null)
+  const newCard = useMemo(() => (editingCard === 'new' ? emptyCard(settings.accent) : null), [editingCard])   // eslint-disable-line react-hooks/exhaustive-deps
+  const editorCard = editingCard === 'new' ? newCard : myCards.find((c) => c.id === editingCard)
   const refreshMyCards = useCallback(async () => setMyCards(await listMyCards()), [])
   useEffect(() => { void refreshMyCards() }, [refreshMyCards])
   // A card that is open in the editor, share sheet or stall screen and then disappears (deleted, or replaced by a restore) closes them.
@@ -381,7 +384,12 @@ export default function App() {
         {!online && <div className="offline-bar" role="status">You are offline. Cards you scan are saved and will be read when you are back online.</div>}
         {banner && <div className="banner">{banner}</div>}
         <div className="view" key={openCard ? `o-${open?.id}-${open?.review ? 'r' : 'd'}` : tab}>
-        {openCard && open?.review ? (
+        {editorCard ? (
+          <CardEditor key={editorCard.id} card={editorCard} isNew={editingCard === 'new'}
+            onSave={async (c) => { await putMyCard(c); await refreshMyCards(); setEditingCard(null); setTab('mycard') }}
+            onDelete={async (id) => { await deleteMyCard(id); await refreshMyCards(); setEditingCard(null) }}
+            onClose={() => setEditingCard(null)} />
+        ) : openCard && open?.review ? (
           <ScanResult key={`r-${openCard.id}`} card={openCard} events={events} onBack={() => setOpen(null)}
             onKeep={(keep, extras) => { void keepPeople(openCard.id, keep, extras); setOpen(null); goto('contacts') }}
             onEdit={(idx) => setOpen({ id: openCard.id, idx })} />
@@ -435,10 +443,10 @@ export default function App() {
       {camOpen && <Camera eventLabel={eventLabel} onSubmit={(cards) => { void addBatch(cards); goto('contacts') }} onGallery={(fs) => { void addFiles(fs) }} onClose={() => setCamOpen(false)} />}
       <input ref={fallbackInput} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { if (e.target.files) void addFiles(e.target.files); e.target.value = '' }} />
       <Toast toast={toast} onDone={() => setToast(null)} />
-      {!openCard && (tab === 'home' || tab === 'contacts') && (
+      {!openCard && !editorCard && (tab === 'home' || tab === 'contacts') && (
         <button className="fab-scan" onClick={scan} aria-label="Scan a card"><Icon name="camera" size={22} />Scan</button>
       )}
-      {!openCard && (
+      {!openCard && !editorCard && (
         <nav>
           <NavBtn id="home" label="Home" icon="home" active={navActive} go={gotoTab} />
           <NavBtn id="contacts" label="Contacts" icon="users" active={navActive} go={gotoTab} />
