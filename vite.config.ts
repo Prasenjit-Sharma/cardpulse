@@ -24,7 +24,7 @@ export default defineConfig({
         description: 'Scan business cards into contacts. Reads several cards per photo, built for exhibitions.',
         categories: ['business', 'productivity'],
         lang: 'en-IN',
-        theme_color: '#0F766E',
+        theme_color: '#2A2F36',
         background_color: '#F4F5F6',
         display: 'standalone',
         orientation: 'portrait',

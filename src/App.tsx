@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { deleteCard, getCard, listCards, loadSettings, putCard, readerReady, saveSettings, type Settings } from './lib/db'
 import { log } from './lib/debug'
 import { extractCard, serverMode } from './lib/gemini'
@@ -8,6 +8,7 @@ import type { CardRecord, Contact, EventRec } from './lib/types'
 import { loadActiveEvent, loadEvents, saveActiveEvent, saveEvents } from './lib/events'
 import { findDuplicates } from './lib/dupes'
 import { backupDue, backupFileName, backupNudgeUntil, buildBackup, lastBackupAt, markBackedUp, mergeEvents, parseBackup, planRestore, saveBackupFile, snoozeBackupNudge } from './lib/backup'
+import { applyAccent } from './lib/accents'
 import { classifyFailure } from './lib/errors'
 import { useOnline } from './lib/useOnline'
 import Companies from './components/Companies'
@@ -66,6 +67,7 @@ export default function App() {
   const [toast, setToast] = useState<ToastData | null>(null)
   const toastAt = useRef({ at: 0, count: 0 })
   const install = useInstall()
+  useLayoutEffect(() => applyAccent(settings.accent), [settings.accent])          // before paint, so a chosen colour never flashes the default
   useEffect(() => {
     const t = settings.theme ?? 'system'
     if (t === 'system') document.documentElement.removeAttribute('data-theme'); else document.documentElement.dataset.theme = t

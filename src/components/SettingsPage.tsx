@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { ACCENTS, accentById } from '../lib/accents'
 import { lastBackupAt } from '../lib/backup'
 import { buildFeedback, sendFeedback, type Diagnostics } from '../lib/feedback'
 import { clearLog, readLog, subscribe } from '../lib/debug'
@@ -165,6 +166,15 @@ export default function SettingsPage({ cards, settings, install, onChange, onWip
           <span>Theme</span>
           <Picker className="pick wide" title="Theme" value={settings.theme ?? 'system'} onChange={(v) => onChange({ ...settings, theme: v as Theme })} options={[{ value: 'system', label: 'Match my phone' }, { value: 'dark', label: 'Dark' }, { value: 'light', label: 'Light' }]} />
         </label>
+        <div className="accent-pick" role="radiogroup" aria-label="Accent colour">
+          <span className="accent-label">Accent colour <b>{accentById(settings.accent).name}</b></span>
+          <div className="accent-row">
+            {ACCENTS.map((a) => (
+              <button key={a.id} role="radio" aria-checked={accentById(settings.accent).id === a.id} aria-label={`${a.name}, ${a.suits}`} title={`${a.name}: ${a.suits}`}
+                className="accent-sw" style={{ ['--sw' as string]: a.hex, ['--sw-l' as string]: a.lite }} onClick={() => onChange({ ...settings, accent: a.id })} />
+            ))}
+          </div>
+        </div>
       </section>
 
       <h3 className="group">Photos</h3>

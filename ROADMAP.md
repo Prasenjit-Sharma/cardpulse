@@ -12,7 +12,7 @@ subscription apps (Covve about $120/year, HiHello Premium about $10/month, CamCa
 Working rules for every phase:
 
 - **Design:** every UI change goes through Impeccable (shape, build, finish review) and stays inside the Card Album
-  system and the Graphite + Teal palette. Nothing ships without the user checking it on real phones.
+  system. The app's accent is user-selectable (Settings > Appearance), Graphite by default, from one list in `src/lib/accents.ts`. Nothing ships without the user checking it on real phones.
 - **Decide by data:** measured figures only (about ₹0.16 per photo on Gemini Flash-Lite; about 1,600 input tokens per
   image, fixed regardless of photo size). No invented prices, users or accuracy claims.
 - **Small phases, each shippable.** Each phase ends with tests green, a deploy, and a real-phone check.
@@ -76,7 +76,7 @@ walk-through on a real device, and measuring detector speed on a genuinely low-e
 ### Phase 2: Digital cards (about 3 to 4 weeks)
 
 Decided 2026-09-21: My Card is a fifth tab (Home, Contacts, My Card, Events, Settings); the default accent is Graphite. Design
-options (six templates, eight accents, contrast figures) were reviewed on a preview page; final template set still to confirm.
+options were reviewed on a preview page. Templates to ship (confirmed): Ledger (default), Header, Split, Noir, Bold; Tint held back.
 
 The HiHello-style card, aimed at events and exhibitors. It starts with its own brainstorm and written spec because it
 is a new subsystem.
