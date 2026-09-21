@@ -90,7 +90,7 @@ is a new subsystem.
 
 ### Phase 4: Packs and payments (about 2 weeks)
 
-- Define the packs (see open decisions), price them from measured cost, and test them with a few real users first.
+- Define the packs (see section 5), price them from measured cost, and test them with a few real users first.
 - Razorpay for India; usage meter in Settings; store billing once the app is in the stores.
 
 ### Phase 5: Admin console (about 2 to 3 weeks)
