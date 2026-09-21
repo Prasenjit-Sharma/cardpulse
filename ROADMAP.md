@@ -166,6 +166,15 @@ Each contact gets a timeline of interactions (a call, a meeting, a message): wha
 separate from the single note that is exported to the phone. Keep it small: no pipelines, no deals. See the design discussion
 of 2026-09-21; a candidate to pull ahead of Phase 7 because it is cheap and makes the app sticky after events.
 
+### Idea for the end of the plan: language reach
+
+Decided 2026-09-21 to revisit once the main phases are done. Notes from the discussion: card reading already works across major
+scripts through Gemini, but the reader currently outputs English, the interface is English only, and names, addresses and phones
+assume an Indian, First-Last convention. Steps when the time comes: Indian regional languages first (interface and a
+"keep original script" option); a test set of real cards per language and published accuracy; family-name-first handling; a
+bilingual My Card. Wording until tested: "reads business cards in many languages", never "any language". Covve and CamCard already
+claim broad language support, so this is table stakes; the bilingual card is the differentiator.
+
 ## 6. Parked (small, do when convenient)
 
 - Contacts scanned before "extras" shipped have no dealer or factory notes; with "Re-read" removed, decide whether a
