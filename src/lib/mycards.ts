@@ -1,5 +1,6 @@
 import { createStore, del, entries, set } from 'idb-keyval'
 import { ACCENTS, DEFAULT_ACCENT } from './accents.ts'
+import { graphemes } from './graphemes.ts'
 
 export type TemplateId = 'ledger' | 'header' | 'split' | 'noir' | 'bold'
 export type FontId = 'archivo' | 'inter'
@@ -43,7 +44,7 @@ export function sanitizeCard(c: MyCard): MyCard {
 
 export function initials(name: string): string {
   const words = name.trim().split(/\s+/).filter(Boolean).slice(0, 2)
-  return words.length ? words.map((w) => [...w][0]!.toUpperCase()).join('') : '?'
+  return words.length ? words.map((w) => graphemes(w)[0]!.toUpperCase()).join('') : '?'
 }
 
 export function cardsToEntries(cards: MyCard[]): { json: unknown[]; files: { name: string; blob: Blob }[] } {

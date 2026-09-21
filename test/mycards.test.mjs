@@ -15,7 +15,10 @@ test('sanitizing trims, drops blanks, caps lists and repairs unknown choices', (
 })
 test('initials are up to two letters, and a question mark for nothing', () => {
   assert.equal(initials('Rajesh Shah'), 'RS'); assert.equal(initials('  madonna '), 'M'); assert.equal(initials(''), '?')
-  assert.equal(initials('प्रसेनजीत शर्मा'), 'पश')
+  assert.equal(initials('प्रसेनजीत शर्मा'), 'प्रश')
+})
+test('initials use whole letters, so a conjunct first letter is not cut in half', () => {
+  assert.equal(initials('श्रीमती शर्मा'), 'श्रीश')
 })
 test('cards round-trip through backup entries with their photos', () => {
   const photo = new Blob([new Uint8Array(40)], { type: 'image/jpeg' })

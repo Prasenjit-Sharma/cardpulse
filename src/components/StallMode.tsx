@@ -1,8 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { buildCardVcf } from '../lib/cardvcf'
+import { cardQr } from '../lib/cardqr'
 import type { MyCard } from '../lib/mycards'
-import { qrMatrix } from '../lib/qr'
 import { useBackClose } from '../lib/useBackClose'
 import { useWakeLock } from '../lib/wakelock'
 import Icon from './Icon'
@@ -16,7 +15,7 @@ export default function StallMode({ card, onClose }: { card: MyCard; onClose: ()
   useEffect(() => {
     const el = canvas.current
     if (!el) return
-    const m = qrMatrix(buildCardVcf(card).text)
+    const m = cardQr(card).matrix
     const px = Math.round(el.clientWidth * Math.min(3, window.devicePixelRatio || 1)) || 800
     el.width = px; el.height = px
     const ctx = el.getContext('2d')!

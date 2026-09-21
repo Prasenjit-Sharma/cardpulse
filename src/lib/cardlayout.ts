@@ -1,15 +1,20 @@
 import { accentById } from './accents.ts'
+import { graphemes, isLatin } from './graphemes.ts'
 import { initials, type MyCard } from './mycards.ts'
 
 /** A card is laid out in units of its own width (100), so one layout draws at any size. */
 export const CARD_W = 100
 export const CARD_H = 100 / 1.75
 
-export type Measure = (text: string, size: number, weight: number) => number
+/** How the canvas paints a run of text: letter-spacing in em, and how condensed the face is (Archivo has a width axis). */
+export type Stretch = 'condensed' | 'semi-condensed'
+export interface TextStyle { spacing?: number; stretch?: Stretch }
+/** Width of `text` in layout units, as painted (letter-spacing included). */
+export type Measure = (text: string, size: number, weight: number, style?: TextStyle) => number
 export interface Box { x: number; y: number; w: number; h: number }
 export type Op =
   | { kind: 'rect'; box: Box; fill: string; radius?: number }
-  | { kind: 'text'; box: Box; text: string; size: number; weight: number; color: string; caps?: boolean; spacing?: number }
+  | { kind: 'text'; box: Box; text: string; size: number; weight: number; color: string; caps?: boolean; spacing?: number; stretch?: Stretch }
   | { kind: 'qr'; box: Box }
   | { kind: 'photo'; box: Box }
   | { kind: 'mono'; box: Box; text: string; fill: string; color: string }
@@ -20,13 +25,13 @@ const M = 6                                                      // side margin
 const QR = 19                                                    // the QR plate is this square on every template but Split
 
 /** Shrinks text to fit, down to `min`; if it still does not fit, cuts it and adds an ellipsis. */
-export function fitText(text: string, maxW: number, size: number, min: number, weight: number, measure: Measure): { text: string; size: number } {
+export function fitText(text: string, maxW: number, size: number, min: number, weight: number, measure: Measure, style?: TextStyle): { text: string; size: number } {
   let s = size
-  while (s > min && measure(text, s, weight) > maxW) s = Math.max(min, s - 0.25)
-  if (measure(text, s, weight) <= maxW) return { text, size: s }
-  const chars = [...text]
-  while (chars.length > 1 && measure(chars.join('') + '…', s, weight) > maxW) chars.pop()
-  return { text: chars.join('') + '…', size: s }
+  while (s > min && measure(text, s, weight, style) > maxW) s = Math.max(min, s - 0.25)
+  if (measure(text, s, weight, style) <= maxW) return { text, size: s }
+  const letters = graphemes(text)                               // cut between whole letters, never inside a vowel sign or conjunct
+  while (letters.length > 1 && measure(letters.join('') + '…', s, weight, style) > maxW) letters.pop()
+  return { text: letters.join('') + '…', size: s }
 }
 
 /** Collects a template's drawing operations. Text is fitted, and kept clear of anything to its right on the same lines. */
@@ -39,14 +44,16 @@ class Sheet {
   keepClear(b: Box) { this.obstacles.push(b) }
   rect(box: Box, fill: string, radius?: number) { this.ops.push({ kind: 'rect', box, fill, radius }) }
   /** Text at (x, y). `full` is the widest it may be; obstacles to the right on the same lines narrow that. Returns the box, or undefined for empty text. */
-  text(text: string, x: number, y: number, full: number, size: number, min: number, weight: number, color: string, extra: { caps?: boolean; spacing?: number } = {}): Box | undefined {
+  text(text: string, x: number, y: number, full: number, size: number, min: number, weight: number, color: string, extra: { caps?: boolean; spacing?: number; stretch?: Stretch } = {}): Box | undefined {
     if (!text.trim()) return undefined
     const h = size * 1.25
     let maxW = full
     for (const o of this.obstacles) if (y < o.y + o.h + 1 && y + h > o.y - 1 && o.x > x) maxW = Math.min(maxW, o.x - 3 - x)
-    const f = fitText(extra.caps ? text.toUpperCase() : text, Math.max(4, maxW), size, min, weight, this.measure)
-    const box = { x, y, w: Math.min(maxW, this.measure(f.text, f.size, weight)), h: f.size * 1.25 }
-    this.ops.push({ kind: 'text', box, text: f.text, size: f.size, weight, color, ...extra })
+    const shown = extra.caps ? text.toUpperCase() : text
+    const style: TextStyle = { spacing: isLatin(shown) ? extra.spacing : 0, stretch: extra.stretch }      // spaced Devanagari loses its joins
+    const f = fitText(shown, Math.max(4, maxW), size, min, weight, this.measure, style)
+    const box = { x, y, w: Math.min(maxW, this.measure(f.text, f.size, weight, style)), h: f.size * 1.25 }
+    this.ops.push({ kind: 'text', box, text: f.text, size: f.size, weight, color, caps: extra.caps, spacing: style.spacing, stretch: style.stretch })
     return box
   }
   /** The person's photo if there is one, else their initials. */
@@ -65,9 +72,9 @@ const FACE_TR: Box = { x: CARD_W - M - 9.4, y: 5, w: 9.4, h: 9.4 }
 function ledger(c: MyCard, m: Measure): Layout {
   const a = accentById(c.accent).hex, s = new Sheet(m, c), qr = qrBottomRight
   s.keepClear(qr); s.keepClear(FACE_TR)
-  s.text(c.company, M, 5.4, CARD_W - 2 * M, 2.5, 1.8, 650, a, { caps: true, spacing: 0.14 })
+  s.text(c.company, M, 5.4, CARD_W - 2 * M, 2.5, 1.8, 650, a, { caps: true, spacing: 0.14, stretch: 'semi-condensed' })
   s.face(FACE_TR, a, WHITE)
-  const name = s.text(c.name, M, 15.4, CARD_W - 2 * M, 7, 3.6, 700, INK)
+  const name = s.text(c.name, M, 15.4, CARD_W - 2 * M, 7, 3.6, 700, INK, { stretch: 'semi-condensed' })
   s.text(c.title, M, (name ? name.y + name.h : 15.4) + 0.6, CARD_W - 2 * M, 3.3, 2.4, 500, MUTED)
   const rows = [['M', c.phones[0]], ['E', c.emails[0]], ['W', c.website]].filter((r): r is [string, string] => !!r[1])
   rows.forEach(([k, v], i) => {
@@ -89,9 +96,9 @@ function header(c: MyCard, m: Measure): Layout {
   const hasTitle = !!c.title
   const titleY = bottom - 3.3 * 1.25
   const nameY = hasTitle ? titleY - 7 * 1.25 - 0.6 : bottom - 7 * 1.25
-  s.text(c.name, M, nameY, CARD_W - 2 * M, 7, 3.6, 700, WHITE)
+  s.text(c.name, M, nameY, CARD_W - 2 * M, 7, 3.6, 700, WHITE, { stretch: 'semi-condensed' })
   s.text(c.title, M, titleY, CARD_W - 2 * M, 3.3, 2.4, 500, 'rgba(255,255,255,0.92)')
-  s.text(c.company, M, band + 4.4, CARD_W - 2 * M, 2.5, 1.8, 650, a, { caps: true, spacing: 0.14 })
+  s.text(c.company, M, band + 4.4, CARD_W - 2 * M, 2.5, 1.8, 650, a, { caps: true, spacing: 0.14, stretch: 'semi-condensed' })
   contactLines(c, 3).forEach((l, i) => s.text(l, M, band + 9.6 + i * 4.65, CARD_W - 2 * M, 3, 2, 500, INK))
   s.qr(qr)
   return { ops: s.ops, qrBox: qr, background: PAPER }
@@ -103,10 +110,10 @@ function split(c: MyCard, m: Measure): Layout {
   s.rect({ x: 0, y: 0, w: 37, h: CARD_H }, a)
   s.face({ x: 5.4, y: 5.4, w: 11, h: 11 }, WHITE, a)
   const x = 43, w = CARD_W - x - 5.6
-  s.text(c.name, x, 6, w, 6.2, 3.4, 700, INK)
+  s.text(c.name, x, 6, w, 6.2, 3.4, 700, INK, { stretch: 'semi-condensed' })
   s.text(c.title, x, 15, w, 3.3, 2.4, 500, MUTED)
-  s.text(c.company, x, 24, w, 2.5, 1.8, 650, a, { caps: true, spacing: 0.14 })
-  contactLines(c, 3).forEach((l, i) => s.text(l, x, 29.2 + i * 4.65, w, 3, 2, 500, INK))
+  s.text(c.company, x, 32.85, w, 2.5, 1.8, 650, a, { caps: true, spacing: 0.14, stretch: 'semi-condensed' })
+  contactLines(c, 3).forEach((l, i) => s.text(l, x, 38.2 + i * 4.65, w, 3, 2, 500, INK))
   s.qr(qr)
   return { ops: s.ops, qrBox: qr, background: PAPER }
 }
@@ -114,12 +121,12 @@ function split(c: MyCard, m: Measure): Layout {
 function noir(c: MyCard, m: Measure): Layout {
   const acc = accentById(c.accent), s = new Sheet(m, c), qr = qrBottomRight
   s.keepClear(qr); s.keepClear(FACE_TR)
-  s.text(c.company, M, 5.4, CARD_W - 2 * M, 2.5, 1.8, 650, acc.lite, { caps: true, spacing: 0.14 })
+  s.text(c.company, M, 5.4, CARD_W - 2 * M, 2.5, 1.8, 650, acc.lite, { caps: true, spacing: 0.14, stretch: 'semi-condensed' })
   s.face(FACE_TR, acc.lite, NOIR)
-  const name = s.text(c.name, M, 15.4, CARD_W - 2 * M, 7, 3.6, 700, '#F6F7F8')
-  s.text(c.title, M, (name ? name.y + name.h : 15.4) + 0.6, CARD_W - 2 * M, 3.3, 2.4, 500, acc.lite)
-  s.rect({ x: M, y: 30.4, w: 9, h: 0.9 }, acc.lite, 0.4)
-  contactLines(c, 3).forEach((l, i) => s.text(l, M, 33.6 + i * 4.65, CARD_W - 2 * M, 3, 2, 500, '#C9CDD2'))
+  const name = s.text(c.name, M, 18.15, CARD_W - 2 * M, 7, 3.6, 700, '#F6F7F8', { stretch: 'semi-condensed' })
+  s.text(c.title, M, (name ? name.y + name.h : 18.15) + 0.6, CARD_W - 2 * M, 3.3, 2.4, 500, acc.lite)
+  s.rect({ x: M, y: 34.3, w: 9, h: 0.9 }, acc.lite, 0.4)
+  contactLines(c, 3).forEach((l, i) => s.text(l, M, 37.8 + i * 4.65, CARD_W - 2 * M, 3, 2, 500, '#C9CDD2'))
   s.qr(qr)
   return { ops: s.ops, qrBox: qr, background: NOIR }
 }
@@ -127,9 +134,9 @@ function noir(c: MyCard, m: Measure): Layout {
 function bold(c: MyCard, m: Measure): Layout {
   const a = accentById(c.accent).hex, s = new Sheet(m, c), qr = qrTopRight
   s.keepClear(qr)
-  s.text(c.company, M, 5.4, CARD_W - 2 * M, 2.5, 1.8, 650, 'rgba(255,255,255,0.88)', { caps: true, spacing: 0.14 })
-  const name = s.text(c.name, M, 14, 66, 10.4, 4.5, 800, WHITE, { caps: true })
-  s.text(c.title, M, (name ? name.y + name.h : 14) + 1, CARD_W - 2 * M, 3.3, 2.4, 500, 'rgba(255,255,255,0.92)')
+  s.text(c.company, M, 5.4, CARD_W - 2 * M, 2.5, 1.8, 650, 'rgba(255,255,255,0.88)', { caps: true, spacing: 0.14, stretch: 'semi-condensed' })
+  const name = s.text(c.name, M, 16, 66, 10.4, 4.5, 800, WHITE, { caps: true, stretch: 'condensed' })
+  s.text(c.title, M, (name ? name.y + name.h : 16) + 1, CARD_W - 2 * M, 3.3, 2.4, 500, 'rgba(255,255,255,0.92)')
   contactLines(c, 2).forEach((l, i) => s.text(l, M, CARD_H - 4.6 - 9.3 + i * 4.65, CARD_W - 2 * M, 3, 2, 500, 'rgba(255,255,255,0.95)'))
   s.qr(qr)
   return { ops: s.ops, qrBox: qr, background: a }

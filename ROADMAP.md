@@ -75,6 +75,10 @@ walk-through on a real device, and measuring detector speed on a genuinely low-e
 
 ### Phase 2: Digital cards (about 3 to 4 weeks)
 
+**2a built 2026-09-21, awaiting the real-phone check** (spec and plan in `docs/superpowers/`). Test on real handsets: a second phone
+scanning the QR (Android and iPhone cameras should offer Add contact), a long Hindi name, the Bold template's condensed capitals on
+iPhone, sharing the picture through WhatsApp, stall mode keeping the screen awake, a HEIC or corrupt photo, backup then restore.
+
 Decided 2026-09-21: My Card is a fifth tab (Home, Contacts, My Card, Events, Settings); the default accent is Graphite. Design
 options were reviewed on a preview page. Templates to ship (confirmed): Ledger (default), Header, Split, Noir, Bold; Tint held back.
 

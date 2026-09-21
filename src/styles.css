@@ -849,10 +849,21 @@ h3.section .link { float: right; min-height: 0; padding: 0; font-size: var(--t-x
 .choice:active:not(:disabled) { transform: none; box-shadow: none }
 
 /* stall mode: the QR and nothing else */
-.stall { position: fixed; inset: 0; z-index: 40; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: calc(24px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom)); background: #FFFFFF; color: #16191D; text-align: center }
-.stall-close { position: absolute; top: calc(10px + env(safe-area-inset-top)); right: 10px; color: #16191D }
+.stall { position: fixed; inset: 0; z-index: 40; overflow-y: auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: calc(24px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom)); background: #FFFFFF; color: #16191D; text-align: center }
+.stall-close { position: absolute; top: calc(10px + env(safe-area-inset-top)); right: 10px; width: 48px; height: 48px; min-height: 48px; color: #16191D }
 .stall-cap { margin: 0; font-size: var(--t-s); font-weight: 600; letter-spacing: .14em; text-transform: uppercase; font-variation-settings: 'wdth' 80; color: #4E545C }
 .stall-qr { width: min(80vw, 62dvh); height: min(80vw, 62dvh); display: block }
 .stall-name { font-size: 26px; font-weight: 700; letter-spacing: -.01em; line-height: 1.1; font-variation-settings: 'wdth' 90; overflow-wrap: anywhere }
 .stall-co { font-size: var(--t-l); color: #4E545C }
 .stall-hint { margin: 6px 0 0; font-size: var(--t-s); color: #4E545C }
+
+/* a short screen (a phone on its side): QR beside the name, not above it */
+@media (orientation: landscape) and (max-height: 480px) {
+  .stall { flex-direction: row; justify-content: center; gap: 28px; padding-top: 16px; padding-bottom: 16px }
+  .stall-qr { width: min(80dvh, 46vw); height: min(80dvh, 46vw) }
+  .stall > :not(.stall-qr):not(.stall-close) { max-width: 40vw; text-align: left }
+}
+/* with the keyboard up there is little height: keep the preview small and the fields in view */
+@media (max-height: 700px) { .editor-preview .card-canvas { width: 60%; margin-inline: auto } }
+.choice { background: var(--board-2); border-color: transparent }
+.mycards-add { border-color: var(--ink-3) }

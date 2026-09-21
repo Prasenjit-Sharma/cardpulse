@@ -2,9 +2,9 @@ import { useState } from 'react'
 import { browserEnv, shareVcf } from '../lib/actions'
 import { buildCardVcf } from '../lib/cardvcf'
 import { cardAsText, cardFileName } from '../lib/cardshare'
+import { cardQr } from '../lib/cardqr'
 import { drawCard } from '../lib/drawcard'
 import type { MyCard } from '../lib/mycards'
-import { qrMatrix } from '../lib/qr'
 import Sheet, { SheetItem } from './Sheet'
 
 const EXPORT_PX = 2000
@@ -13,7 +13,7 @@ const EXPORT_PX = 2000
 async function cardPng(card: MyCard): Promise<Blob> {
   const c = document.createElement('canvas')
   c.width = EXPORT_PX; c.height = Math.round(EXPORT_PX / 1.75)
-  await drawCard(c.getContext('2d')!, card, qrMatrix(buildCardVcf(card).text), EXPORT_PX)
+  await drawCard(c.getContext('2d')!, card, cardQr(card).matrix, EXPORT_PX)
   return new Promise<Blob>((resolve, reject) => c.toBlob((b) => (b ? resolve(b) : reject(new Error('encode'))), 'image/png'))
 }
 

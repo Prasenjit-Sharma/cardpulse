@@ -1,7 +1,9 @@
 import type { MyCard } from './mycards.ts'
 
 export type Dropped = 'social' | 'address' | 'emails' | 'phones'
-const esc = (s: string) => s.replace(/\\/g, '\\\\').replace(/\r?\n/g, '\\n').replace(/;/g, '\;').replace(/,/g, '\\,')
+const BS = String.fromCharCode(92)                                       // a backslash, built so it can never be mistyped as a lone escape
+/** vCard text escaping: backslash, newline, semicolon and comma. */
+const esc = (s: string) => s.replace(/\\/g, BS + BS).replace(/\r?\n/g, BS + 'n').replace(/[;,]/g, (m) => BS + m)
 const bytes = (s: string) => new TextEncoder().encode(s).length
 
 /** Someone can be reached from this card: it has at least one phone or email. */

@@ -17,7 +17,8 @@ export default function MyCards({ cards, onAdd, onEdit, onShare, onStall }: {
   const [index, setIndex] = useState(0)
   const press = useRef<number>(0)
   const canAdd = cards.length < MAX_CARDS
-  const current = cards[Math.min(index, cards.length - 1)]
+  const onAddSlide = canAdd && index >= cards.length
+  const current = onAddSlide ? undefined : cards[Math.min(index, cards.length - 1)]       // on the "Add a card" slide there is no card to edit or share
 
   const startPress = (id: string) => { clearTimeout(press.current); press.current = window.setTimeout(() => onStall(id), LONG_PRESS_MS) }
   const endPress = () => clearTimeout(press.current)
@@ -35,9 +36,10 @@ export default function MyCards({ cards, onAdd, onEdit, onShare, onStall }: {
         </div>
       ) : (
         <>
-          <div className="mycards-track" onScroll={(e) => setIndex(Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth))}>
+          <div className="mycards-track" role="region" aria-label="Your cards" tabIndex={0}
+            onScroll={(e) => { const el = e.currentTarget; const slide = el.firstElementChild as HTMLElement | null; const pitch = slide ? slide.offsetWidth + 14 : el.clientWidth; setIndex(Math.round(el.scrollLeft / pitch)) }}>
             {cards.map((c, i) => (
-              <div key={c.id} className="mycards-item" role="group" aria-label={`Card ${i + 1} of ${cards.length}${c.label ? `, ${c.label}` : ''}`}
+              <div key={c.id} className="mycards-item" role="group" aria-roledescription="slide" aria-label={`Card ${i + 1} of ${cards.length}${c.label ? `, ${c.label}` : ''}`}
                 onPointerDown={() => startPress(c.id)} onPointerUp={endPress} onPointerLeave={endPress} onPointerCancel={endPress} onContextMenu={(e) => e.preventDefault()}>
                 <CardCanvas card={c} />
                 {c.label && <span className="mycards-label">{c.label}</span>}
@@ -58,7 +60,7 @@ export default function MyCards({ cards, onAdd, onEdit, onShare, onStall }: {
               <button className="cta" onClick={() => onShare(current.id)}><Icon name="share" size={18} /> Share</button>
             </div>
           )}
-          <p className="hint mycards-tip">Press and hold a card to show its QR full screen.</p>
+          <p className="hint mycards-tip">Press and hold a card, or use Share, to show its QR full screen.</p>
         </>
       )}
     </>

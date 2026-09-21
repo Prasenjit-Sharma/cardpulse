@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState, type ReactNode } from 'react'
 import { ACCENTS } from '../lib/accents'
-import { buildCardVcf, reachable, type Dropped } from '../lib/cardvcf'
+import { cardQr } from '../lib/cardqr'
+import { reachable, type Dropped } from '../lib/cardvcf'
 import { preparePhoto } from '../lib/cardphoto'
 import { FONTS, MAX_LIST, sanitizeCard, TEMPLATES, type FontId, type MyCard, type TemplateId } from '../lib/mycards'
 import { useBackClose } from '../lib/useBackClose'
@@ -24,7 +25,7 @@ function ListRows({ label, values, placeholder, inputMode, onChange }: {
     <Row label={label}>
       {rows.map((v, i) => (
         <div key={i} className="lrow">
-          <input value={v} inputMode={inputMode} placeholder={placeholder} aria-label={rows.length > 1 ? `${label} ${i + 1}` : label}
+          <input value={v} inputMode={inputMode} placeholder={placeholder} maxLength={120} aria-label={rows.length > 1 ? `${label} ${i + 1}` : label}
             onChange={(e) => onChange(rows.map((x, j) => (j === i ? e.target.value : x)))} />
           {v && <button className="x" onClick={() => onChange(rows.filter((_, j) => j !== i))} aria-label={`Remove ${label.toLowerCase()} ${i + 1}`}><Icon name="x" size={16} /></button>}
         </div>
@@ -46,10 +47,12 @@ export default function CardEditor({ card, isNew, onSave, onDelete, onClose }: {
   const [dirty, setDirty] = useState(false)
   const [busy, setBusy] = useState(false)
   const [photoMsg, setPhotoMsg] = useState('')
+  const [saveError, setSaveError] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const set = (p: Partial<MyCard>) => { setDraft((d) => ({ ...d, ...p })); setDirty(true) }
 
-  const dropped = useMemo(() => buildCardVcf(sanitizeCard(draft)).dropped, [draft])
+  const qr = useMemo(() => cardQr(draft), [draft])
+  const dropped = qr.dropped
   const canSave = draft.name.trim().length > 0 && !busy
 
   const requestClose = (): boolean | void => {
@@ -64,7 +67,10 @@ export default function CardEditor({ card, isNew, onSave, onDelete, onClose }: {
     const photo = await preparePhoto(f)
     if (photo) set({ photo }); else setPhotoMsg('That picture could not be used. Try a JPEG or PNG.')
   }
-  const save = async () => { setBusy(true); try { await onSave(sanitizeCard(draft)) } finally { setBusy(false) } }
+  const save = async () => {
+    setBusy(true); setSaveError(false)
+    try { await onSave(sanitizeCard(draft)) } catch { setSaveError(true) } finally { setBusy(false) }
+  }
 
   return (
     <div className="page-plain card-editor">
@@ -76,23 +82,25 @@ export default function CardEditor({ card, isNew, onSave, onDelete, onClose }: {
 
       <div className="editor-preview"><CardCanvas card={draft} /></div>
       {!draft.name.trim() && <p className="hint" role="status">Add your name to save this card.</p>}
+      {saveError && <p className="hint bad" role="alert">Could not save the card. Check that the phone has free space, then try again.</p>}
 
       <h3 className="group">Details</h3>
       <div className="panel">
-        <Row label="Card name"><input value={draft.label} placeholder="Work, Personal, Stall" aria-label="Card name" onChange={(e) => set({ label: e.target.value })} /></Row>
-        <Row label="Name"><input value={draft.name} aria-label="Name" onChange={(e) => set({ name: e.target.value })} /></Row>
-        <Row label="Job title"><input value={draft.title} aria-label="Job title" onChange={(e) => set({ title: e.target.value })} /></Row>
-        <Row label="Company"><input value={draft.company} aria-label="Company" onChange={(e) => set({ company: e.target.value })} /></Row>
+        <Row label="Card name"><input value={draft.label} placeholder="Work, Personal, Stall" aria-label="Card name" maxLength={30} onChange={(e) => set({ label: e.target.value })} /></Row>
+        <Row label="Name"><input value={draft.name} aria-label="Name" maxLength={80} onChange={(e) => set({ name: e.target.value })} /></Row>
+        <Row label="Job title"><input value={draft.title} aria-label="Job title" maxLength={80} onChange={(e) => set({ title: e.target.value })} /></Row>
+        <Row label="Company"><input value={draft.company} aria-label="Company" maxLength={80} onChange={(e) => set({ company: e.target.value })} /></Row>
       </div>
       <div className="panel">
         <ListRows label="Phone" values={draft.phones} placeholder="Enter phone" inputMode="tel" onChange={(v) => set({ phones: v })} />
         <ListRows label="Email" values={draft.emails} placeholder="Enter email" inputMode="email" onChange={(v) => set({ emails: v })} />
-        <Row label="Web"><input value={draft.website} placeholder="Enter web" inputMode="url" aria-label="Web" onChange={(e) => set({ website: e.target.value })} /></Row>
-        <Row label="Address"><textarea rows={2} value={draft.address} aria-label="Address" onChange={(e) => set({ address: e.target.value })} /></Row>
+        <Row label="Web"><input value={draft.website} placeholder="Enter web" inputMode="url" aria-label="Web" maxLength={200} onChange={(e) => set({ website: e.target.value })} /></Row>
+        <Row label="Address"><textarea rows={2} value={draft.address} aria-label="Address" maxLength={300} onChange={(e) => set({ address: e.target.value })} /></Row>
         <ListRows label="Social" values={draft.social} placeholder="LinkedIn or handle" onChange={(v) => set({ social: v })} />
       </div>
       {!reachable(sanitizeCard(draft)) && <p className="hint" role="status">Add a phone or email so people can reach you.</p>}
-      {dropped.length > 0 && <p className="hint" role="status">To keep the QR quick to scan, it leaves out {dropped.map((d) => DROPPED_WORDS[d]).join(' and ')}. They still show on the card.</p>}
+      {qr.trimmed && <p className="hint" role="status">The details are too long for one QR, so it carries a shortened card: name, company, first phone and email.</p>}
+      {!qr.trimmed && dropped.length > 0 && <p className="hint" role="status">To keep the QR quick to scan, it leaves out {dropped.map((d) => DROPPED_WORDS[d]).join(' and ')}. They still show on the card.</p>}
 
       <h3 className="group">Photo or logo</h3>
       <div className="panel photo-row">
@@ -105,19 +113,19 @@ export default function CardEditor({ card, isNew, onSave, onDelete, onClose }: {
       <h3 className="group">Design</h3>
       <div className="panel design-panel">
         <span className="accent-label">Template <b>{TEMPLATE_NAME[draft.template]}</b></span>
-        <div className="choice-row" role="radiogroup" aria-label="Template">
-          {TEMPLATES.map((t) => <button key={t} role="radio" aria-checked={draft.template === t} className="choice" onClick={() => set({ template: t })}>{TEMPLATE_NAME[t]}</button>)}
+        <div className="choice-row" role="group" aria-label="Template">
+          {TEMPLATES.map((t) => <button key={t} aria-pressed={draft.template === t} className="choice" onClick={() => set({ template: t })}>{TEMPLATE_NAME[t]}</button>)}
         </div>
         <span className="accent-label">Accent colour <b>{ACCENTS.find((a) => a.id === draft.accent)?.name}</b></span>
-        <div className="accent-row" role="radiogroup" aria-label="Accent colour">
+        <div className="accent-row" role="group" aria-label="Accent colour">
           {ACCENTS.map((a) => (
-            <button key={a.id} role="radio" aria-checked={draft.accent === a.id} aria-label={a.name} title={a.name} className="accent-sw"
+            <button key={a.id} aria-pressed={draft.accent === a.id} aria-label={a.name} title={a.name} className="accent-sw"
               style={{ ['--sw' as string]: a.hex, ['--sw-l' as string]: a.lite }} onClick={() => set({ accent: a.id })} />
           ))}
         </div>
         <span className="accent-label">Font <b>{FONT_NAME[draft.font]}</b></span>
-        <div className="choice-row" role="radiogroup" aria-label="Font">
-          {FONTS.map((f) => <button key={f} role="radio" aria-checked={draft.font === f} className="choice" onClick={() => set({ font: f })}>{FONT_NAME[f]}</button>)}
+        <div className="choice-row" role="group" aria-label="Font">
+          {FONTS.map((f) => <button key={f} aria-pressed={draft.font === f} className="choice" onClick={() => set({ font: f })}>{FONT_NAME[f]}</button>)}
         </div>
       </div>
 

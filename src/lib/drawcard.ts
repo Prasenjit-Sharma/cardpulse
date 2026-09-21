@@ -1,4 +1,4 @@
-import { CARD_H, CARD_W, layoutCard, type Box, type Op } from './cardlayout'
+import { CARD_H, CARD_W, layoutCard, type Box, type Op, type TextStyle } from './cardlayout'
 import type { FontId, MyCard } from './mycards'
 
 const FAMILY: Record<FontId, string> = {
@@ -19,13 +19,21 @@ async function ready(font: FontId): Promise<void> {
  * Draws the card, `px` pixels wide, onto a canvas. The one renderer behind the on-screen preview, the image export and
  * the share sheet, so they cannot drift apart. `qr` is the module grid to print on the QR plate.
  */
-export async function drawCard(ctx: CanvasRenderingContext2D, card: MyCard, qr: boolean[][], px: number): Promise<void> {
+export async function drawCard(ctx: CanvasRenderingContext2D, card: MyCard, qr: boolean[][], px: number, isCurrent: () => boolean = () => true): Promise<void> {
   await ready(card.font)
+  if (!isCurrent()) return
   const k = px / CARD_W
   const font = (size: number, weight: number) => `${weight} ${size * k}px ${FAMILY[card.font]}`
-  const measure = (t: string, size: number, weight: number) => { ctx.font = font(size, weight); ctx.letterSpacing = '0px'; return ctx.measureText(t).width / k }
-  const { ops, qrBox, background } = layoutCard(card, measure, false)
+  const measure = (t: string, size: number, weight: number, style?: TextStyle) => {
+    ctx.font = font(size, weight); setStyle(ctx, style, size, k)
+    const w = ctx.measureText(t).width / k
+    setStyle(ctx, undefined, size, k)
+    return w
+  }
   const photo = card.photo ? await createImageBitmap(card.photo).catch(() => undefined) : undefined
+  if (!isCurrent()) { photo?.close(); return }                       // a newer draw has started; do not paint over it with old content
+  // A photo that cannot be decoded (a corrupt file that came in through a restore) shows the monogram instead of a hole.
+  const { ops, qrBox, background } = layoutCard(photo ? card : { ...card, photo: undefined }, measure, false)
   ctx.save()
   ctx.clearRect(0, 0, px, CARD_H * k)
   ctx.fillStyle = background; ctx.fillRect(0, 0, px, CARD_H * k)
@@ -34,15 +42,21 @@ export async function drawCard(ctx: CanvasRenderingContext2D, card: MyCard, qr: 
   photo?.close()
 }
 
+/** Letter-spacing and font width, applied identically when measuring and painting so fitted text is exactly as wide as it is drawn. Older browsers ignore what they lack. */
+function setStyle(ctx: CanvasRenderingContext2D, style: TextStyle | undefined, size: number, k: number): void {
+  if ('letterSpacing' in ctx) ctx.letterSpacing = `${(style?.spacing ?? 0) * size * k}px`
+  if ('fontStretch' in ctx) ctx.fontStretch = style?.stretch ?? 'normal'
+}
+
 function paint(ctx: CanvasRenderingContext2D, op: Op, k: number, font: (s: number, w: number) => string, qr: boolean[][], qrBox: Box, photo?: ImageBitmap): void {
   const b = op.box
   if (op.kind === 'rect') {
     ctx.fillStyle = op.fill; ctx.beginPath(); ctx.roundRect(b.x * k, b.y * k, b.w * k, b.h * k, (op.radius ?? 0) * k); ctx.fill()
   } else if (op.kind === 'text') {
     ctx.font = font(op.size, op.weight); ctx.fillStyle = op.color; ctx.textBaseline = 'top'; ctx.textAlign = 'left'
-    ctx.letterSpacing = `${(op.spacing ?? 0) * op.size * k}px`
+    setStyle(ctx, { spacing: op.spacing, stretch: op.stretch }, op.size, k)
     ctx.fillText(op.text, b.x * k, b.y * k)
-    ctx.letterSpacing = '0px'
+    setStyle(ctx, undefined, op.size, k)
   } else if (op.kind === 'mono') {
     ctx.fillStyle = op.fill; ctx.beginPath(); ctx.arc((b.x + b.w / 2) * k, (b.y + b.h / 2) * k, (b.w / 2) * k, 0, Math.PI * 2); ctx.fill()
     ctx.fillStyle = op.color; ctx.font = font(b.w * 0.38, 700); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'

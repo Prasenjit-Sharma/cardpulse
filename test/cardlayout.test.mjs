@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 import { CARD_H, CARD_W, cardDescription, fitText, layoutCard } from '../src/lib/cardlayout.ts'
 import { TEMPLATES, emptyCard } from '../src/lib/mycards.ts'
 
-const measure = (t, size) => [...t].length * size * 0.56           // a rough width model: enough to test fitting
+const measure = (t, size, _w, style) => [...t].length * size * (0.56 + (style?.spacing ?? 0))   // a rough width model, letter-spacing included like the canvas
 const base = () => ({ ...emptyCard(), name: 'Rajesh Shah', title: 'General Manager', company: 'ABC Polymers Pvt. Ltd.', phones: ['+91 98240 22893'], emails: ['rajesh@abcpolymers.com'], website: 'abcpolymers.com' })
 const inside = (b) => b.x >= -0.01 && b.y >= -0.01 && b.x + b.w <= CARD_W + 0.01 && b.y + b.h <= CARD_H + 0.01
 const overlap = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
@@ -30,6 +30,25 @@ for (const template of TEMPLATES) {
     })
   }
 }
+test('a text box is as wide as the text really paints, letter-spacing included', () => {
+  for (const template of TEMPLATES) {
+    const { ops } = layoutCard({ ...base(), template, company: 'Hindustan Petroleum Corporation Limited' }, measure, false)
+    for (const op of ops) if (op.kind === 'text') assert.ok(measure(op.text, op.size, op.weight, { spacing: op.spacing, stretch: op.stretch }) <= op.box.w + 0.01, `${template}: "${op.text.slice(0, 18)}"`)
+  }
+})
+test('non-Latin text is never letter-spaced, which breaks the shaping of Devanagari', () => {
+  const { ops } = layoutCard({ ...base(), template: 'ledger', company: 'हिन्दुस्तान पेट्रोलियम' }, measure, false)
+  const co = ops.find((o) => o.kind === 'text' && o.caps)
+  assert.ok(co); assert.ok(!co.spacing)
+})
+test('cutting long Hindi text never splits a letter from its vowel sign or a conjunct', () => {
+  const t = fitText('प्रसेनजीत शर्मा हिन्दुस्तान पेट्रोलियम कॉर्पोरेशन लिमिटेड', 30, 6, 4, 700, measure)
+  assert.ok(t.text.endsWith('…'))
+  const body = t.text.slice(0, -1)
+  const seg = [...new Intl.Segmenter('hi', { granularity: 'grapheme' }).segment('प्रसेनजीत शर्मा हिन्दुस्तान पेट्रोलियम कॉर्पोरेशन लिमिटेड')].map((x) => x.segment)
+  assert.ok(seg.join('').startsWith(body)); let acc = ''; const boundaries = new Set(); for (const g of seg) { acc += g; boundaries.add(acc) }
+  assert.ok(boundaries.has(body), 'the cut falls on a grapheme boundary')
+})
 test('the layout is deterministic and uses the card accent', () => {
   const a = layoutCard({ ...base(), template: 'header', accent: 'navy' }, measure, false)
   assert.deepEqual(a, layoutCard({ ...base(), template: 'header', accent: 'navy' }, measure, false))

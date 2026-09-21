@@ -5,6 +5,7 @@ import { buildCardVcf, reachable } from '../src/lib/cardvcf.ts'
 import { qrMatrix } from '../src/lib/qr.ts'
 import { emptyCard } from '../src/lib/mycards.ts'
 
+const BS = String.fromCharCode(92)                                       // a backslash
 const card = (o = {}) => ({ ...emptyCard(), name: 'Rajesh Shah', title: 'General Manager', company: 'ABC Polymers', phones: ['+91 98240 22893'], emails: ['r@abc.com'], website: 'abc.com', address: 'GIDC Vatva, Ahmedabad 382445', ...o })
 
 test('a vCard 3.0 carries name, organisation, title, phone, email, url and address', () => {
@@ -14,8 +15,13 @@ test('a vCard 3.0 carries name, organisation, title, phone, email, url and addre
 })
 test('commas, semicolons, backslashes and newlines in fields are escaped', () => {
   const { text } = buildCardVcf(card({ company: 'A;B, C\\D', address: 'line1\nline2: near, market' }))
-  assert.ok(text.includes('ORG:A\;B\\, C\\\\D')); assert.ok(text.includes('line1\\nline2: near\\, market'))
+  assert.ok(text.includes('ORG:A' + BS + ';B' + BS + ', C' + BS + BS + 'D'), 'ORG')                  // A, backslash, semicolon, B, backslash, comma ...
+  assert.ok(text.includes('line1\\nline2: near\\, market'))
   assert.equal(text.split('\r\n').every((l) => !l.includes('\n')), true)
+})
+test('a semicolon in the company, name or address never splits a vCard field', () => {
+  const { text } = buildCardVcf(card({ name: 'Tata; Sons Rao', company: 'Tata; Sons', address: 'Plot 4; GIDC' }))
+  assert.ok(text.includes('ORG:Tata' + BS + '; Sons')); assert.ok(text.includes('Plot 4' + BS + '; GIDC;;;;')); assert.ok(text.includes('FN:Tata' + BS + '; Sons Rao'))
 })
 test('over budget, optional parts drop in a fixed order and are reported', () => {
   const big = card({ social: ['linkedin.com/in/' + 'x'.repeat(200)], address: 'a'.repeat(300), emails: ['a@b.co', 'c@d.co', 'e@f.co'], phones: ['1111111111', '2222222222', '3333333333'] })
