@@ -33,8 +33,7 @@ function ActivityRow({ e, onRemove }: { e: Interaction; onRemove: () => void }) 
         <time dateTime={new Date(e.at).toISOString()}>{new Date(e.at).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</time>
         <button className="x-btn" onClick={onRemove} aria-label={`Remove ${KIND_LABEL[e.kind].toLowerCase()} entry`}><Icon name="x" size={14} /></button>
       </div>
-      {e.note && <p>{e.note}</p>}
-      {e.next && <small>Next follow-up: {shortDate(e.next)}</small>}
+      {(e.note || e.next) && <p>{e.note}{e.next && <span className="act-next">{e.note ? ' · ' : ''}Next {shortDate(e.next)}</span>}</p>}
     </div>
   )
 }
@@ -313,13 +312,12 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
               <span className="lbl">Follow up on</span>
               <input ref={followInput} type="date" value={c.followUp ?? ''} autoFocus={followOpen && !c.followUp} onChange={(e) => { patch({ followUp: e.target.value }, false); if (!e.target.value) setFollowOpen(false) }} aria-label="Follow-up date" />
               {c.followUp && <small className={`due${dueStatus(c.followUp, today).state === 'upcoming' ? ' soon' : ''}`}>{dueLabel(c.followUp, today)}</small>}
-              {c.followUp && <button className="link" onClick={() => { download(`follow-up-${(c.name || 'contact').replace(/[^\p{L}\p{N}]+/gu, '-')}.ics`, followUpIcs(c, c.followUp!), 'text/calendar'); setFlash('Opens in your calendar app.') }}>Add to calendar</button>}
+              {c.followUp && <button className="x-btn cal" title="Add to calendar" aria-label="Add to calendar" onClick={() => { download(`follow-up-${(c.name || 'contact').replace(/[^\p{L}\p{N}]+/gu, '-')}.ics`, followUpIcs(c, c.followUp!), 'text/calendar'); setFlash('Opens in your calendar app.') }}><Icon name="calendar" size={16} /></button>}
               <button className="x-btn" onClick={() => { patch({ followUp: '' }, false); setFollowOpen(false) }} aria-label="Remove follow-up"><Icon name="x" size={16} /></button>
             </div>
           )}
 
-          <h3 className="section">Activity</h3>
-          <button className="outline log-btn" onClick={() => setLogOpen(true)}><Icon name="phone" size={18} /> Log a call or note</button>
+          <h3 className="section">Activity <button className="link" onClick={() => setLogOpen(true)}>+ Log</button></h3>
           {(c.log?.length ?? 0) > 0 && (
             <div className="activity" role="list" aria-label="Calls and notes with this contact">
               {c.log!.map((e) => <ActivityRow key={e.id} e={e} onRemove={() => confirm('Remove this entry?') && commit(contacts.map((x, j) => (j === idx ? removeInteraction(x, e.id) : x)), card.reviewed)} />)}
