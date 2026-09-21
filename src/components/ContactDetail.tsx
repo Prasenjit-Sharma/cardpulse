@@ -9,6 +9,7 @@ import { emptyContact, type CardRecord, type Contact, type EventRec, type FieldK
 import Sheet, { SheetItem } from './Sheet'
 import { useBackClose } from '../lib/useBackClose'
 import Icon from './Icon'
+import PhotoAdjust from './PhotoAdjust'
 import StarButton from './StarButton'
 import Picker from './Picker'
 
@@ -76,6 +77,7 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
   const [slide, setSlide] = useState(0)
   const [light, setLight] = useState('')
   const [menu, setMenu] = useState(false)
+  const [adjusting, setAdjusting] = useState<'image' | 'back' | null>(null)
   const [listening, setListening] = useState(false)
   const [tagsOpen, setTagsOpen] = useState(false)
   const [noteOpen, setNoteOpen] = useState(false)
@@ -184,6 +186,20 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
         </div>
       )}
 
+      {adjusting && card[adjusting] && (
+        <PhotoAdjust photo={card[adjusting]!} canUndo={!!card[adjusting === 'image' ? 'original' : 'originalBack']}
+          onClose={() => setAdjusting(null)}
+          onApply={(blob) => {
+            const keep = adjusting === 'image' ? 'original' : 'originalBack'
+            void onSave({ ...card, [adjusting]: blob, [keep]: card[keep] ?? card[adjusting] })
+            setAdjusting(null)
+          }}
+          onUndo={() => {
+            const keep = adjusting === 'image' ? 'original' : 'originalBack'
+            void onSave({ ...card, [adjusting]: card[keep], [keep]: undefined })
+            setAdjusting(null)
+          }} />
+      )}
       {light && <div className="lightbox" onClick={() => setLight('')}><img src={light} alt="Card" /></div>}
       {card.status === 'error' && <div className="banner">{card.error} {canRead && <button className="link" onClick={onRetry}>Retry</button>}</div>}
       {busy && <p className="muted">{card.waiting === 'offline' ? 'Saved. Waiting for signal to read this card.' : card.waiting === 'retry' ? 'The reader was busy. Trying again shortly.' : 'Reading card…'}</p>}
@@ -288,7 +304,7 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
 
           {slides.length > 0 && (
             <>
-              <h3 className="section">Scanned card</h3>
+              <h3 className="section">Scanned card {canRead && <button className="link" onClick={() => setAdjusting(slide === 1 && card.back ? 'back' : 'image')}>Adjust</button>}</h3>
               <div className="carousel" onScroll={(e) => setSlide(Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth))}>
                 {slides.map((s, i) => <img key={i} src={s} alt={i ? 'Back of card' : 'Front of card'} onClick={() => setLight(s)} onLoad={fitImage} />)}
               </div>

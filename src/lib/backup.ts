@@ -2,9 +2,9 @@ import { readVerified, readZip, createZip, type ZipEntry } from './zip.ts'
 import type { CardRecord, EventRec } from './types'
 
 export const BACKUP_VERSION = 1
-const BLOBS = ['image', 'back', 'original'] as const
+const BLOBS = ['image', 'back', 'original', 'originalBack'] as const
 type BlobKey = (typeof BLOBS)[number]
-const FILE_KEY: Record<BlobKey, string> = { image: 'imageFile', back: 'backFile', original: 'originalFile' }
+const FILE_KEY: Record<BlobKey, string> = { image: 'imageFile', back: 'backFile', original: 'originalFile', originalBack: 'originalBackFile' }
 
 export interface ParsedBackup { cards: CardRecord[]; events: EventRec[]; createdAt: number }
 
