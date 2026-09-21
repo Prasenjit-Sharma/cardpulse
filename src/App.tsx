@@ -15,7 +15,7 @@ import MyCards from './components/MyCards'
 import CardEditor from './components/CardEditor'
 import CardShare from './components/CardShare'
 import StallMode from './components/StallMode'
-import { deleteMyCard, emptyCard, listMyCards, MAX_CARDS, putMyCard, type MyCard } from './lib/mycards'
+import { deleteMyCard, emptyCard, listMyCards, MAX_CARDS, planCardRestore, putMyCard, type MyCard } from './lib/mycards'
 import Companies from './components/Companies'
 import Home from './components/Home'
 import Contacts, { type Flt } from './components/Contacts'
@@ -364,7 +364,7 @@ export default function App() {
   const nudgeBackup = useMemo(() => backupDue(cards.length, lastBackupAt(), backupNudgeUntil()), [cards.length, backupTick])   // eslint-disable-line react-hooks/exhaustive-deps
   const backupNow = async (): Promise<string> => {
     const all = await listCards()
-    try { await saveBackupFile(await buildBackup(all, events), backupFileName()) } catch (e) { if ((e as Error)?.name === 'AbortError') return 'Backup cancelled.'; throw e }
+    try { await saveBackupFile(await buildBackup(all, events, Date.now(), await listMyCards()), backupFileName()) } catch (e) { if ((e as Error)?.name === 'AbortError') return 'Backup cancelled.'; throw e }
     markBackedUp(); setBackupTick((n) => n + 1)
     return `Backed up ${all.length} ${all.length === 1 ? 'card' : 'cards'}.`
   }
@@ -374,8 +374,12 @@ export default function App() {
     for (const c of plan.add) await putCard(c)
     const merged = mergeEvents(events, parsed.events)
     setEvents(merged); saveEvents(merged)
-    await refresh()
-    return `Restored ${plan.add.length} ${plan.add.length === 1 ? 'card' : 'cards'}${plan.skipped ? `. ${plan.skipped} ${plan.skipped === 1 ? 'was' : 'were'} already here` : ''}.`
+    const mine = planCardRestore((await listMyCards()).map((c) => c.id), parsed.myCards)
+    for (const c of mine.add) await putMyCard(c)
+    await Promise.all([refresh(), refreshMyCards()])
+    const n = (k: number, one: string, many: string) => `${k} ${k === 1 ? one : many}`
+    const skipped = plan.skipped + mine.skipped
+    return `Restored ${n(plan.add.length, 'card', 'cards')}${mine.add.length ? ` and ${n(mine.add.length, 'digital card', 'digital cards')}` : ''}${skipped ? `. ${skipped} ${skipped === 1 ? 'was' : 'were'} already here` : ''}.`
   }
   const retryFailed = () => enqueue(cards.filter((c) => c.status === 'error').map((c) => c.id))
   const navActive: Tab = tab === 'accuracy' || tab === 'insights' ? 'settings' : tab === 'companies' ? 'home' : tab

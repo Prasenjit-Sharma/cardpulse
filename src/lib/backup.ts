@@ -1,4 +1,5 @@
 import { readVerified, readZip, createZip, type ZipEntry } from './zip.ts'
+import { cardsFromEntries, cardsToEntries, type MyCard } from './mycards.ts'
 import type { CardRecord, EventRec } from './types'
 
 export const BACKUP_VERSION = 1
@@ -6,10 +7,10 @@ const BLOBS = ['image', 'back', 'original', 'originalBack'] as const
 type BlobKey = (typeof BLOBS)[number]
 const FILE_KEY: Record<BlobKey, string> = { image: 'imageFile', back: 'backFile', original: 'originalFile', originalBack: 'originalBackFile' }
 
-export interface ParsedBackup { cards: CardRecord[]; events: EventRec[]; createdAt: number }
+export interface ParsedBackup { cards: CardRecord[]; events: EventRec[]; myCards: MyCard[]; createdAt: number }
 
 /** Everything the user has: contacts as JSON, each card's photos as ordinary image files. */
-export async function buildBackup(cards: CardRecord[], events: EventRec[], now = Date.now()): Promise<Blob> {
+export async function buildBackup(cards: CardRecord[], events: EventRec[], now = Date.now(), myCards: MyCard[] = []): Promise<Blob> {
   const entries: ZipEntry[] = []
   const meta = cards.map((c) => {
     const rest: Record<string, unknown> = { ...c }
@@ -20,7 +21,9 @@ export async function buildBackup(cards: CardRecord[], events: EventRec[], now =
     }
     return rest
   })
-  const manifest = { app: 'cardpulse', version: BACKUP_VERSION, createdAt: now, counts: { cards: cards.length, events: events.length }, cards: meta, events }
+  const mine = cardsToEntries(myCards)
+  for (const f of mine.files) entries.push({ name: f.name, data: f.blob })
+  const manifest = { app: 'cardpulse', version: BACKUP_VERSION, createdAt: now, counts: { cards: cards.length, events: events.length, myCards: myCards.length }, cards: meta, events, myCards: mine.json }
   return createZip([{ name: 'cardpulse-backup.json', data: JSON.stringify(manifest) }, ...entries], new Date(now))
 }
 
@@ -28,7 +31,7 @@ export async function parseBackup(blob: Blob): Promise<ParsedBackup> {
   const files = await readZip(blob)
   const main = files.find((f) => f.name === 'cardpulse-backup.json')
   if (!main) throw new Error('This is not a CardPulse backup file.')
-  let manifest: { app?: string; version?: number; createdAt?: number; cards?: Record<string, unknown>[]; events?: EventRec[] }
+  let manifest: { app?: string; version?: number; createdAt?: number; cards?: Record<string, unknown>[]; events?: EventRec[]; myCards?: unknown[] }
   try { manifest = JSON.parse(new TextDecoder().decode(await readVerified(main))) } catch { throw new Error('The backup file is damaged.') }
   if (manifest.app !== 'cardpulse') throw new Error('This is not a CardPulse backup file.')
   if ((manifest.version ?? 0) > BACKUP_VERSION) throw new Error('This backup was made by a newer version of CardPulse. Update the app and try again.')
@@ -45,7 +48,10 @@ export async function parseBackup(blob: Blob): Promise<ParsedBackup> {
     }
     cards.push(card as unknown as CardRecord)
   }
-  return { cards, events: manifest.events ?? [], createdAt: manifest.createdAt ?? 0 }
+  const photos = new Map<string, Blob>()
+  for (const f of files) if (f.name.startsWith('mycards/')) { await readVerified(f); photos.set(f.name, new Blob([f.blob], { type: 'image/jpeg' })) }
+  const myCards = cardsFromEntries(manifest.myCards ?? [], (name) => photos.get(name))
+  return { cards, events: manifest.events ?? [], myCards, createdAt: manifest.createdAt ?? 0 }
 }
 
 /** Restoring adds what is missing and never overwrites what is already on this phone. */

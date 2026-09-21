@@ -61,3 +61,12 @@ test('the reminder waits until there is something to lose, and respects a snooze
   assert.equal(backupDue(40, now - 20 * day, 0, now), true)
   assert.equal(backupDue(40, 0, now + day, now), false)            // snoozed
 })
+
+import { emptyCard } from '../src/lib/mycards.ts'
+test('digital cards travel in the backup with their photos, and older backups still restore', async () => {
+  const mine = [{ ...emptyCard(), id: 'm1', name: 'Me', photo: jpeg(60) }, { ...emptyCard(), id: 'm2', name: 'Me 2' }]
+  const parsed = await parseBackup(await buildBackup([], [], 1_700_000_000_000, mine))
+  assert.equal(parsed.myCards.length, 2); assert.equal(parsed.myCards[0].name, 'Me'); assert.equal(parsed.myCards[0].photo.size, 60); assert.equal(parsed.myCards[1].photo, undefined)
+  const old = await parseBackup(await buildBackup([], [], 1_700_000_000_000))
+  assert.deepEqual(old.myCards, [])
+})
