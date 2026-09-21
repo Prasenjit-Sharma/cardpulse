@@ -125,7 +125,11 @@ export default function Contacts({ onScan, cards: allCards, events, activeEvent,
             {reading.map((c, i) => (
               <div key={c.id} className="contact-row reading" style={{ ['--i' as string]: i }}>
                 <CardThumb blob={c.image} name="" />
-                <div className="grow"><strong>Reading…</strong><span className="dots"><i /><i /><i /></span></div>
+                {c.waiting === 'offline'
+                  ? <div className="grow"><strong>Waiting for signal</strong><span className="muted">Saved. Will be read when you are online</span></div>
+                  : c.waiting === 'retry'
+                    ? <div className="grow"><strong>Trying again shortly</strong><span className="muted">The reader was busy</span></div>
+                    : <div className="grow"><strong>Reading…</strong><span className="dots"><i /><i /><i /></span></div>}
               </div>
             ))}
           </div>

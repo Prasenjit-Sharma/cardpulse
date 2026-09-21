@@ -7,6 +7,8 @@ import { prepareCardImage } from './lib/cardImage'
 import type { CardRecord, Contact, EventRec } from './lib/types'
 import { loadActiveEvent, loadEvents, saveActiveEvent, saveEvents } from './lib/events'
 import { findDuplicates } from './lib/dupes'
+import { classifyFailure } from './lib/errors'
+import { useOnline } from './lib/useOnline'
 import Companies from './components/Companies'
 import Home from './components/Home'
 import Contacts, { type Flt } from './components/Contacts'
@@ -25,6 +27,9 @@ import { useBackClose } from './lib/useBackClose'
 type Tab = 'home' | 'companies' | 'contacts' | 'exhibition' | 'insights' | 'settings' | 'accuracy'
 const TABS: Tab[] = ['home', 'companies', 'contacts', 'exhibition', 'insights', 'settings', 'accuracy']
 const CONCURRENCY = 2
+/** A read that failed for a passing reason (busy reader, weak signal) is tried again by itself this many times. */
+const MAX_ATTEMPTS = 3
+const RETRY_DELAY_MS = 30_000
 // Photos read per Gemini call. 1 = every card is read on its own (the setting in use).
 // Batching is built, tested and deployed: set this to 2-6 and single photos are read together, with Gemini numbering
 // which photo each person came from. Measured on six real cards: 26% fewer input tokens, about 18% cheaper, half the
@@ -96,6 +101,7 @@ export default function App() {
    * Read one job: the cards in it share a SINGLE Gemini call. One card (or a front+back pair) is read as itself; several
    * single photos go as a batch and Gemini says which photo each person came from.
    */
+  const enqueueRef = useRef<(ids: string[]) => Promise<void>>(async () => {})
   const runJob = useCallback(async (ids: string[]): Promise<void> => {
     const { apiKey, model, keepPhotos, useOwnKey } = settingsRef.current
     const found = (await Promise.all(ids.map((id) => getCard(id)))).filter((c): c is CardRecord => !!c)
@@ -116,7 +122,7 @@ export default function App() {
       if (keepPhotos === 'thumb') { image = await prepareImage(card.image!, 320, 0.7).catch(() => fresh.image); back = undefined }
       else if (keepPhotos === 'none') { image = undefined; back = undefined }
       await putCard({
-        ...fresh, image, back, thumbOnly: keepPhotos === 'thumb', status: 'done', error: undefined, model: stats.model,
+        ...fresh, image, back, thumbOnly: keepPhotos === 'thumb', status: 'done', error: undefined, waiting: undefined, attempts: undefined, model: stats.model,
         latencyMs: stats.latencyMs, tokensIn: stats.tokensIn, tokensOut: stats.tokensOut, batchSize: stats.batchSize,
         languages: stats.languages, aiNotes: stats.notes,
         extracted: contacts, corrected: structuredClone(contacts), reviewed: false,
@@ -160,8 +166,18 @@ export default function App() {
       }
     } catch (e) {
       log(`extract failed: ${e instanceof Error ? e.message : e}`)
-      const message = e instanceof Error ? e.message : String(e)
-      for (const c of cards) await putCard({ ...((await getCard(c.id)) ?? c), status: 'error', error: message })
+      const failure = classifyFailure(e)
+      const later: string[] = []
+      for (const c of cards) {
+        const cur = (await getCard(c.id)) ?? c
+        const online = navigator.onLine
+        const attempts = (cur.attempts ?? 0) + (online ? 1 : 0)          // being offline is not the card's fault
+        if (failure.transient && attempts < MAX_ATTEMPTS) {
+          await putCard({ ...cur, status: 'pending', error: undefined, attempts, waiting: online ? 'retry' : 'offline' })
+          if (online) later.push(c.id)
+        } else await putCard({ ...cur, status: 'error', error: failure.message, waiting: undefined })
+      }
+      if (later.length) setTimeout(() => void enqueueRef.current(later), RETRY_DELAY_MS)
     }
     await refresh()
   }, [refresh, notifyAdded])
@@ -170,19 +186,42 @@ export default function App() {
     while (active.current < CONCURRENCY && queue.current.length) {
       const job = queue.current.shift()!
       active.current++
-      void runJob(job).finally(() => { active.current--; pump() })
+      void runJob(job).finally(() => { job.forEach((id) => inFlight.current.delete(id)); active.current--; pump() })
     }
   }, [runJob])
 
-  /** Group cards into jobs: single photos are read together (up to 6 per call); a front+back card is read on its own. */
+  /** Ids that are queued or being read, so a card can never be read twice at once. */
+  const inFlight = useRef(new Set<string>())
+
+  /**
+   * Group cards into jobs: single photos are read together (up to BATCH_MAX per call); a front+back card is read on its own.
+   * With no connection the photos simply stay saved and marked as waiting; they are picked up when signal returns.
+   */
   const enqueue = useCallback(async (ids: string[]) => {
-    const recs = await Promise.all(ids.map((id) => getCard(id)))
+    const fresh = ids.filter((id) => !inFlight.current.has(id))
+    if (!fresh.length) return
+    const recs = await Promise.all(fresh.map((id) => getCard(id)))
+    if (!navigator.onLine) {
+      await Promise.all(recs.filter((c): c is CardRecord => !!c).map((c) => putCard({ ...c, status: 'pending', waiting: 'offline' })))
+      await refresh()
+      return
+    }
     const singles: string[] = [], jobs: string[][] = []
-    recs.forEach((c, i) => { if (!c) return; if (c.back) jobs.push([ids[i]!]); else singles.push(ids[i]!) })
+    recs.forEach((c, i) => { if (!c) return; if (c.back) jobs.push([fresh[i]!]); else singles.push(fresh[i]!) })
     for (let i = 0; i < singles.length; i += BATCH_MAX) jobs.push(singles.slice(i, i + BATCH_MAX))
+    for (const j of jobs) j.forEach((id) => inFlight.current.add(id))
     queue.current.push(...jobs)
     pump()
-  }, [pump])
+  }, [pump, refresh])
+  enqueueRef.current = enqueue
+
+  /** Anything saved but not yet read (the app was closed mid-read, or there was no signal) goes back in the queue. */
+  const resumePending = useCallback(async () => {
+    const waiting = (await listCards()).filter((c) => (c.status === 'pending' || c.status === 'running') && !inFlight.current.has(c.id))
+    if (waiting.length) void enqueue(waiting.map((c) => c.id))
+  }, [enqueue])
+  const online = useOnline()
+  useEffect(() => { if (online) void resumePending() }, [online, resumePending])
 
   const addGroups = useCallback(async (groups: File[][], prepared: boolean) => {
     const { apiKey, model } = settingsRef.current
@@ -304,6 +343,7 @@ export default function App() {
   return (
     <div className="app">
       <main>
+        {!online && <div className="offline-bar" role="status">You are offline. Cards you scan are saved and will be read when you are back online.</div>}
         {banner && <div className="banner">{banner}</div>}
         <div className="view" key={openCard ? `o-${open?.id}-${open?.review ? 'r' : 'd'}` : tab}>
         {openCard && open?.review ? (

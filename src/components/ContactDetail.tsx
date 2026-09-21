@@ -186,7 +186,7 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
 
       {light && <div className="lightbox" onClick={() => setLight('')}><img src={light} alt="Card" /></div>}
       {card.status === 'error' && <div className="banner">{card.error} {canRead && <button className="link" onClick={onRetry}>Retry</button>}</div>}
-      {busy && <p className="muted">Reading card…</p>}
+      {busy && <p className="muted">{card.waiting === 'offline' ? 'Saved. Waiting for signal to read this card.' : card.waiting === 'retry' ? 'The reader was busy. Trying again shortly.' : 'Reading card…'}</p>}
 
       {card.status === 'done' && !c && (
         <div className="empty small"><p>No contacts were found on this card.</p>

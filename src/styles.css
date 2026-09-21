@@ -778,3 +778,6 @@ body:has(.selbar) .fab-scan { display: none }
 .company-row { width: 100%; text-align: left; min-height: 56px; background: none; border: 0; border-bottom: 1px solid var(--rule-soft); border-radius: 0; box-shadow: none; color: var(--ink) }
 .company-row:active:not(:disabled) { background: var(--well); transform: none; box-shadow: none }
 .company-row .count { font-size: var(--t-m); font-weight: 600; color: var(--ink-3) }
+
+/* offline: one calm line at the top, not an alarm */
+.offline-bar { margin: 0 0 12px; padding: 10px 14px; border-radius: var(--r-sleeve); background: var(--amber-wash); color: var(--amber); font-size: var(--t-s); font-weight: 600; line-height: 1.35 }
