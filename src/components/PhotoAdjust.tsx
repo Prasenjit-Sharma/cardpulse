@@ -79,6 +79,7 @@ export default function PhotoAdjust({ photo, canUndo, onApply, onUndo, onClose }
         {!usable && !failed && <p className="hint bad" role="status">The corners cross. Drag them back around the card.</p>}
       </div>
 
+      <p className="adjust-tip">Drag each corner onto the matching corner of the card. Moving them separately straightens a tilted or angled photo.</p>
       <div className="adjust-tools">
         <button onClick={() => rotate(-90)} aria-label="Rotate left"><Icon name="rotate-left" size={20} /> Left</button>
         <button onClick={() => rotate(90)} aria-label="Rotate right"><Icon name="rotate-right" size={20} /> Right</button>

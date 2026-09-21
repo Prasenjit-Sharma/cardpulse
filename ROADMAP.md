@@ -153,6 +153,12 @@ Still open:
 2. **Sequencing:** the order above puts the work-in-the-hall phase and digital cards before accounts and payments. Swap
    Phases 2 and 3 if you want paying users sooner.
 
+### Idea under consideration: follow-up log (a light CRM)
+
+Each contact gets a timeline of interactions (a call, a meeting, a message): what was said, and the next follow-up date. It is
+separate from the single note that is exported to the phone. Keep it small: no pipelines, no deals. See the design discussion
+of 2026-09-21; a candidate to pull ahead of Phase 7 because it is cheap and makes the app sticky after events.
+
 ## 6. Parked (small, do when convenient)
 
 - Contacts scanned before "extras" shipped have no dealer or factory notes; with "Re-read" removed, decide whether a

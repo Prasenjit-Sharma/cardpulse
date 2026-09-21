@@ -684,7 +684,10 @@ nav button.on::after { content: ''; position: absolute; left: 50%; top: 0; width
 }
 .tagchip.add { background: transparent; border-style: dashed }
 .editor-box { position: relative; background: var(--sleeve); border-radius: var(--r-sleeve); box-shadow: var(--seat); padding: 8px 10px; margin: 0 0 8px; animation: seat .2s var(--ease) both }
-.editor-box textarea { border: 0; background: none; padding: 0 64px 0 0; min-height: 0; resize: none; line-height: 1.35 }
+.editor-box textarea { border: 0; background: none; padding: 0 64px 0 0; min-height: 0; resize: none; line-height: 1.45; overflow: hidden }
+/* notes read at caption size like the rest of the page; iPhone zooms into fields under 16px, so it keeps the larger size there */
+.notebox textarea { font-size: var(--t-s) }
+@supports (-webkit-touch-callout: none) { .notebox textarea { font-size: 16px } }
 .editor-acts { position: absolute; right: 5px; top: 4px; display: flex; gap: 2px }
 .x-btn { width: 30px; height: 30px; min-height: 30px; padding: 0; border: 0; background: none; box-shadow: none; color: var(--ink-3); border-radius: 50%; flex: none }
 .followbox { display: flex; align-items: center; gap: 8px; padding: 2px 4px 2px 12px }
@@ -803,3 +806,4 @@ body:has(.selbar) .fab-scan { display: none }
 .adjust-tools button { flex: 1; max-width: 120px; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-height: 56px; font-size: var(--t-xs); font-weight: 600; letter-spacing: .06em; text-transform: uppercase }
 h3.section .link { float: right; min-height: 0; padding: 0; font-size: var(--t-xs); letter-spacing: .1em }
 .fb-label { display: block; font-weight: 600; margin-bottom: 6px }
+.adjust-tip { margin: 0; padding: 8px 16px 0; text-align: center; font-size: var(--t-s); color: var(--ink-3); background: var(--board-2) }

@@ -99,6 +99,8 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
   const c = contacts[idx]
 
   useEffect(() => () => stopRef.current?.(), [])
+  // The note grows to show all of its text, so a long note (dealer lines, a factory address) is never hidden behind two lines.
+  useEffect(() => { const el = noteInput.current; if (!el) return; el.style.height = 'auto'; el.style.height = `${el.scrollHeight}px` }, [c?.note, noteOpen, idx, editing])
   // Only cards the user has actually opened count towards accuracy.
   useEffect(() => { if (card.status === 'done' && !card.opened) void onSave({ ...card, opened: true }) }, [card.status, card.opened])  // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -273,7 +275,7 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
           )}
           {(c.note || noteOpen) && (
             <div className="editor-box notebox" ref={noteRef}>
-              <textarea ref={noteInput} rows={2} autoFocus={noteOpen && !c.note} placeholder="Note, like writing on the back of a card"
+              <textarea ref={noteInput} rows={1} autoFocus={noteOpen && !c.note} placeholder="Note, like writing on the back of a card"
                 value={c.note ?? ''} onChange={(e) => patch({ note: e.target.value }, false)}
                 onBlur={(e) => { if (!e.target.value.trim()) setNoteOpen(false) }} aria-label="Note" />
               <div className="editor-acts">
