@@ -58,6 +58,21 @@
 3. Sequencing: real users first (Phase 2) or store-ready first (Phase 4)? Current lean:
    2 → 3 → 4, with Phase 5 driven by what early users ask for.
 
+## Lessons from competitor reviews (researched 2026-09-21)
+
+Sources: G2/Capterra/TrustRadius summaries, justuseapp review digests, Mobilo Card, Blinq and Wave comparison posts.
+Secondary sources only; Play Store and App Store review pages could not be read directly.
+
+Pull into the plan:
+1. Offline capture queue for exhibition halls (photos saved offline, read when signal returns). The app has no offline handling today. Phase 1.
+2. Backup/restore and scheduled auto-export: Covve users report backup failures and vanished cards; our data is on-device only. Phase 1, top priority.
+3. vCard address: we write the whole address into the street field (`ADR;;;street;;;;`), the same "address on one line" fault Covve is criticised for. Split into street / city / state / pincode / country.
+4. Manual crop / re-crop of a saved card photo (Covve users cannot crop after capture).
+5. Policy: export (CSV, vCard) always free; no ads; scan packs never expire; no caps introduced on existing users.
+6. Digital cards: no pop-ups to recipients, clean professional templates free, deletable cards, full vCard fields (notes, birthday).
+7. In-app feedback with an attached diagnostic log; support promises a reply time.
+8. CRM/spreadsheet export templates (Zoho, HubSpot, Google Sheets); Phase 5.
+
 ## Parked follow-ups (small, do when convenient)
 
 - Home "Need review" row opens Contacts unfiltered; should open Contacts filtered to unreviewed cards.
