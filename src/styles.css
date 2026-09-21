@@ -824,3 +824,16 @@ h3.section .link { float: right; min-height: 0; padding: 0; font-size: var(--t-x
 .accent-sw:active:not(:disabled) { transform: scale(.94); box-shadow: 0 0 0 1px var(--rule) }
 @media (prefers-color-scheme: dark) { :root:not([data-theme='light']) .accent-sw { background: var(--sw-l) } }
 :root[data-theme='dark'] .accent-sw { background: var(--sw-l) }
+
+/* my card: a row of real business cards you swipe through */
+.card-canvas { width: 100%; aspect-ratio: 1.75; display: block; border-radius: 6px; box-shadow: var(--seat-deep); touch-action: pan-x }
+.mycards-track { display: flex; gap: 14px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; padding: 4px 2px 14px; margin: 0 -2px; -webkit-overflow-scrolling: touch }
+.mycards-track::-webkit-scrollbar { display: none }
+.mycards-item { flex: 0 0 100%; scroll-snap-align: center; position: relative; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none }
+.mycards-label { display: block; margin-top: 8px; font-size: var(--t-xs); font-weight: 600; letter-spacing: .1em; text-transform: uppercase; font-variation-settings: 'wdth' 80; color: var(--ink-3) }
+.mycards-add { width: 100%; aspect-ratio: 1.75; display: flex; align-items: center; justify-content: center; gap: 10px; border: 1.5px dashed var(--board-edge); border-radius: 6px; background: none; box-shadow: none; color: var(--ink-3); font-weight: 600 }
+.mycards-add:active:not(:disabled) { transform: none; box-shadow: none; background: var(--well) }
+.mycards-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px }
+.mycards-actions button { display: inline-flex; align-items: center; justify-content: center; gap: 8px }
+.mycards-tip { text-align: center; margin-top: 14px }
+@media (prefers-reduced-motion: reduce) { .mycards-track { scroll-behavior: auto } }

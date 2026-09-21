@@ -11,6 +11,8 @@ import { backupDue, backupFileName, backupNudgeUntil, buildBackup, lastBackupAt,
 import { applyAccent } from './lib/accents'
 import { classifyFailure } from './lib/errors'
 import { useOnline } from './lib/useOnline'
+import MyCards from './components/MyCards'
+import { listMyCards, MAX_CARDS, type MyCard } from './lib/mycards'
 import Companies from './components/Companies'
 import Home from './components/Home'
 import Contacts, { type Flt } from './components/Contacts'
@@ -26,8 +28,8 @@ import Toast, { type ToastData } from './components/Toast'
 import { useInstall } from './lib/useInstall'
 import { useBackClose } from './lib/useBackClose'
 
-type Tab = 'home' | 'companies' | 'contacts' | 'exhibition' | 'insights' | 'settings' | 'accuracy'
-const TABS: Tab[] = ['home', 'companies', 'contacts', 'exhibition', 'insights', 'settings', 'accuracy']
+type Tab = 'home' | 'companies' | 'mycard' | 'contacts' | 'exhibition' | 'insights' | 'settings' | 'accuracy'
+const TABS: Tab[] = ['home', 'companies', 'mycard', 'contacts', 'exhibition', 'insights', 'settings', 'accuracy']
 const CONCURRENCY = 2
 /** A read that failed for a passing reason (busy reader, weak signal) is tried again by itself this many times. */
 const MAX_ATTEMPTS = 3
@@ -63,6 +65,19 @@ export default function App() {
   const [backTab, setBackTab] = useState<Tab>('home')
   const [contactsFilter, setContactsFilter] = useState<Flt | undefined>()
   const [contactsCompany, setContactsCompany] = useState('')
+  const [myCards, setMyCards] = useState<MyCard[]>([])
+  const [editingCard, setEditingCard] = useState<string | null>(null)      // a card id, or 'new'
+  const [sharingCard, setSharingCard] = useState<string | null>(null)
+  const [stallCard, setStallCard] = useState<string | null>(null)
+  const refreshMyCards = useCallback(async () => setMyCards(await listMyCards()), [])
+  useEffect(() => { void refreshMyCards() }, [refreshMyCards])
+  // A card that is open in the editor, share sheet or stall screen and then disappears (deleted, or replaced by a restore) closes them.
+  useEffect(() => {
+    const gone = (id: string | null) => !!id && id !== 'new' && !myCards.some((c) => c.id === id)
+    if (gone(editingCard)) setEditingCard(null)
+    if (gone(sharingCard)) setSharingCard(null)
+    if (gone(stallCard)) setStallCard(null)
+  }, [myCards, editingCard, sharingCard, stallCard])
   const [camOpen, setCamOpen] = useState(false)
   const [toast, setToast] = useState<ToastData | null>(null)
   const toastAt = useRef({ at: 0, count: 0 })
@@ -388,6 +403,8 @@ export default function App() {
             onBackup={() => void backupNow().then((m) => setBanner(m), () => setBanner('The backup could not be saved. Try again.'))} onSnoozeBackup={() => { snoozeBackupNudge(); setBackupTick((n) => n + 1) }}
             onOpenContact={(id, idx) => setOpen({ id, idx })} onContacts={() => openContacts()} onCompanies={() => goto('companies')} onStarred={() => openContacts('priority')}
             onAttention={() => openContacts('attention')} onInsights={() => goto('insights', 'home')} onAccuracy={() => goto('accuracy', 'home')} onSetup={() => goto('settings', 'home')} />
+        ) : tab === 'mycard' ? (
+          <MyCards cards={myCards} onAdd={() => myCards.length < MAX_CARDS && setEditingCard('new')} onEdit={setEditingCard} onShare={setSharingCard} onStall={setStallCard} />
         ) : tab === 'companies' ? (
           <Companies cards={cards} onBack={() => setTab('home')} onOpenCompany={(name) => openContacts(undefined, name)} />
         ) : tab === 'contacts' ? (
@@ -425,6 +442,7 @@ export default function App() {
         <nav>
           <NavBtn id="home" label="Home" icon="home" active={navActive} go={gotoTab} />
           <NavBtn id="contacts" label="Contacts" icon="users" active={navActive} go={gotoTab} />
+          <NavBtn id="mycard" label="My Card" icon="card" active={navActive} go={gotoTab} />
           <NavBtn id="exhibition" label="Events" icon="booth" active={navActive} go={gotoTab} />
           <NavBtn id="settings" label="Settings" icon="sliders" active={navActive} go={gotoTab} />
         </nav>
@@ -433,7 +451,7 @@ export default function App() {
   )
 }
 
-function NavBtn({ id, label, icon, active, go }: { id: Tab; label: string; icon: 'home' | 'users' | 'booth' | 'sliders'; active: Tab; go: (t: Tab) => void }) {
+function NavBtn({ id, label, icon, active, go }: { id: Tab; label: string; icon: 'home' | 'users' | 'card' | 'booth' | 'sliders'; active: Tab; go: (t: Tab) => void }) {
   return (
     <button className={active === id ? 'on' : ''} onClick={() => go(id)} aria-current={active === id ? 'page' : undefined}>
       <span className="ind"><Icon name={icon} size={22} /></span>
