@@ -41,3 +41,8 @@ test('every chosen tag must be present', () => {
   assert.ok(!hasAllTags(rajesh, ['Polymers', 'Supplier']))
   assert.ok(!hasAllTags(p({}), ['Polymers']))
 })
+
+test('search also finds what was said in a logged call or meeting', () => {
+  const c = p({ name: 'Asha', log: [{ id: '1', at: 1, kind: 'call', note: 'Wants a quote for HDPE granules', next: '2026-10-09' }] })
+  assert.ok(m('quote hdpe', c)); assert.ok(!m('polyester', c))
+})

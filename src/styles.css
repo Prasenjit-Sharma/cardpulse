@@ -867,3 +867,20 @@ h3.section .link { float: right; min-height: 0; padding: 0; font-size: var(--t-x
 @media (max-height: 700px) { .editor-preview .card-canvas { width: 60%; margin-inline: auto } }
 .choice { background: var(--board-2); border-color: transparent }
 .mycards-add { border-color: var(--ink-3) }
+
+/* activity: what happened with this person, newest first */
+.log-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin: 4px 0 8px }
+.activity { display: flex; flex-direction: column }
+.act-row { padding: 10px 0; border-top: 1px solid var(--rule-soft) }
+.act-head { display: flex; align-items: center; gap: 8px; font-size: var(--t-s) }
+.act-head b { font-weight: 600 }
+.act-head time { margin-left: auto; color: var(--ink-3); font-variant-numeric: tabular-nums }
+.act-pill { padding: 1px 7px; border-radius: 2px; background: var(--board-2); color: var(--ink-2); font-size: var(--t-xs); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; font-variation-settings: 'wdth' 80 }
+.act-row p { margin: 3px 0 0; font-size: var(--t-s); color: var(--ink-2); line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere }
+.act-row small { display: block; margin-top: 3px; font-size: var(--t-xs); color: var(--ink-3) }
+.act-row .x-btn { width: 32px; height: 32px; min-height: 32px }
+.followbox .due { color: var(--amber); font-weight: 600 } .followbox .due.soon { color: var(--ink-3); font-weight: 500 }
+/* the log sheet */
+.log-form { display: flex; flex-direction: column; gap: 12px; padding: 4px 16px 18px }
+.log-note { position: relative } .log-note textarea { width: 100%; padding-right: 52px }
+.log-note .mic { position: absolute; right: 8px; bottom: 8px }

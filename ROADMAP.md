@@ -160,11 +160,13 @@ Still open:
 2. **Sequencing:** the order above puts the work-in-the-hall phase and digital cards before accounts and payments. Swap
    Phases 2 and 3 if you want paying users sooner.
 
-### Idea under consideration: follow-up log (a light CRM)
+### Follow-up log (a light CRM) — built 2026-09-21, awaiting the real-phone check
 
 Each contact gets a timeline of interactions (a call, a meeting, a message): what was said, and the next follow-up date. It is
 separate from the single note that is exported to the phone. Keep it small: no pipelines, no deals. See the design discussion
-of 2026-09-21; a candidate to pull ahead of Phase 7 because it is cheap and makes the app sticky after events.
+of 2026-09-21. Built: log a call, meeting or message with an outcome, a note (dictation works) and a next date; timeline on the
+contact page; "Add to calendar" for the follow-up; search finds logged notes; due dates now use the phone's own day. Not built:
+push reminders, CSV columns for the log, bulk follow-up messages.
 
 ### Idea for the end of the plan: language reach
 

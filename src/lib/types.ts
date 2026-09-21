@@ -1,3 +1,5 @@
+import type { Interaction } from './followups.ts'
+
 export interface Contact {
   name: string
   title: string
@@ -15,6 +17,8 @@ export interface Contact {
   /** Why this contact matters: Customer, Supplier, Hot lead, or anything custom. */
   tags?: string[]
   priority?: boolean
+  /** Calls, meetings and messages with this person, newest first. Kept in the app only; never exported to the phone's contacts. */
+  log?: Interaction[]
 }
 
 export type Status = 'pending' | 'running' | 'done' | 'error'

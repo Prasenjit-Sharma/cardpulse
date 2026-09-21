@@ -1,4 +1,5 @@
 import { needsAttention } from '../lib/attention'
+import { dueLabel, dueStatus, localISO } from '../lib/followups'
 import { companyList } from '../lib/companies'
 import { overall, scoreCard, sumTallies } from '../lib/score'
 import type { CardRecord } from '../lib/types'
@@ -7,7 +8,7 @@ import Icon from './Icon'
 
 interface Install { mode: 'native' | 'ios' | null; visible: boolean; install: () => void; dismiss: () => void }
 
-const isoToday = () => new Date().toISOString().slice(0, 10)
+const isoToday = () => localISO()                       // the phone's own day, not UTC
 
 /** An open album page: three empty sleeves on punched board, waiting for cards. */
 function EmptySleeves() {
@@ -112,7 +113,7 @@ export default function Home({ cards, dupes, ready, needsKey, install, backupNud
                   <div key={`${x.card.id}:${x.i}`} className="contact-row" style={{ ['--i' as string]: n }} onClick={() => onOpenContact(x.card.id, x.i)}>
                     <CardThumb blob={x.card.image} name={x.p.name} />
                     <div className="grow"><strong>{x.p.name}</strong><span className="muted">{x.p.company}</span></div>
-                    <em className={`due${x.p.followUp! <= isoToday() ? ' warn' : ''}`}>{x.p.followUp}</em>
+                    <em className={`due${dueStatus(x.p.followUp, isoToday()).state === 'upcoming' ? '' : ' warn'}`}>{dueLabel(x.p.followUp, isoToday())}</em>
                   </div>
                 ))}
               </div>

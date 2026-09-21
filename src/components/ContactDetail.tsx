@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useObjectUrl } from '../lib/useObjectUrl'
 import { attentionReasons } from '../lib/attention'
+import { dueLabel, dueStatus, followUpIcs, localISO, logInteraction, removeInteraction, type Interaction } from '../lib/followups'
 import { browserEnv, download, saveToPhone, shareContact, telHref, toVCard, waNumber } from '../lib/actions'
 import { currentNameFormat } from '../lib/db'
 import { log } from '../lib/debug'
@@ -9,6 +10,7 @@ import { emptyContact, type CardRecord, type Contact, type EventRec, type FieldK
 import Sheet, { SheetItem } from './Sheet'
 import { useBackClose } from '../lib/useBackClose'
 import Icon from './Icon'
+import LogSheet from './LogSheet'
 import PhotoAdjust from './PhotoAdjust'
 import StarButton from './StarButton'
 import Picker from './Picker'
@@ -16,6 +18,26 @@ import Picker from './Picker'
 const SUGGESTED_TAGS = ['Customer', 'Supplier', 'Partner', 'Investor', 'Hot lead']
 const withProtocol = (w: string) => (/^https?:\/\//i.test(w) ? w : `https://${w}`)
 const when = (t: number) => new Date(t).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
+
+const KIND_LABEL = { call: 'Call', meeting: 'Meeting', message: 'Message' } as const
+const OUTCOME_LABEL = { connected: 'Connected', 'no-answer': 'No answer', 'call-back': 'Call back' } as const
+const shortDate = (iso: string) => new Date(`${iso}T00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+
+/** One line of the timeline: what, how it went, what was said, and the next date. */
+function ActivityRow({ e, onRemove }: { e: Interaction; onRemove: () => void }) {
+  return (
+    <div className="act-row" role="listitem">
+      <div className="act-head">
+        <b>{KIND_LABEL[e.kind]}</b>
+        {e.outcome && <span className="act-pill">{OUTCOME_LABEL[e.outcome]}</span>}
+        <time dateTime={new Date(e.at).toISOString()}>{new Date(e.at).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</time>
+        <button className="x-btn" onClick={onRemove} aria-label={`Remove ${KIND_LABEL[e.kind].toLowerCase()} entry`}><Icon name="x" size={14} /></button>
+      </div>
+      {e.note && <p>{e.note}</p>}
+      {e.next && <small>Next follow-up: {shortDate(e.next)}</small>}
+    </div>
+  )
+}
 
 /** Card-shaped photos fill the frame; anything else (tables of cards, tall photos) is shown whole. */
 const fitImage = (e: React.SyntheticEvent<HTMLImageElement>) => {
@@ -77,6 +99,7 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
   const [slide, setSlide] = useState(0)
   const [light, setLight] = useState('')
   const [menu, setMenu] = useState(false)
+  const [logOpen, setLogOpen] = useState(false)
   const [adjusting, setAdjusting] = useState<'image' | 'back' | null>(null)
   const [listening, setListening] = useState(false)
   const [tagsOpen, setTagsOpen] = useState(false)
@@ -161,7 +184,7 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
   }
 
   const slides = [url, backUrl].filter(Boolean)
-  const today = new Date().toISOString().slice(0, 10)
+  const today = localISO()                                    // the phone's own day: UTC would say yesterday in India until 5:30 am
 
   return (
     <div className="page-plain">
@@ -202,6 +225,7 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
             setAdjusting(null)
           }} />
       )}
+      {logOpen && c && <LogSheet name={c.name} onClose={() => setLogOpen(false)} onSave={(e) => { commit(contacts.map((x, j) => (j === idx ? logInteraction(x, e) : x)), card.reviewed); setLogOpen(false); setFlash(e.next ? 'Logged. Follow-up set.' : 'Logged.') }} />}
       {light && <div className="lightbox" onClick={() => setLight('')}><img src={light} alt="Card" /></div>}
       {card.status === 'error' && <div className="banner">{card.error} {canRead && <button className="link" onClick={onRetry}>Retry</button>}</div>}
       {busy && <p className="muted">{card.waiting === 'offline' ? 'Saved. Waiting for signal to read this card.' : card.waiting === 'retry' ? 'The reader was busy. Trying again shortly.' : 'Reading card…'}</p>}
@@ -288,8 +312,17 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
             <div className="editor-box followbox" ref={followRef}>
               <span className="lbl">Follow up on</span>
               <input ref={followInput} type="date" value={c.followUp ?? ''} autoFocus={followOpen && !c.followUp} onChange={(e) => { patch({ followUp: e.target.value }, false); if (!e.target.value) setFollowOpen(false) }} aria-label="Follow-up date" />
-              {c.followUp && c.followUp <= today && <small className="due">Due</small>}
+              {c.followUp && <small className={`due${dueStatus(c.followUp, today).state === 'upcoming' ? ' soon' : ''}`}>{dueLabel(c.followUp, today)}</small>}
+              {c.followUp && <button className="link" onClick={() => { download(`follow-up-${(c.name || 'contact').replace(/[^\p{L}\p{N}]+/gu, '-')}.ics`, followUpIcs(c, c.followUp!), 'text/calendar'); setFlash('Opens in your calendar app.') }}>Add to calendar</button>}
               <button className="x-btn" onClick={() => { patch({ followUp: '' }, false); setFollowOpen(false) }} aria-label="Remove follow-up"><Icon name="x" size={16} /></button>
+            </div>
+          )}
+
+          <h3 className="section">Activity</h3>
+          <button className="outline log-btn" onClick={() => setLogOpen(true)}><Icon name="phone" size={18} /> Log a call or note</button>
+          {(c.log?.length ?? 0) > 0 && (
+            <div className="activity" role="list" aria-label="Calls and notes with this contact">
+              {c.log!.map((e) => <ActivityRow key={e.id} e={e} onRemove={() => confirm('Remove this entry?') && commit(contacts.map((x, j) => (j === idx ? removeInteraction(x, e.id) : x)), card.reviewed)} />)}
             </div>
           )}
 

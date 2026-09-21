@@ -10,7 +10,7 @@ export const searchTokens = (query: string): string[] => fold(query).split(/[\s,
 export function searchText(p: Contact, eventName = ''): string {
   return fold([
     p.name, p.title, p.company, p.address, p.website, p.gstin, p.note ?? '', eventName,
-    ...p.social, ...p.emails, ...p.phones, ...p.phones.map((x) => x.replace(/\D/g, '')), ...(p.tags ?? []),
+    ...p.social, ...p.emails, ...p.phones, ...p.phones.map((x) => x.replace(/\D/g, '')), ...(p.tags ?? []), ...(p.log ?? []).map((e) => e.note),
   ].join('\n'))
 }
 

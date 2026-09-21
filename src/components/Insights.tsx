@@ -1,8 +1,9 @@
+import { dueLabel, dueStatus, localISO } from '../lib/followups'
 import type { CardRecord } from '../lib/types'
 import Avatar from './Avatar'
 import Icon from './Icon'
 
-const today = () => new Date().toISOString().slice(0, 10)
+const today = () => localISO()                            // the phone's own day, not UTC
 
 export default function Insights({ cards, onBack, onContacts, onAccuracy, onOpen }: {
   cards: CardRecord[]
@@ -61,7 +62,7 @@ export default function Insights({ cards, onBack, onContacts, onAccuracy, onOpen
               <div key={`${c.id}:${i}`} className="row" onClick={() => onOpen(c.id, i)}>
                 <Avatar name={p.name} />
                 <div className="grow"><strong>{p.name}</strong><span className="muted">{[p.title, p.company].filter(Boolean).join(' · ')}</span></div>
-                <span className="tags"><em className={p.followUp! <= today() ? 'warn' : ''}>{p.followUp}</em></span>
+                <span className="tags"><em className={dueStatus(p.followUp, today()).state === 'upcoming' ? '' : 'warn'}>{dueLabel(p.followUp, today())}</em></span>
               </div>
             ))}
           </div>
