@@ -13,6 +13,8 @@ import { classifyFailure } from './lib/errors'
 import { useOnline } from './lib/useOnline'
 import MyCards from './components/MyCards'
 import CardEditor from './components/CardEditor'
+import CardShare from './components/CardShare'
+import StallMode from './components/StallMode'
 import { deleteMyCard, emptyCard, listMyCards, MAX_CARDS, putMyCard, type MyCard } from './lib/mycards'
 import Companies from './components/Companies'
 import Home from './components/Home'
@@ -440,6 +442,10 @@ export default function App() {
         )}
         </div>
       </main>
+      {sharingCard && myCards.find((c) => c.id === sharingCard) && (
+        <CardShare card={myCards.find((c) => c.id === sharingCard)!} onClose={() => setSharingCard(null)} onStall={() => setStallCard(sharingCard)} />
+      )}
+      {stallCard && myCards.find((c) => c.id === stallCard) && <StallMode card={myCards.find((c) => c.id === stallCard)!} onClose={() => setStallCard(null)} />}
       {camOpen && <Camera eventLabel={eventLabel} onSubmit={(cards) => { void addBatch(cards); goto('contacts') }} onGallery={(fs) => { void addFiles(fs) }} onClose={() => setCamOpen(false)} />}
       <input ref={fallbackInput} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { if (e.target.files) void addFiles(e.target.files); e.target.value = '' }} />
       <Toast toast={toast} onDone={() => setToast(null)} />
