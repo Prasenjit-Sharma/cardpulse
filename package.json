@@ -10,7 +10,7 @@
     "server:dev": "node server/dev-server.mjs",
     "server:test": "node --test server/test/worker.test.mjs",
     "server:deploy": "cd server && npx wrangler deploy",
-    "test": "node --test test/crop.test.mjs test/warp.test.mjs test/detect.test.mjs test/actions.test.mjs test/extract.test.mjs test/search.test.mjs test/address.test.mjs test/attention.test.mjs server/test/worker.test.mjs"
+    "test": "node --test test/crop.test.mjs test/warp.test.mjs test/detect.test.mjs test/actions.test.mjs test/extract.test.mjs test/search.test.mjs test/address.test.mjs test/attention.test.mjs test/companies.test.mjs server/test/worker.test.mjs"
   },
   "dependencies": {
     "@fontsource-variable/archivo": "^5.3.0",

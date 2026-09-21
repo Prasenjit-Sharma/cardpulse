@@ -190,9 +190,13 @@ test('batch: limits. 7 photos, oversize, and unknown layouts are refused; sides 
 test('batch: six photos at the size the app sends cost far less than the free plan\'s 10 ms CPU budget', () => {
   const data = Buffer.alloc(500_000, 7).toString('base64')   // 6 x ~500 KB, the per-photo budget for a batch of 6
   const body = JSON.stringify({ layout: 'batch', images: Array(6).fill({ mime: 'image/jpeg', data }) })
-  const t = process.cpuUsage()
-  const parsed = JSON.parse(body); parsed.images.every((i) => /^[A-Za-z0-9+/=]+$/.test(i.data)); JSON.stringify({ contents: [{ parts: parsed.images.map((i) => ({ inline_data: i })) }] })
-  const c = process.cpuUsage(t); const ms = (c.user + c.system) / 1000
+  // Best of five: a timing check must measure the code, not whatever else the machine is running (test files run in parallel).
+  let ms = Infinity
+  for (let n = 0; n < 5; n++) {
+    const t = process.cpuUsage()
+    const parsed = JSON.parse(body); parsed.images.every((i) => /^[A-Za-z0-9+/=]+$/.test(i.data)); JSON.stringify({ contents: [{ parts: parsed.images.map((i) => ({ inline_data: i })) }] })
+    const c = process.cpuUsage(t); ms = Math.min(ms, (c.user + c.system) / 1000)
+  }
   console.log(`  ~${ms.toFixed(1)} ms CPU for a six-photo batch (${(body.length / 1e6).toFixed(1)} MB)`)
   assert.ok(ms < 6, `${ms} ms`)
 })

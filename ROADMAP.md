@@ -153,3 +153,6 @@ Still open:
 - Contacts scanned before "extras" shipped have no dealer or factory notes; with "Re-read" removed, decide whether a
   one-time bulk refresh is worth building.
 - Decide whether Insights keeps a second entry point under Settings now that Home links to it.
+- Card photo in the vCard (`PHOTO;ENCODING=b`): undecided. The phone crops it to a small circle, so a landscape card is
+  unreadable there; a share-sheet attachment of the card image next to the .vcf may serve better.
+- Home tiles: Contacts, Companies, Starred (built 2026-09-21). Companies screen and company filter in Contacts built with them.

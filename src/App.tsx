@@ -7,6 +7,7 @@ import { prepareCardImage } from './lib/cardImage'
 import type { CardRecord, Contact, EventRec } from './lib/types'
 import { loadActiveEvent, loadEvents, saveActiveEvent, saveEvents } from './lib/events'
 import { findDuplicates } from './lib/dupes'
+import Companies from './components/Companies'
 import Home from './components/Home'
 import Contacts, { type Flt } from './components/Contacts'
 import Exhibition from './components/Exhibition'
@@ -21,8 +22,8 @@ import Toast, { type ToastData } from './components/Toast'
 import { useInstall } from './lib/useInstall'
 import { useBackClose } from './lib/useBackClose'
 
-type Tab = 'home' | 'contacts' | 'exhibition' | 'insights' | 'settings' | 'accuracy'
-const TABS: Tab[] = ['home', 'contacts', 'exhibition', 'insights', 'settings', 'accuracy']
+type Tab = 'home' | 'companies' | 'contacts' | 'exhibition' | 'insights' | 'settings' | 'accuracy'
+const TABS: Tab[] = ['home', 'companies', 'contacts', 'exhibition', 'insights', 'settings', 'accuracy']
 const CONCURRENCY = 2
 // Photos read per Gemini call. 1 = every card is read on its own (the setting in use).
 // Batching is built, tested and deployed: set this to 2-6 and single photos are read together, with Gemini numbering
@@ -54,6 +55,7 @@ export default function App() {
   const dupes = useMemo(() => findDuplicates(cards), [cards])
   const [backTab, setBackTab] = useState<Tab>('home')
   const [contactsFilter, setContactsFilter] = useState<Flt | undefined>()
+  const [contactsCompany, setContactsCompany] = useState('')
   const [camOpen, setCamOpen] = useState(false)
   const [toast, setToast] = useState<ToastData | null>(null)
   const toastAt = useRef({ at: 0, count: 0 })
@@ -281,7 +283,9 @@ export default function App() {
   }
   const newEventPrompt = () => { const n = prompt('Exhibition / event name'); if (n?.trim()) newEvent(n.trim()) }
   const goto = (t: Tab, from?: Tab) => { if (from) setBackTab(from); setOpen(null); setTab(t) }
-  const gotoTab = (t: Tab) => { setContactsFilter(undefined); goto(t) }
+  const gotoTab = (t: Tab) => { setContactsFilter(undefined); setContactsCompany(''); goto(t) }
+  /** Open Contacts pre-filtered from Home or Companies. The list spans every event, so the event tab resets to All. */
+  const openContacts = (f?: Flt, company = '') => { setActiveEvent(''); setContactsFilter(f); setContactsCompany(company); goto('contacts') }
   const scanHere = (id: string) => {
     setActiveEvent(id)
     try { localStorage.setItem('cardpulse.captureMode', 'many') } catch { /* ignore */ }
@@ -295,7 +299,7 @@ export default function App() {
     await refresh()
   }
   const retryFailed = () => enqueue(cards.filter((c) => c.status === 'error').map((c) => c.id))
-  const navActive: Tab = tab === 'accuracy' || tab === 'insights' ? 'settings' : tab
+  const navActive: Tab = tab === 'accuracy' || tab === 'insights' ? 'settings' : tab === 'companies' ? 'home' : tab
 
   return (
     <div className="app">
@@ -320,11 +324,13 @@ export default function App() {
             onMoveEvent={(eventId) => void moveToEvent([openCard.id], eventId)}
           />
         ) : tab === 'home' ? (
-          <Home cards={cards} events={events} activeEvent={activeEvent} onSelectEvent={setActiveEvent} dupes={dupes} ready={readerReady(settings)} needsKey={!serverMode || !!settings.useOwnKey}
-            install={install} onOpen={(id, review) => setOpen({ id, idx: 0, review })} onOpenContact={(id, idx) => setOpen({ id, idx })} onContacts={() => goto('contacts')} onAttention={() => { setContactsFilter('attention'); goto('contacts') }} onTogglePriority={(id, idx) => void togglePriority(id, idx)}
-            onInsights={() => goto('insights', 'home')} onAccuracy={() => goto('accuracy', 'home')} onSetup={() => goto('settings', 'home')} onRetry={(id) => enqueue([id])} />
+          <Home cards={cards} dupes={dupes} ready={readerReady(settings)} needsKey={!serverMode || !!settings.useOwnKey} install={install}
+            onOpenContact={(id, idx) => setOpen({ id, idx })} onContacts={() => openContacts()} onCompanies={() => goto('companies')} onStarred={() => openContacts('priority')}
+            onAttention={() => openContacts('attention')} onInsights={() => goto('insights', 'home')} onAccuracy={() => goto('accuracy', 'home')} onSetup={() => goto('settings', 'home')} />
+        ) : tab === 'companies' ? (
+          <Companies cards={cards} onBack={() => setTab('home')} onOpenCompany={(name) => openContacts(undefined, name)} />
         ) : tab === 'contacts' ? (
-          <Contacts onScan={scan} cards={cards} events={events} activeEvent={activeEvent} onSelectEvent={setActiveEvent} dupes={dupes} initialFilter={contactsFilter} onTogglePriority={(id, idx) => void togglePriority(id, idx)}
+          <Contacts onScan={scan} cards={cards} events={events} activeEvent={activeEvent} onSelectEvent={setActiveEvent} dupes={dupes} initialFilter={contactsFilter} initialCompany={contactsCompany} onTogglePriority={(id, idx) => void togglePriority(id, idx)}
             onOpen={(id, idx) => setOpen({ id, idx })} onRetryFailed={retryFailed} onUpload={(f) => void addFiles(f)} onMoveToEvent={moveToEvent} onDeleteContacts={deleteContacts} />
         ) : tab === 'exhibition' ? (
           <Exhibition cards={cards} events={events} activeEvent={activeEvent} onNew={newEventPrompt} onRename={renameEvent} onDelete={removeEvent}
@@ -350,7 +356,7 @@ export default function App() {
       <input ref={fallbackInput} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { if (e.target.files) void addFiles(e.target.files); e.target.value = '' }} />
       <Toast toast={toast} onDone={() => setToast(null)} />
       {!openCard && (tab === 'home' || tab === 'contacts') && (
-        <button className="fab-scan" onClick={scan}><Icon name="camera" size={20} /> Scan</button>
+        <button className="fab-scan" onClick={scan} aria-label="Scan a card"><Icon name="camera" size={22} />Scan</button>
       )}
       {!openCard && (
         <nav>

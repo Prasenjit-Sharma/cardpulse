@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { browserEnv, shareVcf, toVCard } from '../lib/actions'
 import { currentNameFormat } from '../lib/db'
 import { attentionReasons, needsAttention } from '../lib/attention'
+import { companyKey } from '../lib/companies'
 import { hasAllTags, matchesQuery, searchTokens } from '../lib/search'
 import type { CardRecord, Contact, EventRec } from '../lib/types'
 import CardThumb from './CardThumb'
@@ -16,7 +17,7 @@ interface Row { card: CardRecord; p: Contact; i: number; key: string }
 
 const monthLabel = (t: number) => new Date(t).toLocaleDateString(undefined, { month: 'short', year: 'numeric' }).toUpperCase()
 
-export default function Contacts({ onScan, cards: allCards, events, activeEvent, onSelectEvent, dupes, initialFilter, onOpen, onRetryFailed, onUpload, onMoveToEvent, onDeleteContacts, onTogglePriority }: {
+export default function Contacts({ onScan, cards: allCards, events, activeEvent, onSelectEvent, dupes, initialFilter, initialCompany, onOpen, onRetryFailed, onUpload, onMoveToEvent, onDeleteContacts, onTogglePriority }: {
   onScan: () => void
   cards: CardRecord[]
   events: EventRec[]
@@ -24,6 +25,7 @@ export default function Contacts({ onScan, cards: allCards, events, activeEvent,
   onSelectEvent: (id: string) => void
   dupes: Map<string, CardRecord[]>
   initialFilter?: Flt
+  initialCompany?: string
   onOpen: (id: string, idx: number) => void
   onRetryFailed: () => void
   onUpload: (f: FileList) => void
@@ -35,6 +37,7 @@ export default function Contacts({ onScan, cards: allCards, events, activeEvent,
   const [sort, setSort] = useState<Sort>('recent')
   const [flt, setFlt] = useState<Flt>(initialFilter ?? 'all')
   const [tag, setTag] = useState('')
+  const [company, setCompany] = useState(initialCompany ?? '')
   const [sel, setSel] = useState<Set<string> | null>(null)
 
   const eventName = (id?: string) => events.find((e) => e.id === id)?.name ?? ''
@@ -49,6 +52,7 @@ export default function Contacts({ onScan, cards: allCards, events, activeEvent,
     .flatMap((c) => (c.corrected ?? []).map((p, i) => ({ card: c, p, i, key: `${c.id}:${i}` })))
     .filter((r) => matchesQuery(r.p, tokens, eventName(r.card.eventId)))
     .filter((r) => hasAllTags(r.p, tag ? [tag] : []))
+    .filter((r) => !company || companyKey(r.p.company) === companyKey(company))
     .filter((r) => flt === 'all' || (flt === 'priority' ? !!r.p.priority : flt === 'attention' ? needsAttention(r.card, dupes.has(r.card.id)) : !!r.p.followUp))
   if (sort === 'name') rows = [...rows].sort((a, b) => a.p.name.localeCompare(b.p.name))
   if (sort === 'company') rows = [...rows].sort((a, b) => a.p.company.localeCompare(b.p.company))
@@ -83,16 +87,22 @@ export default function Contacts({ onScan, cards: allCards, events, activeEvent,
 
       <p className="filters-label">Filters</p>
       <div className="filters">
-        <span className={`filter-ico${flt !== 'all' || tag || activeEvent ? ' on' : ''}`}><Icon name="filter" size={16} /></span>
+        <span className={`filter-ico${flt !== 'all' || tag || company || activeEvent ? ' on' : ''}`}><Icon name="filter" size={16} /></span>
         {allTags.length > 0 && (
           <Picker title="Tag" label={tag || 'Tags'} value={tag} onChange={setTag}
             options={[{ value: '', label: 'All tags' }, ...allTags.map((t) => ({ value: t, label: t }))]} />
         )}
         <Picker title="Show" value={flt} onChange={(v) => setFlt(v as Flt)}
-          options={[{ value: 'all', label: 'Show all' }, { value: 'priority', label: 'Priority' }, { value: 'attention', label: 'Needs attention' }, { value: 'followup', label: 'Follow-ups' }]} />
+          options={[{ value: 'all', label: 'Show all' }, { value: 'priority', label: 'Starred' }, { value: 'attention', label: 'Needs attention' }, { value: 'followup', label: 'Follow-ups' }]} />
         <Picker title="Sort by" value={sort} onChange={(v) => setSort(v as Sort)}
           options={[{ value: 'recent', label: 'Recent' }, { value: 'name', label: 'Name' }, { value: 'company', label: 'Company' }]} />
       </div>
+
+      {company && (
+        <div className="filters">
+          <button className="chip on" onClick={() => setCompany('')} aria-label={`Remove company filter ${company}`}>{company} <Icon name="x" size={14} /></button>
+        </div>
+      )}
 
       {events.length > 0 && (
         <>
