@@ -1,4 +1,5 @@
 import { displayName, type NameFormat } from './naming.ts'
+import { splitAddress } from './address.ts'
 import type { Contact } from './types'
 
 /** wa.me wants country code + number, digits only. Bare Indian numbers get 91. */
@@ -27,7 +28,10 @@ export function toVCard(c: Contact, note = '', fmt: NameFormat = 'name'): string
   for (const p of c.phones) lines.push(`TEL;TYPE=CELL:${p.replace(/[^\d+]/g, '')}`)
   for (const e of c.emails) lines.push(`EMAIL;TYPE=WORK:${e}`)
   if (c.website) lines.push(`URL:${c.website}`)
-  if (c.address) lines.push(`ADR;TYPE=WORK:;;${esc(c.address)};;;;`)
+  if (c.address) {
+    const a = splitAddress(c.address)
+    lines.push(`ADR;TYPE=WORK:;;${esc(a.street)};${esc(a.city)};${esc(a.region)};${esc(a.postcode)};${esc(a.country)}`)
+  }
   if (note) lines.push(`NOTE:${esc(note)}`)
   lines.push('END:VCARD')
   return lines.join('\r\n')

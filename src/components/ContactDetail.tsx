@@ -1,15 +1,15 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useObjectUrl } from '../lib/useObjectUrl'
-import { prepareCardImage } from '../lib/cardImage'
+import { attentionReasons } from '../lib/attention'
 import { browserEnv, download, saveToPhone, shareContact, telHref, toVCard, waNumber } from '../lib/actions'
 import { currentNameFormat } from '../lib/db'
 import { log } from '../lib/debug'
 import { speechSupported, startDictation } from '../lib/speech'
 import { emptyContact, type CardRecord, type Contact, type EventRec, type FieldKey } from '../lib/types'
-import Camera from './Camera'
 import Sheet, { SheetItem } from './Sheet'
 import { useBackClose } from '../lib/useBackClose'
 import Icon from './Icon'
+import StarButton from './StarButton'
 import Picker from './Picker'
 
 const SUGGESTED_TAGS = ['Customer', 'Supplier', 'Partner', 'Investor', 'Hot lead']
@@ -76,7 +76,6 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
   const [slide, setSlide] = useState(0)
   const [light, setLight] = useState('')
   const [menu, setMenu] = useState(false)
-  const [camOpen, setCamOpen] = useState(false)
   const [listening, setListening] = useState(false)
   const [tagsOpen, setTagsOpen] = useState(false)
   const [noteOpen, setNoteOpen] = useState(false)
@@ -92,13 +91,14 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
   const stopRef = useRef<(() => void) | null>(null)
   useBackClose(fab, () => setFab(false))
   useBackClose(!!light, () => setLight(''))
-  const hasLiveCamera = !!navigator.mediaDevices?.getUserMedia
   const canRead = !!card.image && !card.thumbOnly
   const busy = card.status === 'pending' || card.status === 'running'
   const eventName = events.find((e) => e.id === card.eventId)?.name ?? ''
   const c = contacts[idx]
 
   useEffect(() => () => stopRef.current?.(), [])
+  // Only cards the user has actually opened count towards accuracy.
+  useEffect(() => { if (card.status === 'done' && !card.opened) void onSave({ ...card, opened: true }) }, [card.status, card.opened])  // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!tagsOpen && !noteOpen && !followOpen) return
     const onDown = (e: PointerEvent) => {
@@ -121,18 +121,18 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
   }, [card.status])
   useEffect(() => { if (!flash) return; const t = setTimeout(() => setFlash(''), 2600); return () => clearTimeout(t) }, [flash])
 
-  /** Accuracy edits invalidate the "reviewed" stamp; notes, tags and reminders don't. */
+  /** Editing a basic field means the user has looked at the card, so nothing stays flagged; notes, tags, follow-ups and priority don't count. */
   const commit = (next: Contact[], reviewed: boolean) => { setContacts(next); void onSave({ ...card, corrected: next, reviewed }) }
-  const patch = (p: Partial<Contact>, affectsAccuracy = true) =>
-    commit(contacts.map((x, j) => (j === idx ? { ...x, ...p } : x)), affectsAccuracy ? false : card.reviewed)
+  const patch = (p: Partial<Contact>, basicField = true) =>
+    commit(contacts.map((x, j) => (j === idx ? { ...x, ...p } : x)), basicField ? true : card.reviewed)
+  const reasons = attentionReasons(card, dupes.length > 0)
+  const flagged = card.status === 'done' && !card.reviewed && reasons.length > 0
   const changed = (k: FieldKey) => {
     const orig = card.extracted?.[idx]
     return !!orig && !!c && JSON.stringify(orig[k]) !== JSON.stringify(c[k])
   }
   /** Leaving edit mode counts as having reviewed the model's caveat, so it stops showing. */
   const finishEditing = () => { setEditing(false); if (card.aiNotes) void onSave({ ...card, corrected: contacts, aiNotes: undefined }) }
-  const setBack = async (back: Blob | undefined) => { await onSave({ ...card, back, reviewed: false }); onRetry() }
-  const pickBack = async (f?: File) => { if (f) await setBack(await prepareCardImage(f)) }
   const removePerson = () => {
     if (contacts.length <= 1) return onDelete()
     setIdx(Math.max(0, idx - 1))
@@ -164,20 +164,15 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
       <header className="bar-top">
         <button className="icon-btn ghost" onClick={onClose} aria-label="Back"><Icon name="back" /></button>
         <span className="grow" />
+        {card.status === 'done' && c && <StarButton on={!!c.priority} onToggle={() => patch({ priority: !c.priority }, false)} />}
         {card.status === 'done' && c && (
           <button className={`icon-btn ghost${editing ? ' on' : ''}`} onClick={() => (editing ? finishEditing() : setEditing(true))} aria-label={editing ? 'Done editing' : 'Edit'}><Icon name={editing ? 'check' : 'edit'} size={20} /></button>
         )}
         <button className="icon-btn ghost" onClick={() => setMenu(true)} aria-label="More options"><Icon name="more" /></button>
-        <input id="back-file" type="file" accept="image/*" hidden onChange={(e) => { void pickBack(e.target.files?.[0]); e.target.value = '' }} />
       </header>
 
       <Sheet open={menu} onClose={() => setMenu(false)} title={c?.name || 'Contact'}>
-        {c && <SheetItem icon="star" label={c.priority ? 'Remove priority' : 'Mark as priority'} onClick={() => { setMenu(false); patch({ priority: !c.priority }, false) }} />}
         {c && <SheetItem icon="file" label="Download contact file (.vcf)" onClick={() => { setMenu(false); download(`${c.name || 'contact'}.vcf`, toVCard(c, noteFor(), currentNameFormat()), 'text/x-vcard'); setFlash('Downloaded. Open the file to choose Contacts.') }} />}
-        {canRead && <SheetItem icon="refresh" label="Re-read card" onClick={() => { setMenu(false); onRetry() }} />}
-        {canRead && !card.back && hasLiveCamera && <SheetItem icon="camera" label="Add back side (camera)" onClick={() => { setMenu(false); setCamOpen(true) }} />}
-        {canRead && !card.back && <SheetItem icon="image" label="Add back side (photo)" onClick={() => { setMenu(false); document.getElementById('back-file')?.click() }} />}
-        {card.back && <SheetItem icon="image" label="Remove back side" onClick={() => { setMenu(false); if (confirm('Remove the back side and re-read?')) void setBack(undefined) }} />}
         <SheetItem icon="trash" danger label="Delete contact" onClick={() => { setMenu(false); if (confirm('Remove this person?')) removePerson() }} />
         <SheetItem icon="trash" danger label="Delete card" onClick={() => { setMenu(false); if (confirm('Delete the whole card and all its contacts?')) onDelete() }} />
       </Sheet>
@@ -190,7 +185,6 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
       )}
 
       {light && <div className="lightbox" onClick={() => setLight('')}><img src={light} alt="Card" /></div>}
-      {camOpen && <Camera single sidedOnly eventLabel="" onCard={(fs) => { void setBack(fs[0]) }} onClose={() => setCamOpen(false)} />}
       {card.status === 'error' && <div className="banner">{card.error} {canRead && <button className="link" onClick={onRetry}>Retry</button>}</div>}
       {busy && <p className="muted">Reading card…</p>}
 
@@ -202,13 +196,20 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
       {card.status === 'done' && c && !editing && (
         <>
           <div className="namecard">
-            <h1>{c.name || '(no name)'}{c.priority && <span className="star-mark"><Icon name="star" size={16} /></span>}</h1>
+            <h1>{c.name || '(no name)'}</h1>
             {c.title && <strong>{c.title}</strong>}
             {c.company && <span className="co">{c.company}</span>}
           </div>
 
-          {dupes.length > 0 && <p className="note">Possible duplicate. Shares a phone or email with: {dupes.map((d) => d.corrected?.map((p) => p.name).filter(Boolean).join(' & ') || 'unnamed card').join('; ')}</p>}
-          {card.aiNotes && <p className="note">Model note: {card.aiNotes}</p>}
+          {flagged && (
+            <div className="note attn" role="status">
+              <strong>Worth a quick check</strong>
+              <ul>{reasons.map((r) => <li key={r}>{r}</li>)}</ul>
+              {dupes.length > 0 && <p>Shares a phone or email with: {dupes.map((d) => d.corrected?.map((p) => p.name).filter(Boolean).join(' & ') || 'unnamed card').join('; ')}</p>}
+              {card.aiNotes && <p>Reader's note: {card.aiNotes}</p>}
+              <button className="link" onClick={() => commit(contacts, true)}>Looks fine</button>
+            </div>
+          )}
 
           <div className="infos">
             {c.address && <Info icon="pin" actions={<a className="act" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.address)}`} target="_blank" rel="noreferrer" aria-label="Open map"><Icon name="chevron" size={18} /></a>}>{c.address}</Info>}
@@ -315,10 +316,6 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
             <Row label="Address" edited={changed('address')}><textarea rows={2} value={c.address} onChange={(e) => patch({ address: e.target.value })} /></Row>
             <Row label="GSTIN" edited={changed('gstin')}><input value={c.gstin} onChange={(e) => patch({ gstin: e.target.value })} /></Row>
           </div>
-          <p className="hint">{card.model} · {((card.latencyMs ?? 0) / 1000).toFixed(1)}s{card.tokensIn != null && ` · ${card.tokensIn}+${card.tokensOut ?? 0} tokens`}{card.languages?.length ? ` · ${card.languages.join(', ')}` : ''}</p>
-          <button className={card.reviewed ? 'outline ok' : 'cta small'} onClick={() => commit(contacts, !card.reviewed)}>
-            {card.reviewed ? <><Icon name="check" size={18} /> Reviewed. Tap to undo</> : 'Mark card as reviewed'}
-          </button>
           <button className="outline" style={{ marginTop: 8 }} onClick={finishEditing}>Done</button>
         </>
       )}

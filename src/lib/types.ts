@@ -42,7 +42,10 @@ export interface CardRecord {
   extracted?: Contact[]
   /** What the user says is right. Equals `extracted` until edited. */
   corrected?: Contact[]
+  /** The user has dealt with anything flagged on this card: edited a basic field, or said "Looks fine". */
   reviewed: boolean
+  /** The contact page was opened at least once. Only opened cards count towards accuracy. */
+  opened?: boolean
   /** Exhibition/event this card was captured at. */
   eventId?: string
 }

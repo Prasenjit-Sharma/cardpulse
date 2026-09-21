@@ -41,7 +41,7 @@ Working rules for every phase:
 
 ### Phase 0: Refinements from real use (about 1 week)
 
-Everything here is small and already decided.
+Built 2026-09-21, awaiting the real-phone check. Everything here was small and already decided.
 
 - Needs-attention logic and its wiring on Home and Contacts (the Home row opens Contacts filtered to it); retire
   "Mark as reviewed".
@@ -49,9 +49,10 @@ Everything here is small and already decided.
 - Star button for priority; trim the contact menu.
 - vCard address split into street, city, state, pincode and country. Today the whole address lands in the street field,
   the same fault Covve is criticised for.
-- Refresh the scratch browser test suite for the Home layout; keep `npm test` green.
+- Keep `npm test` green (90 tests). The scratch browser suite was not refreshed; it lives outside the repo.
 - Gemini timeout and one retry (latency was 10 to 50 s per read on 2026-09-21).
 - Gate: user checks on several real Android and iPhone handsets.
+- Deviation: bulk export from the Accuracy page does not yet count a card as "exported" for accuracy; only opening does.
 
 ### Phase 1: Works in the hall (about 2 weeks)
 

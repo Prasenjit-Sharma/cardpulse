@@ -153,7 +153,7 @@ export default function SettingsPage({ settings, install, onChange, onWipe, onOp
           <Icon name="spark" /><span className="grow"><strong>Insights</strong><small>Follow-ups, companies and priorities</small></span><Icon name="back" size={16} />
         </button>
         <button className="menu-item" onClick={onOpenAccuracy}>
-          <Icon name="chart" /><span className="grow"><strong>Accuracy lab</strong><small>Measure how well cards are read</small></span><Icon name="back" size={16} />
+          <Icon name="chart" /><span className="grow"><strong>Accuracy</strong><small>How well cards are read</small></span><Icon name="back" size={16} />
         </button>
         <a className="menu-item" href={`${import.meta.env.BASE_URL}privacy.html`} target="_blank" rel="noreferrer">
           <Icon name="globe" /><span className="grow"><strong>Privacy policy</strong><small>How your data is handled</small></span><Icon name="back" size={16} />
@@ -162,7 +162,7 @@ export default function SettingsPage({ settings, install, onChange, onWipe, onOp
 
       <h3 className="group">Your data</h3>
       <section className="card">
-        <p className="hint">Contacts and photos are stored only in this browser. Clearing site data removes them, so export regularly from the Exhibition tab or Accuracy lab.</p>
+        <p className="hint">Contacts and photos are stored only in this browser. Clearing site data removes them, so export regularly from the Events tab or the Accuracy page.</p>
         <button className="danger wide" onClick={() => confirm('Delete ALL cards and contacts from this device? This cannot be undone.') && onWipe()}>Delete all data</button>
       </section>
 

@@ -392,7 +392,12 @@ label.check { display: flex; align-items: center; gap: 9px; font-size: var(--t-s
 .namecard h1 { display: flex; align-items: center; gap: 9px }
 .namecard strong { font-size: var(--t-m); font-weight: 600; color: var(--ink-2) }
 .namecard .co { color: var(--ink-2); font-size: var(--t-m) }
-.star-mark { color: var(--red); display: inline-flex } .star-mark svg { fill: var(--red) }
+.star-btn { width: 44px; height: 44px; min-height: 44px; flex: none; padding: 0; display: inline-flex; align-items: center; justify-content: center; background: none; border: 0; box-shadow: none; color: var(--ink-3) }
+.star-btn svg { fill: none; transition: fill var(--dur-1) var(--ease), color var(--dur-1) var(--ease) }
+.star-btn.on { color: var(--amber) } .star-btn.on svg { fill: currentColor }
+.star-btn:active:not(:disabled) { transform: none; box-shadow: none }
+.note.attn strong { display: block; margin-bottom: 4px }
+.note.attn ul { margin: 0 0 6px; padding-left: 18px } .note.attn p { margin: 0 0 6px }
 
 /* register entries: a ruled line, a stamped label, the value */
 .infos { display: flex; flex-direction: column; margin: 0 0 12px }
@@ -731,8 +736,6 @@ nav button.on::after { content: ''; position: absolute; left: 50%; top: 0; width
 @keyframes slot-in { from { opacity: 0; transform: scale(.7) } to { opacity: 1; transform: none } }
 
 /* ---------- home: search first, insights under it, a floating Scan ---------- */
-.home-tags { margin-top: 9px }
-.home-tags .chip { flex: none }
 .searchbox + .filters, .searchbox + .event-pick { margin-top: 9px }
 .home-stats { margin: 14px 0 6px }
 .home-stats button {

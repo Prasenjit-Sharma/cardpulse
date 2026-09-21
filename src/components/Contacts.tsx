@@ -1,35 +1,39 @@
 import { useState } from 'react'
 import { browserEnv, shareVcf, toVCard } from '../lib/actions'
 import { currentNameFormat } from '../lib/db'
+import { attentionReasons, needsAttention } from '../lib/attention'
 import { hasAllTags, matchesQuery, searchTokens } from '../lib/search'
 import type { CardRecord, Contact, EventRec } from '../lib/types'
 import CardThumb from './CardThumb'
 import EmptyState from './EmptyState'
 import Icon from './Icon'
 import Picker from './Picker'
+import StarButton from './StarButton'
 
 type Sort = 'recent' | 'name' | 'company'
-type Flt = 'all' | 'priority' | 'review' | 'dupes' | 'followup'
+export type Flt = 'all' | 'priority' | 'attention' | 'followup'
 interface Row { card: CardRecord; p: Contact; i: number; key: string }
 
 const monthLabel = (t: number) => new Date(t).toLocaleDateString(undefined, { month: 'short', year: 'numeric' }).toUpperCase()
 
-export default function Contacts({ onScan, cards: allCards, events, activeEvent, onSelectEvent, dupes, onOpen, onRetryFailed, onUpload, onMoveToEvent, onDeleteContacts }: {
+export default function Contacts({ onScan, cards: allCards, events, activeEvent, onSelectEvent, dupes, initialFilter, onOpen, onRetryFailed, onUpload, onMoveToEvent, onDeleteContacts, onTogglePriority }: {
   onScan: () => void
   cards: CardRecord[]
   events: EventRec[]
   activeEvent: string
   onSelectEvent: (id: string) => void
   dupes: Map<string, CardRecord[]>
+  initialFilter?: Flt
   onOpen: (id: string, idx: number) => void
   onRetryFailed: () => void
   onUpload: (f: FileList) => void
   onMoveToEvent: (cardIds: string[], eventId: string) => void
   onDeleteContacts: (keys: string[]) => void
+  onTogglePriority: (cardId: string, idx: number) => void
 }) {
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState<Sort>('recent')
-  const [flt, setFlt] = useState<Flt>('all')
+  const [flt, setFlt] = useState<Flt>(initialFilter ?? 'all')
   const [tag, setTag] = useState('')
   const [sel, setSel] = useState<Set<string> | null>(null)
 
@@ -45,7 +49,7 @@ export default function Contacts({ onScan, cards: allCards, events, activeEvent,
     .flatMap((c) => (c.corrected ?? []).map((p, i) => ({ card: c, p, i, key: `${c.id}:${i}` })))
     .filter((r) => matchesQuery(r.p, tokens, eventName(r.card.eventId)))
     .filter((r) => hasAllTags(r.p, tag ? [tag] : []))
-    .filter((r) => flt === 'all' || (flt === 'priority' ? !!r.p.priority : flt === 'review' ? !r.card.reviewed : flt === 'dupes' ? dupes.has(r.card.id) : !!r.p.followUp))
+    .filter((r) => flt === 'all' || (flt === 'priority' ? !!r.p.priority : flt === 'attention' ? needsAttention(r.card, dupes.has(r.card.id)) : !!r.p.followUp))
   if (sort === 'name') rows = [...rows].sort((a, b) => a.p.name.localeCompare(b.p.name))
   if (sort === 'company') rows = [...rows].sort((a, b) => a.p.company.localeCompare(b.p.company))
 
@@ -85,7 +89,7 @@ export default function Contacts({ onScan, cards: allCards, events, activeEvent,
             options={[{ value: '', label: 'All tags' }, ...allTags.map((t) => ({ value: t, label: t }))]} />
         )}
         <Picker title="Show" value={flt} onChange={(v) => setFlt(v as Flt)}
-          options={[{ value: 'all', label: 'Show all' }, { value: 'priority', label: 'Priority' }, { value: 'review', label: 'Needs review' }, { value: 'dupes', label: 'Possible duplicates' }, { value: 'followup', label: 'Follow-ups' }]} />
+          options={[{ value: 'all', label: 'Show all' }, { value: 'priority', label: 'Priority' }, { value: 'attention', label: 'Needs attention' }, { value: 'followup', label: 'Follow-ups' }]} />
         <Picker title="Sort by" value={sort} onChange={(v) => setSort(v as Sort)}
           options={[{ value: 'recent', label: 'Recent' }, { value: 'name', label: 'Name' }, { value: 'company', label: 'Company' }]} />
       </div>
@@ -133,10 +137,11 @@ export default function Contacts({ onScan, cards: allCards, events, activeEvent,
                 {sel && <span className={`check-dot${sel.has(r.key) ? ' on' : ''}`}>{sel.has(r.key) && <Icon name="check" size={14} />}</span>}
                 <CardThumb blob={r.card.image} name={r.p.name} />
                 <div className="grow">
-                  <strong>{r.p.name || '(no name)'}{r.p.priority && <Icon name="star" size={13} />}</strong>
+                  <strong>{r.p.name || '(no name)'}</strong>
                   <span className="muted">{[r.p.company, r.p.title].filter(Boolean).join(' | ') || r.p.phones[0] || r.p.emails[0] || ''}</span>
-                  {dupes.has(r.card.id) && <span className="dup-note">Possible duplicate</span>}
+                  {needsAttention(r.card, dupes.has(r.card.id)) && <span className="dup-note">{attentionReasons(r.card, dupes.has(r.card.id))[0]}</span>}
                 </div>
+                {!sel && <StarButton on={!!r.p.priority} onToggle={() => onTogglePriority(r.card.id, r.i)} />}
                 {!sel && <Icon name="chevron" size={18} />}
               </div>
             ))}

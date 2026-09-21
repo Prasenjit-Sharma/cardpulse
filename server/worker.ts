@@ -69,6 +69,9 @@ function validImages(v: unknown, layout: Layout): ImageInput[] | null {
   return total <= MAX_BASE64_CHARS[layout] ? out : null
 }
 
+/** A read is normally 3 to 10 s. Past this the request is stuck upstream; fail fast so the app can retry. */
+const UPSTREAM_TIMEOUT_MS = 40_000
+
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const url = new URL(req.url)
@@ -107,6 +110,7 @@ export default {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
         body: JSON.stringify(buildRequest(images, layout)),
+        signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
       })
     } catch {
       return fail(502, 'upstream_unreachable', 'The reading service is unavailable. Try again.', origin)

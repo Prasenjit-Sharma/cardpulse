@@ -82,7 +82,7 @@ export default function Insights({ cards, onBack, onContacts, onAccuracy, onOpen
         </section>
       )}
 
-      <button className="menu-row" onClick={onAccuracy}><Icon name="chart" /><span className="grow"><strong>Accuracy lab</strong><small>Measure how well cards are read</small></span><Icon name="back" size={16} /></button>
+      <button className="menu-row" onClick={onAccuracy}><Icon name="chart" /><span className="grow"><strong>Accuracy</strong><small>How well cards are read</small></span><Icon name="back" size={16} /></button>
     </>
   )
 }

@@ -27,17 +27,24 @@ function toBase64(blob: Blob): Promise<string> {
   })
 }
 
-/** Retries rate limits and transient server errors with backoff (free tiers are tight). */
-async function withRetry(send: () => Promise<Response>): Promise<{ res: Response; json: any; ms: number }> {
+/** One read normally takes 3 to 10 seconds; past this it is stuck, so give up on that attempt. */
+const ATTEMPT_TIMEOUT_MS = 55_000
+
+/** Retries rate limits and transient server errors with backoff (free tiers are tight). A stuck read is retried once. */
+async function withRetry(send: (signal: AbortSignal) => Promise<Response>): Promise<{ res: Response; json: any; ms: number }> {
   let lastErr: GeminiError | undefined
+  let timeouts = 0
   for (let attempt = 0; attempt < 4; attempt++) {
     if (attempt) await sleep(2000 * 2 ** (attempt - 1))
     const t0 = performance.now()
     let res: Response
     try {
-      res = await send()
-    } catch {
-      lastErr = new GeminiError('Network error. Are you online?')
+      res = await send(AbortSignal.timeout(ATTEMPT_TIMEOUT_MS))
+    } catch (e) {
+      if ((e as Error)?.name === 'TimeoutError') {
+        lastErr = new GeminiError('The reading is taking too long. Try again.')
+        if (++timeouts > 1) break
+      } else lastErr = new GeminiError('Network error. Are you online?')
       continue
     }
     const json = await res.json().catch(() => ({}))
@@ -55,13 +62,14 @@ export async function extractCard(blobs: Blob[], opts: ReadOptions, layout: Layo
   const images: ImageInput[] = await Promise.all(blobs.map(async (b) => ({ mime: b.type || 'image/jpeg', data: await toBase64(b) })))
 
   if (serverMode && !opts.useOwnKey) {
-    const { json, ms } = await withRetry(() =>
-      fetch(`${API_URL}/v1/extract`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ images, layout }) }))
+    const { json, ms } = await withRetry((signal) =>
+      fetch(`${API_URL}/v1/extract`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ images, layout }), signal }))
     return { ...(json as Parsed), latencyMs: ms, model: json.model }
   }
 
-  const { json, ms } = await withRetry(() =>
+  const { json, ms } = await withRetry((signal) =>
     fetch(`${BASE}/models/${encodeURIComponent(opts.model)}:generateContent`, {
+      signal,
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': opts.apiKey },
       body: JSON.stringify(buildRequest(images, layout)),

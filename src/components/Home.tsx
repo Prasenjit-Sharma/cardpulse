@@ -1,9 +1,11 @@
 import { useState } from 'react'
-import { hasAllTags, matchesQuery, searchTokens } from '../lib/search'
+import { needsAttention } from '../lib/attention'
+import { matchesQuery, searchTokens } from '../lib/search'
 import { overall, scoreCard, sumTallies } from '../lib/score'
 import type { CardRecord, Contact, EventRec } from '../lib/types'
 import CardThumb from './CardThumb'
 import Picker from './Picker'
+import StarButton from './StarButton'
 import Icon from './Icon'
 
 interface Install { mode: 'native' | 'ios' | null; visible: boolean; install: () => void; dismiss: () => void }
@@ -36,36 +38,36 @@ function EmptySleeves() {
   )
 }
 
-export default function Home({ cards, events, activeEvent, onSelectEvent, ready, needsKey, install, onOpen, onOpenContact, onContacts, onInsights, onAccuracy, onSetup, onRetry }: {
+export default function Home({ cards, events, activeEvent, onSelectEvent, dupes, ready, needsKey, install, onOpen, onOpenContact, onContacts, onAttention, onInsights, onAccuracy, onSetup, onRetry, onTogglePriority }: {
   cards: CardRecord[]
   events: EventRec[]
   activeEvent: string
   onSelectEvent: (id: string) => void
+  dupes: Map<string, CardRecord[]>
   ready: boolean
   needsKey: boolean
   install: Install
   onOpen: (id: string, review: boolean) => void
   onOpenContact: (id: string, idx: number) => void
   onContacts: () => void
+  onAttention: () => void
   onInsights: () => void
   onAccuracy: () => void
   onSetup: () => void
   onRetry: (id: string) => void
+  onTogglePriority: (cardId: string, idx: number) => void
 }) {
   const [query, setQuery] = useState('')
-  const [tags, setTags] = useState<string[]>([])
   const people: Person[] = cards.filter((c) => c.status === 'done').flatMap((c) => (c.corrected ?? []).map((p, i) => ({ card: c, p, i })))
-  const allTags = [...new Set(people.flatMap((x) => x.p.tags ?? []))].sort()
   const tokens = searchTokens(query)
-  const searching = tokens.length > 0 || tags.length > 0
+  const searching = tokens.length > 0
   const eventName = (id?: string) => events.find((e) => e.id === id)?.name ?? ''
-  const found = searching ? people.filter((x) => hasAllTags(x.p, tags) && matchesQuery(x.p, tokens, eventName(x.card.eventId))) : []
-  const toggleTag = (t: string) => setTags((cur) => (cur.includes(t) ? cur.filter((x) => x !== t) : [...cur, t]))
+  const found = searching ? people.filter((x) => matchesQuery(x.p, tokens, eventName(x.card.eventId))) : []
 
   const due = people.filter((x) => x.p.followUp && x.p.followUp <= isoToday())
   const upcoming = people.filter((x) => x.p.followUp && x.p.followUp > isoToday()).sort((a, b) => a.p.followUp!.localeCompare(b.p.followUp!))
-  const toReview = cards.filter((c) => c.status === 'done' && !c.reviewed).length
-  const acc = overall(sumTallies(cards.filter((c) => c.reviewed).map(scoreCard).filter((x): x is NonNullable<typeof x> => !!x)))
+  const toCheck = cards.filter((c) => needsAttention(c, dupes.has(c.id))).length
+  const acc = overall(sumTallies(cards.filter((c) => c.opened).map(scoreCard).filter((x): x is NonNullable<typeof x> => !!x)))
   const recent = cards.filter((c) => Date.now() - c.createdAt < 30 * 86_400_000)
   const t0 = startOfToday()
   const todayCards = cards.filter((c) => c.createdAt >= t0)
@@ -73,7 +75,7 @@ export default function Home({ cards, events, activeEvent, onSelectEvent, ready,
 
   const row = (c: CardRecord, i: number) => {
     const names = (c.corrected ?? []).map((p) => p.name).filter(Boolean)
-    const isNew = Date.now() - c.createdAt < 10 * 60_000 && !c.reviewed
+    const isNew = Date.now() - c.createdAt < 10 * 60_000 && !c.opened
     const multi = (c.corrected?.length ?? 0) > 1
     return (
       <div key={c.id} className="scan-row" style={{ ['--i' as string]: i }}
@@ -104,6 +106,7 @@ export default function Home({ cards, events, activeEvent, onSelectEvent, ready,
         <strong>{p.name || '(no name)'}</strong>
         <span className="muted">{[p.company, p.title].filter(Boolean).join(' | ') || p.phones[0] || p.emails[0] || ''}</span>
       </div>
+      <StarButton on={!!p.priority} onToggle={() => onTogglePriority(card.id, i)} />
       <Icon name="chevron" size={18} />
     </div>
   )
@@ -134,11 +137,6 @@ export default function Home({ cards, events, activeEvent, onSelectEvent, ready,
             <input type="search" placeholder={`Search ${people.length} contacts: name, city, notes…`} value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search contacts" />
             {query && <button className="icon-btn ghost small" onClick={() => setQuery('')} aria-label="Clear search"><Icon name="x" size={16} /></button>}
           </div>
-          {allTags.length > 0 && (
-            <div className="filters home-tags" role="group" aria-label="Filter by tag">
-              {allTags.map((t) => <button key={t} className={`chip${tags.includes(t) ? ' on' : ''}`} aria-pressed={tags.includes(t)} onClick={() => toggleTag(t)}>{t}</button>)}
-            </div>
-          )}
           {events.length > 0 && !searching && (
             <Picker className="event-pick" title="Scan into" icon="booth" value={activeEvent} onChange={onSelectEvent}
               options={[{ value: '', label: 'No event', hint: 'Cards are not filed under anything' }, ...events.map((e) => ({ value: e.id, label: e.name }))]} />
@@ -157,13 +155,13 @@ export default function Home({ cards, events, activeEvent, onSelectEvent, ready,
           <h3 className="group">{found.length} {found.length === 1 ? 'contact' : 'contacts'}</h3>
           {found.length > 0
             ? <div className="plain-list">{found.map(personRow)}</div>
-            : <p className="empty small">Nothing matches. Try fewer words or clear a tag.</p>}
+            : <p className="empty small">Nothing matches. Try fewer words.</p>}
         </section>
       ) : (
         <>
           <div className="stats2 home-stats">
             <button className={due.length ? 'warm' : ''} onClick={onInsights}><span>Follow-ups due</span><b className="num">{due.length}</b></button>
-            <button onClick={onContacts}><span>Need review</span><b className="num">{toReview}</b></button>
+            <button className={toCheck ? 'warm' : ''} onClick={onAttention}><span>Needs attention</span><b className="num">{toCheck}</b></button>
             <button onClick={onAccuracy}><span>Accuracy</span><b className="num">{acc == null ? '–' : `${Math.round(acc * 100)}%`}</b></button>
           </div>
 
