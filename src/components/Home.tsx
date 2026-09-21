@@ -101,7 +101,7 @@ export default function Home({ cards, dupes, ready, needsKey, install, backupNud
 
           <div className="stats2 home-stats">
             <button className={toCheck ? 'warm' : ''} onClick={onAttention}><span>Needs attention</span><b className="num">{toCheck}</b></button>
-            <button className={due.length ? 'warm' : ''} onClick={onInsights}><span>Follow-ups due</span><b className="num">{due.length}</b></button>
+            <button className={due.length ? 'warm' : ''} onClick={onInsights}><span>Follow-ups</span><b className="num">{due.length} due{upcoming.length > 0 && <small> · {upcoming.length} upcoming</small>}</b></button>
             <button onClick={onAccuracy}><span>Accuracy</span><b className="num">{acc == null ? '–' : `${Math.round(acc * 100)}%`}</b></button>
           </div>
 

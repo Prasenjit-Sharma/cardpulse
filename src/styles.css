@@ -695,7 +695,10 @@ nav button.on::after { content: ''; position: absolute; left: 50%; top: 0; width
 .x-btn { width: 30px; height: 30px; min-height: 30px; padding: 0; border: 0; background: none; box-shadow: none; color: var(--ink-3); border-radius: 50%; flex: none }
 .followbox { display: flex; align-items: center; gap: 8px; padding: 2px 4px 2px 12px }
 .followbox .lbl { font-size: var(--t-xs); font-weight: 600; letter-spacing: .1em; text-transform: uppercase; font-variation-settings: 'wdth' 80; color: var(--ink-3); flex: none }
-.followbox input { flex: 1; border: 0; background: none; min-height: 38px; padding: 0; min-width: 0 }
+.followbox { min-height: 44px }
+.followbox .datechip { position: relative; display: inline-flex; align-items: center; flex: none; min-height: 32px; padding: 0 10px; border-radius: 4px; background: var(--board-2); font-size: var(--t-m); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap }
+.followbox .datechip input { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; padding: 0; opacity: 0; cursor: pointer; font-size: 16px }
+.followbox .due { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
 .followbox .due { color: var(--red); font-weight: 600; font-size: var(--t-xs); letter-spacing: .1em; text-transform: uppercase; flex: none }
 .newtag { display: flex; gap: 6px } .newtag input { min-height: 34px; padding: 0 10px } .newtag button { min-height: 34px; flex: none }
 
@@ -899,3 +902,6 @@ h3.section .link { position: relative } h3.section .link::after { content: ''; p
 @supports (-webkit-touch-callout: none) { .log-note textarea, .log-date { font-size: 16px } }   /* iPhone zooms into fields under 16px */
 .log-note .mic { position: absolute; right: 6px; bottom: 6px; width: 32px; height: 32px; min-height: 32px }
 .log-date { align-self: flex-start; min-height: 38px; padding: 0 10px; font-size: var(--t-m) }
+
+.home-stats button b small { font-size: var(--t-s); font-weight: 500; color: var(--ink-3) }
+.followbox .due { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }   /* after the older rule, so the status takes the spare width and shortens instead of pushing the buttons out */

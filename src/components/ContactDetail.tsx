@@ -21,6 +21,7 @@ const when = (t: number) => new Date(t).toLocaleString(undefined, { month: 'shor
 
 const KIND_LABEL = { call: 'Call', meeting: 'Meeting', message: 'Message' } as const
 const OUTCOME_LABEL = { connected: 'Connected', 'no-answer': 'No answer', 'call-back': 'Call back' } as const
+const dayLabel = (iso: string) => new Date(`${iso}T00:00`).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })
 const shortDate = (iso: string) => new Date(`${iso}T00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
 
 /** One line of the timeline: what, how it went, what was said, and the next date. */
@@ -309,8 +310,12 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
           )}
           {(c.followUp || followOpen) && (
             <div className="editor-box followbox" ref={followRef}>
-              <span className="lbl">Follow up on</span>
-              <input ref={followInput} type="date" value={c.followUp ?? ''} autoFocus={followOpen && !c.followUp} onChange={(e) => { patch({ followUp: e.target.value }, false); if (!e.target.value) setFollowOpen(false) }} aria-label="Follow-up date" />
+              <span className="lbl">Follow up</span>
+              {/* the date is drawn as text so it is never clipped; the real date field sits invisibly on top and opens the phone's picker */}
+              <label className="datechip">
+                <span>{c.followUp ? dayLabel(c.followUp) : 'Pick a date'}</span>
+                <input ref={followInput} type="date" value={c.followUp ?? ''} autoFocus={followOpen && !c.followUp} onChange={(e) => { patch({ followUp: e.target.value }, false); if (!e.target.value) setFollowOpen(false) }} aria-label="Follow-up date" />
+              </label>
               {c.followUp && <small className={`due${dueStatus(c.followUp, today).state === 'upcoming' ? ' soon' : ''}`}>{dueLabel(c.followUp, today)}</small>}
               {c.followUp && <button className="x-btn cal" title="Add to calendar" aria-label="Add to calendar" onClick={() => { download(`follow-up-${(c.name || 'contact').replace(/[^\p{L}\p{N}]+/gu, '-')}.ics`, followUpIcs(c, c.followUp!), 'text/calendar'); setFlash('Opens in your calendar app.') }}><Icon name="calendar" size={16} /></button>}
               <button className="x-btn" onClick={() => { patch({ followUp: '' }, false); setFollowOpen(false) }} aria-label="Remove follow-up"><Icon name="x" size={16} /></button>
