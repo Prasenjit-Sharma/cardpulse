@@ -1,83 +1,135 @@
-# Roadmap
+# CardPulse: consolidated plan
 
-<!-- Reference plan, agreed 2026-09-20. Not a commitment to dates — update as phases complete
-     or priorities change. See PRODUCT.md for what's already shipped and current constraints. -->
+Last revised 2026-09-21. Supersedes the earlier five-phase plan and the separate review notes.
+`PRODUCT.md` records what is already shipped and today's constraints; this file records what comes next and why.
 
-## Phase 1 — Harden what exists (~1 week)
+## 1. Who and what
 
-- Test the camera, Auto Detect, share and vCard save on real Android and iPhone handsets
-  side by side. iOS Safari has not been tested at all yet.
-- Backup and restore: a one-tap export/import of all contacts and card photos. Cheapest
-  safety net while storage is on-device only (clearing site data loses everything).
-- Error and offline states: rate-limit errors, a slow network, a failed read that can be
-  retried, a queue that survives an app kill.
-- Accessibility pass: screen readers, focus order, reduced motion, palette in bright light.
+An Indian professional or exhibitor turns printed cards into reachable contacts without typing, and shares their own
+digital card just as easily. Events and exhibitions are the wedge; the business is small prepaid packs that undercut
+subscription apps (Covve about $120/year, HiHello Premium about $10/month, CamCard's capped free tier).
 
-## Phase 2 — Real users and cloud (~2–3 weeks)
+Working rules for every phase:
 
-- Accounts and sync via Supabase (chosen in principle, not built): login, contacts and card
-  photos in the cloud, multi-device.
-- Server-side limits: move the per-IP, in-memory rate limit to per-user quotas.
-- Paid Gemini tier — required before real customers, since the free tier may use submitted
-  images to improve Google's products.
-- Privacy and DPDP: consent and retention policy for storing other people's contact data,
-  deletion on request, updated privacy page. Blocks launch; needs legal review.
+- **Design:** every UI change goes through Impeccable (shape, build, finish review) and stays inside the Card Album
+  system and the Graphite + Teal palette. Nothing ships without the user checking it on real phones.
+- **Decide by data:** measured figures only (about ₹0.16 per photo on Gemini Flash-Lite; about 1,600 input tokens per
+  image, fixed regardless of photo size). No invented prices, users or accuracy claims.
+- **Small phases, each shippable.** Each phase ends with tests green, a deploy, and a real-phone check.
 
-## Phase 3 — Monetization (~1–2 weeks)
+## 2. Policies (from reading competitor reviews)
 
-- Pricing: measured cost is ≈ ₹0.16/photo; supports a free tier of ~20–30 cards/month plus a
-  paid plan. Confirm numbers with real users first.
-- Payments: Razorpay for India, plus store billing once in the app stores.
-- Usage meter in Settings.
+1. Export (CSV, vCard) is always free.
+2. No ads, no selling data, one-tap delete-everything.
+3. Scan packs never expire; existing users never get new caps.
+4. Nothing pushy is shown to people who receive a digital card.
+5. Every enriched or AI-added fact carries a source and needs the user's confirmation.
 
-## Phase 4 — Store apps (~2–3 weeks)
+## 3. Product decisions already made (2026-09-21)
 
-- Capacitor wrapper around the current codebase (faster route; verify share sheet, contacts
-  save and camera one by one).
-- Alternative: React Native rewrite — only if Capacitor's camera or performance disappoints.
-- Store listings: icons, screenshots, privacy labels, Play/App Store review.
+| Decision | Detail |
+|---|---|
+| **Needs attention, not "review everything"** | A card is flagged only when there is something to check: possible duplicate, a model warning, a failed read, or a fishy field (no name, no phone or email, malformed email, invalid phone, invalid GSTIN). Everything else is treated as accurate. Editing a basic field clears the flag; notes, tags, follow-up and priority never count. The manual "Mark card as reviewed" button goes away. |
+| **Accuracy counting** | A card the user never changed counts as accurate; a corrected field counts as a miss. Caveat: this over-reports if cards are never opened, so count only cards that were opened, shared, saved or exported. |
+| **Tags are not on Home** | Home is search, a short summary and recent scans. Tags stay searchable everywhere and filterable in Contacts. |
+| **Accuracy page is user-simple** | One headline percentage and, in plain words, which fields get corrected most. Tables, token counts, latency, model names and cost move to the admin console (Phase 5). |
+| **Priority is a star button** | A visible star on the contact page and its list row, one tap, never behind a menu. |
+| **Remove "Re-read card" and "Add back side"** | Front+back is chosen at capture. A failed read is retried from its row. The menu keeps only share, save, move and delete. |
+| **Admin console is separate** | A later, separate tool for operators: user management, usage, tokens, latency, cost, model settings, accuracy tables, error logs, packs. |
 
-## Phase 5 — Features that win users
+## 4. Phases
 
-- Exhibition team mode: shared events, per-person lead ownership.
-- CRM/export integrations: Google Contacts, Zoho, HubSpot, Excel templates.
-- Follow-up reminders as push notifications; WhatsApp message template.
-- Batching for large events — revisit only if rate limits actually hurt (see PRODUCT.md
-  positioning note: one Gemini call per photo today, batching left off by choice).
-- Caller-ID label overlay on Android.
-- Dialer — needs native code, so belongs after the wrapper (Phase 4).
-- On-demand contact/company enrichment ("find more about this person") — GSTIN lookup for
-  legal company details, plus a Gemini call with Google Search grounding for a company
-  summary. User-initiated per contact, not run automatically on every scan, and every
-  enriched field shown with a source link pending user confirmation. See privacy note above.
+### Phase 0: Refinements from real use (about 1 week)
 
-## Open decisions
+Everything here is small and already decided.
 
-1. Pricing model: subscription, pay-per-card, or free with a cap?
-2. Wrapper vs rewrite: Capacitor first, or React Native?
-3. Sequencing: real users first (Phase 2) or store-ready first (Phase 4)? Current lean:
-   2 → 3 → 4, with Phase 5 driven by what early users ask for.
+- Needs-attention logic and its wiring on Home and Contacts (the Home row opens Contacts filtered to it); retire
+  "Mark as reviewed".
+- Simplify the Accuracy page; remove tag chips from Home.
+- Star button for priority; trim the contact menu.
+- vCard address split into street, city, state, pincode and country. Today the whole address lands in the street field,
+  the same fault Covve is criticised for.
+- Refresh the scratch browser test suite for the Home layout; keep `npm test` green.
+- Gemini timeout and one retry (latency was 10 to 50 s per read on 2026-09-21).
+- Gate: user checks on several real Android and iPhone handsets.
 
-## Lessons from competitor reviews (researched 2026-09-21)
+### Phase 1: Field-ready trust (about 2 weeks)
 
-Sources: G2/Capterra/TrustRadius summaries, justuseapp review digests, Mobilo Card, Blinq and Wave comparison posts.
-Secondary sources only; Play Store and App Store review pages could not be read directly.
+Built for exhibition halls with weak or no signal.
 
-Pull into the plan:
-1. Offline capture queue for exhibition halls (photos saved offline, read when signal returns). The app has no offline handling today. Phase 1.
-2. Backup/restore and scheduled auto-export: Covve users report backup failures and vanished cards; our data is on-device only. Phase 1, top priority.
-3. vCard address: we write the whole address into the street field (`ADR;;;street;;;;`), the same "address on one line" fault Covve is criticised for. Split into street / city / state / pincode / country.
-4. Manual crop / re-crop of a saved card photo (Covve users cannot crop after capture).
-5. Policy: export (CSV, vCard) always free; no ads; scan packs never expire; no caps introduced on existing users.
-6. Digital cards: no pop-ups to recipients, clean professional templates free, deletable cards, full vCard fields (notes, birthday).
-7. In-app feedback with an attached diagnostic log; support promises a reply time.
-8. CRM/spreadsheet export templates (Zoho, HubSpot, Google Sheets); Phase 5.
+- **Offline capture queue:** photos are saved and read when signal returns; the queue survives an app kill; a clear
+  "waiting for network" state. Today the app has no offline handling.
+- **Backup and restore:** one-tap export and import of all contacts and card photos, plus a reminder to back up. Covve
+  users report failed backups and vanished cards, and our data is on-device only, so this is the biggest exposure.
+- Manual re-crop of a saved card photo.
+- Error states: rate limit, slow network, retry, partial batch failures.
+- In-app feedback with an attached diagnostic log.
+- Accessibility pass (screen reader, focus order, reduced motion, sunlight contrast) and low-end Android performance.
 
-## Parked follow-ups (small, do when convenient)
+### Phase 2: Digital cards (about 3 to 4 weeks)
 
-- Home "Need review" row opens Contacts unfiltered; should open Contacts filtered to unreviewed cards.
-- Follow-ups block on Home: "See all" opens Insights; the Insights page itself still lives under Settings' old path
-  as well — decide whether to keep both entry points.
-- Browser test suite (scratch `fb.mjs`) still assumes the old Scan tab and press bar; refresh it once the Home layout is confirmed on real phones.
-- Existing contacts scanned before "extras" shipped have no dealer/factory notes; re-reading a card adds them.
-- Gemini latency was 10–50 s per read on 2026-09-21 (normally ~3 s). Watch it; if it persists, consider a timeout + retry.
+The HiHello-style card, aimed at events and exhibitors. It starts with its own brainstorm and written spec because it
+is a new subsystem.
+
+- 2a, no server needed: card editor (name, title, company, photo or logo, phones, email, links, address, socials), a few
+  clean templates free, a QR that carries the contact (works offline), share as image, vCard or link.
+- 2b, needs a small backend: hosted card page and short link; visitors can save the contact and leave their own details,
+  which arrive as a scanned-style contact.
+- Exhibition stall card: one QR for the stall; every visitor who scans it lands in the event's contact list.
+- Basic view counts free (HiHello locks analytics behind a paywall).
+- Section 2 policies apply: no pop-ups to recipients, deletable cards, full vCard fields.
+
+### Phase 3: Accounts, sync and compliance (about 2 to 3 weeks)
+
+- Supabase login; contacts and card photos in the cloud; multi-device sync.
+- Per-user quotas replace the in-memory per-IP limit.
+- Paid Gemini tier (the free tier may use submitted images to improve Google's products).
+- DPDP: consent, retention, deletion on request, updated privacy page. Blocks launch; needs legal review.
+- Prerequisite for hosted digital cards at scale and for packs tied to an account.
+
+### Phase 4: Packs and payments (about 2 weeks)
+
+- Define the packs (see open decisions), price them from measured cost, and test them with a few real users first.
+- Razorpay for India; usage meter in Settings; store billing once the app is in the stores.
+
+### Phase 5: Admin console (about 2 to 3 weeks)
+
+A separate app for operators, not users.
+
+- User management: accounts, plans, pack balances, suspend and delete.
+- Usage and cost: photos per user, tokens in and out, latency, cost per user, rate-limit hits.
+- Model settings and feature flags; error and failed-read log.
+- Detailed accuracy tables by field, language and card type (the material removed from the user-facing page).
+- Pack and pricing management.
+
+### Phase 6: Store apps (about 2 to 3 weeks)
+
+- Capacitor wrapper around the current codebase; check share sheet, contacts save and camera one by one.
+- A React Native rewrite only if Capacitor's camera or performance disappoints.
+- Store listings, privacy labels, review.
+- Native-only features follow here: caller-ID label overlay, dialer.
+
+### Phase 7: Growth features (driven by early users)
+
+- Team and exhibition mode: shared events, lead ownership, duplicate detection across reps.
+- CRM and spreadsheet handoff: Zoho, HubSpot, Google Sheets, Excel templates (users report data never reaches their CRM).
+- On-demand enrichment: GSTIN lookup for legal name and address, plus a grounded company summary; user-initiated, sourced,
+  confirmed before saving.
+- Follow-up reminders as push notifications; WhatsApp message templates.
+- Batching of several photos per Gemini call, only if rate limits hurt.
+
+## 5. Open decisions
+
+1. **What is a "curated pack"?** For example a plain scan pack (100 or 500 reads), an exhibition pack (reads plus event
+   export plus a stall digital card), or a bundle by profession. This drives Phases 4 and 5.
+2. **Pricing:** one-time packs only, or packs plus an optional subscription?
+3. **Wrapper or rewrite:** Capacitor first (recommended) or React Native.
+4. **Sequencing:** the order above puts field trust and digital cards before accounts and payments. Swap Phases 2 and 3
+   if you want paying users sooner.
+5. **Accuracy counting rule** (section 3): confirm "opened, shared, saved or exported" as the counted set.
+
+## 6. Parked (small, do when convenient)
+
+- Contacts scanned before "extras" shipped have no dealer or factory notes; with "Re-read" removed, decide whether a
+  one-time bulk refresh is worth building.
+- Decide whether Insights keeps a second entry point under Settings now that Home links to it.
