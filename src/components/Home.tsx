@@ -32,12 +32,15 @@ function EmptySleeves() {
  * Home is the overview, not a second contact list: three counts that each open the right screen, then what needs you.
  * Search lives in Contacts and Companies; scanning is the floating button.
  */
-export default function Home({ cards, dupes, ready, needsKey, install, onOpenContact, onContacts, onCompanies, onStarred, onAttention, onInsights, onAccuracy, onSetup }: {
+export default function Home({ cards, dupes, ready, needsKey, install, backupNudge, onBackup, onSnoozeBackup, onOpenContact, onContacts, onCompanies, onStarred, onAttention, onInsights, onAccuracy, onSetup }: {
   cards: CardRecord[]
   dupes: Map<string, CardRecord[]>
   ready: boolean
   needsKey: boolean
   install: Install
+  backupNudge: boolean
+  onBackup: () => void
+  onSnoozeBackup: () => void
   onOpenContact: (id: string, idx: number) => void
   onContacts: () => void
   onCompanies: () => void
@@ -63,6 +66,14 @@ export default function Home({ cards, dupes, ready, needsKey, install, onOpenCon
 
       {needsKey && !ready && (
         <button className="banner-row" onClick={onSetup}><Icon name="spark" size={18} /><span className="grow"><strong>Add your Gemini key</strong><small>Needed to read cards</small></span><Icon name="chevron" size={18} /></button>
+      )}
+      {backupNudge && (
+        <div className="banner-row static">
+          <Icon name="download" size={18} />
+          <span className="grow"><strong>Back up your contacts</strong><small>They are stored only on this phone</small></span>
+          <button className="link" onClick={onBackup}>Back up</button>
+          <button className="icon-btn ghost small" onClick={onSnoozeBackup} aria-label="Remind me later"><Icon name="x" size={16} /></button>
+        </div>
       )}
       {install.visible && (
         <div className="banner-row static">

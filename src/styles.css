@@ -781,3 +781,6 @@ body:has(.selbar) .fab-scan { display: none }
 
 /* offline: one calm line at the top, not an alarm */
 .offline-bar { margin: 0 0 12px; padding: 10px 14px; border-radius: var(--r-sleeve); background: var(--amber-wash); color: var(--amber); font-size: var(--t-s); font-weight: 600; line-height: 1.35 }
+
+.restore { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; margin-top: 8px; cursor: pointer; border: 1px solid var(--board-edge); border-radius: var(--r-sleeve); background: var(--sleeve); font-weight: 600 }
+.hint.ok { color: var(--green) } .hint.bad { color: var(--red) }

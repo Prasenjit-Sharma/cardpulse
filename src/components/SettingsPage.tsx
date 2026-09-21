@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { lastBackupAt } from '../lib/backup'
 import { clearLog, readLog, subscribe } from '../lib/debug'
 import { DEFAULT_MODEL, listModels, serverMode } from '../lib/gemini'
 import type { Settings, Theme } from '../lib/db'
@@ -11,11 +12,13 @@ const MODELS_KEY = 'cardpulse.models'
 
 interface Install { mode: 'native' | 'ios' | null; install: () => void }
 
-export default function SettingsPage({ settings, install, onChange, onWipe, onOpenAccuracy, onOpenInsights, onBack }: {
+export default function SettingsPage({ settings, install, onChange, onWipe, onBackup, onRestore, onOpenAccuracy, onOpenInsights, onBack }: {
   settings: Settings
   install: Install
   onChange: (s: Settings) => void
   onWipe: () => void
+  onBackup: () => Promise<string>
+  onRestore: (f: File) => Promise<string>
   onOpenAccuracy: () => void
   onOpenInsights: () => void
   onBack: () => void
@@ -28,6 +31,14 @@ export default function SettingsPage({ settings, install, onChange, onWipe, onOp
     return settings.model ? [settings.model] : []
   })
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const [dataMsg, setDataMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const [busyData, setBusyData] = useState(false)
+  const [last, setLast] = useState(lastBackupAt)
+  const runData = async (job: () => Promise<string>) => {
+    setBusyData(true); setDataMsg(null)
+    try { setDataMsg({ ok: true, text: await job() }); setLast(lastBackupAt()) } catch (e) { setDataMsg({ ok: false, text: e instanceof Error ? e.message : 'That did not work. Try again.' }) }
+    setBusyData(false)
+  }
   const [busy, setBusy] = useState(false)
 
   // Refresh the model list whenever Settings opens, so the dropdown always offers everything the key can use.
@@ -162,7 +173,14 @@ export default function SettingsPage({ settings, install, onChange, onWipe, onOp
 
       <h3 className="group">Your data</h3>
       <section className="card">
-        <p className="hint">Contacts and photos are stored only in this browser. Clearing site data removes them, so export regularly from the Events tab or the Accuracy page.</p>
+        <p className="hint">Contacts and photos are stored only on this phone. Clearing the app's data removes them, so keep a backup.</p>
+        <button className="cta small wide" disabled={busyData} onClick={() => void runData(onBackup)}><Icon name="download" size={18} /> Back up all contacts</button>
+        <p className="hint">{last ? `Last backup: ${new Date(last).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}` : 'No backup yet.'} Saves a file with every contact and card photo. Send it to Drive or WhatsApp to keep it safe.</p>
+        <label className="outline wide restore">
+          <Icon name="upload" size={18} /> Restore from a backup
+          <input type="file" accept=".zip,application/zip" hidden disabled={busyData} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void runData(() => onRestore(f)) }} />
+        </label>
+        {dataMsg && <p className={dataMsg.ok ? 'hint ok' : 'hint bad'} role="status">{dataMsg.text}</p>}
         <button className="danger wide" onClick={() => confirm('Delete ALL cards and contacts from this device? This cannot be undone.') && onWipe()}>Delete all data</button>
       </section>
 

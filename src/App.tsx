@@ -7,6 +7,7 @@ import { prepareCardImage } from './lib/cardImage'
 import type { CardRecord, Contact, EventRec } from './lib/types'
 import { loadActiveEvent, loadEvents, saveActiveEvent, saveEvents } from './lib/events'
 import { findDuplicates } from './lib/dupes'
+import { backupDue, backupFileName, backupNudgeUntil, buildBackup, lastBackupAt, markBackedUp, mergeEvents, parseBackup, planRestore, saveBackupFile, snoozeBackupNudge } from './lib/backup'
 import { classifyFailure } from './lib/errors'
 import { useOnline } from './lib/useOnline'
 import Companies from './components/Companies'
@@ -337,6 +338,23 @@ export default function App() {
     await putCard({ ...c, corrected: c.corrected!.map((x, i) => (i === idx ? { ...x, priority: !x.priority } : x)) })
     await refresh()
   }
+  const [backupTick, setBackupTick] = useState(0)
+  const nudgeBackup = useMemo(() => backupDue(cards.length, lastBackupAt(), backupNudgeUntil()), [cards.length, backupTick])   // eslint-disable-line react-hooks/exhaustive-deps
+  const backupNow = async (): Promise<string> => {
+    const all = await listCards()
+    try { await saveBackupFile(await buildBackup(all, events), backupFileName()) } catch (e) { if ((e as Error)?.name === 'AbortError') return 'Backup cancelled.'; throw e }
+    markBackedUp(); setBackupTick((n) => n + 1)
+    return `Backed up ${all.length} ${all.length === 1 ? 'card' : 'cards'}.`
+  }
+  const restoreFrom = async (file: File): Promise<string> => {
+    const parsed = await parseBackup(file)
+    const plan = planRestore((await listCards()).map((c) => c.id), parsed.cards)
+    for (const c of plan.add) await putCard(c)
+    const merged = mergeEvents(events, parsed.events)
+    setEvents(merged); saveEvents(merged)
+    await refresh()
+    return `Restored ${plan.add.length} ${plan.add.length === 1 ? 'card' : 'cards'}${plan.skipped ? `. ${plan.skipped} ${plan.skipped === 1 ? 'was' : 'were'} already here` : ''}.`
+  }
   const retryFailed = () => enqueue(cards.filter((c) => c.status === 'error').map((c) => c.id))
   const navActive: Tab = tab === 'accuracy' || tab === 'insights' ? 'settings' : tab === 'companies' ? 'home' : tab
 
@@ -364,7 +382,8 @@ export default function App() {
             onMoveEvent={(eventId) => void moveToEvent([openCard.id], eventId)}
           />
         ) : tab === 'home' ? (
-          <Home cards={cards} dupes={dupes} ready={readerReady(settings)} needsKey={!serverMode || !!settings.useOwnKey} install={install}
+          <Home cards={cards} dupes={dupes} ready={readerReady(settings)} needsKey={!serverMode || !!settings.useOwnKey} install={install} backupNudge={nudgeBackup}
+            onBackup={() => void backupNow().then((m) => setBanner(m), () => setBanner('The backup could not be saved. Try again.'))} onSnoozeBackup={() => { snoozeBackupNudge(); setBackupTick((n) => n + 1) }}
             onOpenContact={(id, idx) => setOpen({ id, idx })} onContacts={() => openContacts()} onCompanies={() => goto('companies')} onStarred={() => openContacts('priority')}
             onAttention={() => openContacts('attention')} onInsights={() => goto('insights', 'home')} onAccuracy={() => goto('accuracy', 'home')} onSetup={() => goto('settings', 'home')} />
         ) : tab === 'companies' ? (
@@ -385,6 +404,7 @@ export default function App() {
             install={install}
             onChange={(s) => { setSettings(s); saveSettings(s) }}
             onWipe={async () => { await Promise.all(cards.map((c) => deleteCard(c.id))); await refresh() }}
+            onBackup={backupNow} onRestore={restoreFrom}
             onOpenAccuracy={() => goto('accuracy', 'settings')}
             onOpenInsights={() => goto('insights', 'settings')}
             onBack={() => setTab(backTab)}

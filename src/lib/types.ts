@@ -24,6 +24,8 @@ export interface CardRecord {
   createdAt: number
   /** Front of the card (or the only side). Absent when the user chose not to keep photos. */
   image?: Blob
+  /** The photo as first taken, kept only after the user adjusts the crop so the adjustment can be undone. */
+  original?: Blob
   /** Optional back side; read together with the front as ONE card. */
   back?: Blob
   /** `image` is only a small thumbnail, so the card cannot be re-read. */
