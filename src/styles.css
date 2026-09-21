@@ -905,3 +905,8 @@ h3.section .link { position: relative } h3.section .link::after { content: ''; p
 
 .home-stats button b small { font-size: var(--t-s); font-weight: 500; color: var(--ink-3) }
 .followbox .due { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }   /* after the older rule, so the status takes the spare width and shortens instead of pushing the buttons out */
+
+/* the follow-up row: sentence case, so the date and its status fit on one line on a narrow phone */
+.followbox .datechip { gap: 6px; text-transform: none; letter-spacing: 0; font-variation-settings: normal }
+.followbox .datechip svg { color: var(--ink-3); flex: none }
+.followbox .due { font-size: var(--t-s); text-transform: none; letter-spacing: 0; font-variation-settings: normal }
