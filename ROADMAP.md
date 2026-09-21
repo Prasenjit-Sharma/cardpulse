@@ -57,3 +57,12 @@
 2. Wrapper vs rewrite: Capacitor first, or React Native?
 3. Sequencing: real users first (Phase 2) or store-ready first (Phase 4)? Current lean:
    2 → 3 → 4, with Phase 5 driven by what early users ask for.
+
+## Parked follow-ups (small, do when convenient)
+
+- Home "Need review" row opens Contacts unfiltered; should open Contacts filtered to unreviewed cards.
+- Follow-ups block on Home: "See all" opens Insights; the Insights page itself still lives under Settings' old path
+  as well — decide whether to keep both entry points.
+- Browser test suite (scratch `fb.mjs`) still assumes the old Scan tab and press bar; refresh it once the Home layout is confirmed on real phones.
+- Existing contacts scanned before "extras" shipped have no dealer/factory notes; re-reading a card adds them.
+- Gemini latency was 10–50 s per read on 2026-09-21 (normally ~3 s). Watch it; if it persists, consider a timeout + retry.
