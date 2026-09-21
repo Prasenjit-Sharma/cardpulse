@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { browserEnv, shareVcf, toVCard } from '../lib/actions'
 import { currentNameFormat } from '../lib/db'
+import { hasAllTags, matchesQuery, searchTokens } from '../lib/search'
 import type { CardRecord, Contact, EventRec } from '../lib/types'
 import CardThumb from './CardThumb'
 import EmptyState from './EmptyState'
@@ -12,7 +13,6 @@ type Flt = 'all' | 'priority' | 'review' | 'dupes' | 'followup'
 interface Row { card: CardRecord; p: Contact; i: number; key: string }
 
 const monthLabel = (t: number) => new Date(t).toLocaleDateString(undefined, { month: 'short', year: 'numeric' }).toUpperCase()
-const haystack = (p: Contact) => [p.name, p.title, p.company, p.address, p.note, ...(p.tags ?? []), ...p.phones, ...p.emails].join(' ').toLowerCase()
 
 export default function Contacts({ onScan, cards: allCards, events, activeEvent, onSelectEvent, dupes, onOpen, onRetryFailed, onUpload, onMoveToEvent, onDeleteContacts }: {
   onScan: () => void
@@ -33,17 +33,18 @@ export default function Contacts({ onScan, cards: allCards, events, activeEvent,
   const [tag, setTag] = useState('')
   const [sel, setSel] = useState<Set<string> | null>(null)
 
+  const eventName = (id?: string) => events.find((e) => e.id === id)?.name ?? ''
   const inEvent = activeEvent ? allCards.filter((c) => c.eventId === activeEvent) : allCards
   const failed = inEvent.filter((c) => c.status === 'error')
   const reading = inEvent.filter((c) => c.status === 'pending' || c.status === 'running')
-  const q = query.trim().toLowerCase()
+  const tokens = searchTokens(query)
   const allTags = [...new Set(inEvent.flatMap((c) => (c.corrected ?? []).flatMap((p) => p.tags ?? [])))].sort()
 
   let rows: Row[] = inEvent
     .filter((c) => c.status === 'done')
     .flatMap((c) => (c.corrected ?? []).map((p, i) => ({ card: c, p, i, key: `${c.id}:${i}` })))
-    .filter((r) => !q || haystack(r.p).includes(q))
-    .filter((r) => !tag || (r.p.tags ?? []).includes(tag))
+    .filter((r) => matchesQuery(r.p, tokens, eventName(r.card.eventId)))
+    .filter((r) => hasAllTags(r.p, tag ? [tag] : []))
     .filter((r) => flt === 'all' || (flt === 'priority' ? !!r.p.priority : flt === 'review' ? !r.card.reviewed : flt === 'dupes' ? dupes.has(r.card.id) : !!r.p.followUp))
   if (sort === 'name') rows = [...rows].sort((a, b) => a.p.name.localeCompare(b.p.name))
   if (sort === 'company') rows = [...rows].sort((a, b) => a.p.company.localeCompare(b.p.company))
@@ -57,7 +58,6 @@ export default function Contacts({ onScan, cards: allCards, events, activeEvent,
     }
   } else groups.push({ label: sort === 'name' ? 'A TO Z' : 'BY COMPANY', items: rows })
 
-  const eventName = (id?: string) => events.find((e) => e.id === id)?.name ?? ''
   const toggle = (key: string) => setSel((s) => { const n = new Set(s); n.has(key) ? n.delete(key) : n.add(key); return n })
   const chosen = rows.filter((r) => sel?.has(r.key))
   const exit = () => setSel(null)
@@ -71,7 +71,7 @@ export default function Contacts({ onScan, cards: allCards, events, activeEvent,
 
       <div className="searchbox">
         <Icon name="search" size={18} />
-        <input type="search" placeholder={`Search ${allCards.reduce((n, c) => n + (c.corrected?.length ?? 0), 0)} contacts`} value={query} onChange={(e) => setQuery(e.target.value)} />
+        <input type="search" placeholder={`Search ${allCards.reduce((n, c) => n + (c.corrected?.length ?? 0), 0)} contacts: name, city, notes…`} value={query} onChange={(e) => setQuery(e.target.value)} />
         <label className="upload-inline" aria-label="Import photos"><Icon name="upload" size={18} />
           <input type="file" accept="image/*" multiple hidden onChange={(e) => { if (e.target.files) onUpload(e.target.files); e.target.value = '' }} />
         </label>
