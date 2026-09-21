@@ -1,6 +1,6 @@
 # Digital card (Phase 2a): design
 
-Date: 2026-09-21. Status: awaiting review. Scope: the part of the digital card that needs no server. Hosted links, view
+Date: 2026-09-21. Status: approved (open questions answered 2026-09-21). Scope: the part of the digital card that needs no server. Hosted links, view
 counts and leads captured through a QR are Phase 2b and are out of scope here.
 
 ## 1. Goal
@@ -31,8 +31,7 @@ buttons beneath: Edit and Share. An "Add a card" tile after the last card (until
 
 **Editor.** Live preview on top, then: card name (a label only the user sees), name, title, company, up to three phones, up
 to three emails, website, address, social links, photo or logo. Then Design: template, accent, font. Delete card at the bottom,
-with confirmation. New cards prefill name, company, phone, email and website from the user's own details if given once in
-Settings; otherwise blank.
+with confirmation. New cards start blank; there is no own-details entry in Settings.
 
 **Share sheet.** Four actions: Show QR (full screen), Send contact file (.vcf) via the share sheet, Send as image (PNG), Copy
 as text. A link option appears in 2b.
@@ -86,7 +85,7 @@ Error-correction level M, quiet zone of four modules.
 - `src/lib/cardvcf.ts`: vCard text with the byte budget and drop order; pure and tested.
 - `src/lib/drawcard.ts` and `src/lib/templates/*`: renderer and the five template layouts.
 - `src/components/MyCards.tsx`, `CardEditor.tsx`, `CardShare.tsx`, `StallMode.tsx`.
-- Changed: `App.tsx` (tab, routes), `SettingsPage.tsx` (own details), `backup.ts` (cards in the zip), `Icon.tsx` (tab icon).
+- Changed: `App.tsx` (tab, routes), `backup.ts` (cards in the zip), `Icon.tsx` (tab icon).
 
 ## 8. Error and edge cases
 
@@ -115,8 +114,7 @@ visual work goes through Impeccable (shape, build, finish review).
 1. Data model, storage, backup. 2. vCard builder and QR. 3. Renderer and the five templates. 4. Editor. 5. Share sheet and stall
 mode. 6. Tab, empty states, polish and finish review.
 
-## 12. Open questions
+## 12. Resolved questions
 
-- Should the user's own details in Settings exist at all, or should the first card simply start blank? (Leaning: no Settings
-  entry; prefill nothing, keep it simple.)
-- Three fonts were planned; two ship (Archivo, Inter) because those are the bundled ones and canvas font handling is uneven.
+- No own-details entry in Settings: a new card starts blank.
+- Two fonts ship, Archivo and Inter (the bundled ones); canvas font handling is uneven, so no third.
