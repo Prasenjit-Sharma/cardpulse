@@ -79,7 +79,7 @@ export default function Contacts({ onScan, cards: allCards, events, activeEvent,
 
       <div className="searchbox">
         <Icon name="search" size={18} />
-        <input type="search" aria-label="Search contacts" placeholder={`Search ${allCards.reduce((n, c) => n + (c.corrected?.length ?? 0), 0)} contacts: name, city, notes…`} value={query} onChange={(e) => setQuery(e.target.value)} />
+        <input type="search" aria-label="Search contacts" placeholder="Search name, city, notes" value={query} onChange={(e) => setQuery(e.target.value)} />
         <label className="upload-inline" aria-label="Import photos"><Icon name="upload" size={18} />
           <input type="file" accept="image/*" multiple hidden onChange={(e) => { if (e.target.files) onUpload(e.target.files); e.target.value = '' }} />
         </label>
@@ -156,7 +156,6 @@ export default function Contacts({ onScan, cards: allCards, events, activeEvent,
                   {needsAttention(r.card, dupes.has(r.card.id)) && <span className="dup-note">{attentionReasons(r.card, dupes.has(r.card.id))[0]}</span>}
                 </div>
                 {!sel && <StarButton on={!!r.p.priority} onToggle={() => onTogglePriority(r.card.id, r.i)} />}
-                {!sel && <Icon name="chevron" size={18} />}
               </div>
             ))}
           </div>

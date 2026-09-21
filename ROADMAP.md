@@ -75,6 +75,9 @@ walk-through on a real device, and measuring detector speed on a genuinely low-e
 
 ### Phase 2: Digital cards (about 3 to 4 weeks)
 
+Decided 2026-09-21: My Card is a fifth tab (Home, Contacts, My Card, Events, Settings); the default accent is Graphite. Design
+options (six templates, eight accents, contrast figures) were reviewed on a preview page; final template set still to confirm.
+
 The HiHello-style card, aimed at events and exhibitors. It starts with its own brainstorm and written spec because it
 is a new subsystem.
 
