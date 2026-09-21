@@ -26,7 +26,7 @@ const fitImage = (e: React.SyntheticEvent<HTMLImageElement>) => {
 
 /* ---------- edit-mode building blocks ---------- */
 function Row({ label, edited, children }: { label: string; edited?: boolean; children: ReactNode }) {
-  return <div className={`frow${edited ? ' edited' : ''}`}><span>{label}</span><div>{children}</div></div>
+  return <div className={`frow${edited ? ' edited' : ''}`} role="group" aria-label={label}><span aria-hidden="true">{label}</span><div>{children}</div></div>
 }
 function ListRows({ label, values, edited, placeholder, inputMode, onChange }: {
   label: string; values: string[]; edited: boolean; placeholder: string; inputMode?: 'tel' | 'email' | 'url'; onChange: (v: string[]) => void
@@ -36,7 +36,7 @@ function ListRows({ label, values, edited, placeholder, inputMode, onChange }: {
     <Row label={label} edited={edited}>
       {rows.map((v, i) => (
         <div key={i} className="lrow">
-          <input value={v} inputMode={inputMode} placeholder={placeholder} onChange={(e) => onChange(rows.map((x, j) => (j === i ? e.target.value : x)))}
+          <input value={v} inputMode={inputMode} placeholder={placeholder} aria-label={rows.length > 1 ? `${label} ${i + 1}` : label} onChange={(e) => onChange(rows.map((x, j) => (j === i ? e.target.value : x)))}
             onBlur={() => onChange(rows.map((x) => x.trim()).filter(Boolean))} />
           {v && <button className="x" onClick={() => onChange(rows.filter((_, j) => j !== i).filter(Boolean))} aria-label="Remove"><Icon name="x" size={16} /></button>}
         </div>
@@ -318,19 +318,19 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
         <>
           <p className="hint">Fix anything that was misread. Corrected fields are highlighted and count against accuracy.</p>
           <div className="panel">
-            <Row label="Full name" edited={changed('name')}><input value={c.name} onChange={(e) => patch({ name: e.target.value })} /></Row>
-            <Row label="Company" edited={changed('company')}><input value={c.company} onChange={(e) => patch({ company: e.target.value })} /></Row>
-            <Row label="Job title" edited={changed('title')}><input value={c.title} onChange={(e) => patch({ title: e.target.value })} /></Row>
+            <Row label="Full name" edited={changed('name')}><input aria-label="Full name" value={c.name} onChange={(e) => patch({ name: e.target.value })} /></Row>
+            <Row label="Company" edited={changed('company')}><input aria-label="Company" value={c.company} onChange={(e) => patch({ company: e.target.value })} /></Row>
+            <Row label="Job title" edited={changed('title')}><input aria-label="Job title" value={c.title} onChange={(e) => patch({ title: e.target.value })} /></Row>
             <ListRows label="Phone" values={c.phones} edited={changed('phones')} placeholder="Enter phone" inputMode="tel" onChange={(v) => patch({ phones: v })} />
             <ListRows label="Email" values={c.emails} edited={changed('emails')} placeholder="Enter email" inputMode="email" onChange={(v) => patch({ emails: v })} />
           </div>
           <div className="panel">
             <ListRows label="Social" values={c.social} edited={changed('social')} placeholder="LinkedIn / handle" onChange={(v) => patch({ social: v })} />
-            <Row label="Web" edited={changed('website')}><input value={c.website} placeholder="Enter web" onChange={(e) => patch({ website: e.target.value })} /></Row>
+            <Row label="Web" edited={changed('website')}><input aria-label="Web" value={c.website} placeholder="Enter web" onChange={(e) => patch({ website: e.target.value })} /></Row>
           </div>
           <div className="panel">
-            <Row label="Address" edited={changed('address')}><textarea rows={2} value={c.address} onChange={(e) => patch({ address: e.target.value })} /></Row>
-            <Row label="GSTIN" edited={changed('gstin')}><input value={c.gstin} onChange={(e) => patch({ gstin: e.target.value })} /></Row>
+            <Row label="Address" edited={changed('address')}><textarea aria-label="Address" rows={2} value={c.address} onChange={(e) => patch({ address: e.target.value })} /></Row>
+            <Row label="GSTIN" edited={changed('gstin')}><input aria-label="GSTIN" value={c.gstin} onChange={(e) => patch({ gstin: e.target.value })} /></Row>
           </div>
           <button className="outline" style={{ marginTop: 8 }} onClick={finishEditing}>Done</button>
         </>

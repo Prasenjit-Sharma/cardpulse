@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { lastBackupAt } from '../lib/backup'
+import { buildFeedback, sendFeedback, type Diagnostics } from '../lib/feedback'
 import { clearLog, readLog, subscribe } from '../lib/debug'
 import { DEFAULT_MODEL, listModels, serverMode } from '../lib/gemini'
 import type { Settings, Theme } from '../lib/db'
+import type { CardRecord } from '../lib/types'
 import { DEFAULT_NAME_FORMAT, displayName, NAME_FORMATS, type NameFormat } from '../lib/naming'
 import Icon from './Icon'
 import Picker from './Picker'
@@ -12,7 +14,8 @@ const MODELS_KEY = 'cardpulse.models'
 
 interface Install { mode: 'native' | 'ios' | null; install: () => void }
 
-export default function SettingsPage({ settings, install, onChange, onWipe, onBackup, onRestore, onOpenAccuracy, onOpenInsights, onBack }: {
+export default function SettingsPage({ cards, settings, install, onChange, onWipe, onBackup, onRestore, onOpenAccuracy, onOpenInsights, onBack }: {
+  cards: CardRecord[]
   settings: Settings
   install: Install
   onChange: (s: Settings) => void
@@ -34,6 +37,26 @@ export default function SettingsPage({ settings, install, onChange, onWipe, onBa
   const [dataMsg, setDataMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [busyData, setBusyData] = useState(false)
   const [last, setLast] = useState(lastBackupAt)
+  const [fbText, setFbText] = useState('')
+  const [fbDiag, setFbDiag] = useState(true)
+  const [fbMsg, setFbMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const diagnostics = (): Diagnostics => ({
+    version: __APP_VERSION__, userAgent: navigator.userAgent, online: navigator.onLine, screen: `${screen.width}x${screen.height}`,
+    installed: window.matchMedia('(display-mode: standalone)').matches,
+    cards: { total: cards.length, failed: cards.filter((c) => c.status === 'error').length, waiting: cards.filter((c) => c.status === 'pending' && c.waiting).length },
+    settings: { keepPhotos: settings.keepPhotos, theme: settings.theme ?? 'system', ownKey: !!settings.useOwnKey },
+    failures: [...new Set(cards.filter((c) => c.status === 'error' && c.error).map((c) => c.error!))].slice(0, 5),
+    recentLog: lines.slice(-12),
+  })
+  const send = async () => {
+    try {
+      const how = await sendFeedback(buildFeedback(fbText, fbDiag ? diagnostics() : undefined))
+      setFbMsg({ ok: true, text: how === 'copied' ? 'Copied. Paste it into an email or WhatsApp to send it to us.' : 'Thank you. That helps.' })
+      if (how !== 'copied') setFbText('')
+    } catch (e) {
+      if ((e as Error)?.name !== 'AbortError') setFbMsg({ ok: false, text: 'Could not send it. Try again.' })
+    }
+  }
   const runData = async (job: () => Promise<string>) => {
     setBusyData(true); setDataMsg(null)
     try { setDataMsg({ ok: true, text: await job() }); setLast(lastBackupAt()) } catch (e) { setDataMsg({ ok: false, text: e instanceof Error ? e.message : 'That did not work. Try again.' }) }
@@ -96,7 +119,7 @@ export default function SettingsPage({ settings, install, onChange, onWipe, onBa
         </div>
         <label>
           <span className="sr">Gemini API key</span>
-          <input type="password" autoComplete="off" placeholder="Paste your key (starts with AIza)" value={key} onChange={(e) => setKey(e.target.value)} />
+          <input type="password" aria-label="Gemini API key" autoComplete="off" placeholder="Paste your key (starts with AIza)" value={key} onChange={(e) => setKey(e.target.value)} />
         </label>
         <p className="hint">
           Get a free key at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">aistudio.google.com/apikey</a>.
@@ -182,6 +205,15 @@ export default function SettingsPage({ settings, install, onChange, onWipe, onBa
         </label>
         {dataMsg && <p className={dataMsg.ok ? 'hint ok' : 'hint bad'} role="status">{dataMsg.text}</p>}
         <button className="danger wide" onClick={() => confirm('Delete ALL cards and contacts from this device? This cannot be undone.') && onWipe()}>Delete all data</button>
+      </section>
+
+      <h3 className="group">Help</h3>
+      <section className="card">
+        <label className="fb-label" htmlFor="fb">Something wrong, or an idea?</label>
+        <textarea id="fb" rows={3} value={fbText} onChange={(e) => setFbText(e.target.value)} placeholder="Tell us what happened" />
+        <label className="check"><input type="checkbox" checked={fbDiag} onChange={(e) => setFbDiag(e.target.checked)} /> Include app details to help us fix it (no contacts, photos or keys)</label>
+        <button className="cta small wide" disabled={!fbText.trim()} onClick={() => void send()}>Send feedback</button>
+        {fbMsg && <p className={fbMsg.ok ? 'hint ok' : 'hint bad'} role="status">{fbMsg.text}</p>}
       </section>
 
       <details className="debug">

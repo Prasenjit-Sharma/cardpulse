@@ -54,7 +54,7 @@ export default function ScanResult({ card, events, onBack, onKeep, onEdit }: {
       </div>
       <label className="field-box">
         <span>Notes (optional)</span>
-        <textarea rows={3} placeholder="Just like writing on the back of a business card." value={note} onChange={(e) => setNote(e.target.value)} />
+        <textarea aria-label="Note for everyone on this card" rows={3} placeholder="Just like writing on the back of a business card." value={note} onChange={(e) => setNote(e.target.value)} />
       </label>
 
       <div className="sticky-cta">

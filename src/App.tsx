@@ -400,6 +400,7 @@ export default function App() {
           <Report cards={cards} events={events} dupes={dupes} onBack={() => setTab(backTab)} />
         ) : (
           <SettingsPage
+            cards={cards}
             settings={settings}
             install={install}
             onChange={(s) => { setSettings(s); saveSettings(s) }}

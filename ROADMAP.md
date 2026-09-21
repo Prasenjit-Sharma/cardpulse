@@ -59,11 +59,16 @@ Built 2026-09-21, awaiting the real-phone check. Everything here was small and a
 The app keeps working, and never loses a card, in exhibition-hall conditions: no signal, a full day of scanning, a phone
 that restarts, a slow read. Nothing is dropped and every failure can be recovered.
 
+Built 2026-09-21, awaiting the real-phone check. Notes: feedback goes through the share sheet or clipboard until a support
+address is set in `src/lib/feedback.ts` (`SUPPORT_EMAIL`); the camera detector now paces itself on slow phones; contrast fixes
+(amber and green on the darker backgrounds) and input labels came out of the accessibility pass. Not done: a screen-reader
+walk-through on a real device, and measuring detector speed on a genuinely low-end handset.
+
 - **Offline capture queue:** photos are saved and read when signal returns; the queue survives an app kill; a clear
   "waiting for network" state. Today the app has no offline handling.
 - **Backup and restore:** one-tap export and import of all contacts and card photos, plus a reminder to back up. Covve
   users report failed backups and vanished cards, and our data is on-device only, so this is the biggest exposure.
-- Manual re-crop of a saved card photo.
+- Adjust photo: drag four corners and rotate left or right, with undo to the original.
 - Error states: rate limit, slow network, retry, partial batch failures.
 - In-app feedback with an attached diagnostic log.
 - Accessibility pass (screen reader, focus order, reduced motion, sunlight contrast) and low-end Android performance.

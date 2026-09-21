@@ -33,7 +33,7 @@
   --rule-soft: rgba(22,25,29,.07);
 
   /* the working colour: bottle green, the colour of file cloth and ledger tape */
-  --green: #0F766E;
+  --green: #0E6F67;
   --green-ink: #FFFFFF;
   --green-wash: rgba(15,118,110,.09);
   --green-edge: rgba(15,118,110,.28);
@@ -43,7 +43,7 @@
   --red-wash: rgba(179,38,30,.09);
 
   /* states borrowed from the register's own marks */
-  --amber: #B45309;
+  --amber: #A34A08;
   --amber-wash: rgba(180,83,9,.13);
 
   --punch: rgba(22,25,29,.22);  /* the ring of a punched hole */
@@ -802,3 +802,4 @@ body:has(.selbar) .fab-scan { display: none }
 .adjust-tools { display: flex; justify-content: center; gap: 8px; padding: 10px 12px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid var(--board-edge); background: var(--board-2) }
 .adjust-tools button { flex: 1; max-width: 120px; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-height: 56px; font-size: var(--t-xs); font-weight: 600; letter-spacing: .06em; text-transform: uppercase }
 h3.section .link { float: right; min-height: 0; padding: 0; font-size: var(--t-xs); letter-spacing: .1em }
+.fb-label { display: block; font-weight: 600; margin-bottom: 6px }

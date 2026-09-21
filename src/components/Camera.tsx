@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { CARD_GUIDE, cropRect } from '../lib/crop'
 import { log } from '../lib/debug'
 import { detectCard, isStable, type Detection } from '../lib/detect'
+import { nextGap, smooth } from '../lib/pace'
 import { useBackClose } from '../lib/useBackClose'
 import { growQuad, quadSize, warpQuad, type Pt, type Quad } from '../lib/warp'
 import { useObjectUrl } from '../lib/useObjectUrl'
@@ -114,17 +115,19 @@ export default function Camera({ onCard, onSubmit, onClose, onGallery, eventLabe
     const c = document.createElement('canvas')
     const ctx = c.getContext('2d', { willReadFrequently: true })!
     let prev: Detection | null = null, stableSince = 0, unstable = 0, lost = 0, armed = true, idleSince = performance.now(), lastRun = 0
+    let cost: number | null = null, gap = MIN_GAP_MS                     // how long a look takes on this phone, and so how often to look
     let stopped = false, timer = 0, vfc = 0
 
     const tick = () => {
       if (stopped) return
       const now = performance.now()
-      if (v.videoWidth && now - lastRun >= MIN_GAP_MS) {
+      if (v.videoWidth && now - lastRun >= gap) {
         lastRun = now
         const k = ANALYSE_WIDTH / v.videoWidth
         c.width = ANALYSE_WIDTH; c.height = Math.max(1, Math.round(v.videoHeight * k))
         ctx.drawImage(v, 0, 0, c.width, c.height)
         const d = detectCard(ctx.getImageData(0, 0, c.width, c.height).data, c.width, c.height)
+        cost = smooth(cost, performance.now() - now); gap = nextGap(cost, MIN_GAP_MS)
         if (!d) {
           prev = null; stableSince = 0; unstable = 0
           if (++lost >= 5) armed = true                                     // the card left the frame: ready for the next one
@@ -148,7 +151,7 @@ export default function Camera({ onCard, onSubmit, onClose, onGallery, eventLabe
     const schedule = () => {
       if (stopped) return
       if ('requestVideoFrameCallback' in v) vfc = (v as HTMLVideoElement & { requestVideoFrameCallback: (cb: () => void) => number }).requestVideoFrameCallback(tick)
-      else timer = window.setTimeout(tick, MIN_GAP_MS)
+      else timer = window.setTimeout(tick, gap)
     }
     schedule()
     return () => { stopped = true; clearTimeout(timer); if (vfc && 'cancelVideoFrameCallback' in v) (v as HTMLVideoElement & { cancelVideoFrameCallback: (h: number) => void }).cancelVideoFrameCallback(vfc) }
