@@ -276,7 +276,7 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
               <Icon name="note" size={13} /> Notes
             </button>
             <button data-adder className={`adder${followOpen || c.followUp ? ' on' : ''}`} aria-pressed={followOpen || !!c.followUp}
-              onClick={() => (c.followUp ? (followInput.current?.showPicker?.() ?? followInput.current?.focus()) : setFollowOpen(!followOpen))}>
+              onClick={() => (c.followUp ? followRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }) : setFollowOpen(!followOpen))}>
               <Icon name="calendar" size={13} /> Follow-up
             </button>
           </div>
@@ -301,9 +301,9 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
             <div className="editor-box notebox" ref={noteRef}>
               <textarea ref={noteInput} rows={1} autoFocus={noteOpen && !c.note} placeholder="Note, like writing on the back of a card"
                 value={c.note ?? ''} onChange={(e) => patch({ note: e.target.value }, false)}
-                onBlur={(e) => { if (!e.target.value.trim()) setNoteOpen(false) }} aria-label="Note" />
+                onBlur={(e) => { if (listening || noteRef.current?.contains(e.relatedTarget as Node | null)) return; if (!e.target.value.trim()) setNoteOpen(false) }} aria-label="Note" />
               <div className="editor-acts">
-                {speechSupported && <button className={`mic${listening ? ' on' : ''}`} onClick={dictate} aria-label="Dictate note"><Icon name="mic" size={16} /></button>}
+                {speechSupported && <button className={`mic${listening ? ' on' : ''}`} onPointerDown={(e) => e.preventDefault()} onClick={dictate} aria-label={listening ? 'Stop dictating' : 'Dictate note'} aria-pressed={listening}><Icon name="mic" size={16} /></button>}
                 <button className="x-btn" onClick={() => { patch({ note: '' }, false); setNoteOpen(false) }} aria-label="Remove note"><Icon name="x" size={16} /></button>
               </div>
             </div>
