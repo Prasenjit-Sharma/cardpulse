@@ -53,9 +53,10 @@ Everything here is small and already decided.
 - Gemini timeout and one retry (latency was 10 to 50 s per read on 2026-09-21).
 - Gate: user checks on several real Android and iPhone handsets.
 
-### Phase 1: Field-ready trust (about 2 weeks)
+### Phase 1: Works in the hall (about 2 weeks)
 
-Built for exhibition halls with weak or no signal.
+The app keeps working, and never loses a card, in exhibition-hall conditions: no signal, a full day of scanning, a phone
+that restarts, a slow read. Nothing is dropped and every failure can be recovered.
 
 - **Offline capture queue:** photos are saved and read when signal returns; the queue survives an app kill; a clear
   "waiting for network" state. Today the app has no offline handling.
@@ -118,15 +119,33 @@ A separate app for operators, not users.
 - Follow-up reminders as push notifications; WhatsApp message templates.
 - Batching of several photos per Gemini call, only if rate limits hurt.
 
-## 5. Open decisions
+## 5. Decisions
 
-1. **What is a "curated pack"?** For example a plain scan pack (100 or 500 reads), an exhibition pack (reads plus event
-   export plus a stall digital card), or a bundle by profession. This drives Phases 4 and 5.
-2. **Pricing:** one-time packs only, or packs plus an optional subscription?
-3. **Wrapper or rewrite:** Capacitor first (recommended) or React Native.
-4. **Sequencing:** the order above puts field trust and digital cards before accounts and payments. Swap Phases 2 and 3
-   if you want paying users sooner.
-5. **Accuracy counting rule** (section 3): confirm "opened, shared, saved or exported" as the counted set.
+Settled 2026-09-21:
+
+- **Packs:** scan packs of 100 and 500 cards (never expire) and an exhibition pass valid for 7 days.
+- **Accuracy counting:** only cards that were opened, shared, saved or exported.
+
+Proposed, to validate with about ten real users before launch (all prices are hypotheses, not data). Cost basis is
+about ₹0.16 per photo, so 500 reads cost about ₹80 in Gemini fees, before payment fees and GST:
+
+| Plan | Proposal | Why |
+|---|---|---|
+| Free | 20 reads a month; digital card, export and search always free | Beats HiHello's 5 a month and CamCard's lifetime 100 cap |
+| Pack 100 | about ₹99, never expires | The one-off user who scans a stack once |
+| Pack 500 | about ₹349, never expires | Regular but irregular use |
+| Exhibition pass | about ₹199 for 7 days, fair-use 1,000 reads, shareable across up to 3 phones of one stall | The stall team and the one-time visitor; nobody else sells this |
+| Pro monthly | about ₹99 a month: 300 reads, cloud sync, CRM export, enrichment | Regular users |
+| Pro yearly | about ₹799 a year | Against Covve at about ₹10,000 a year |
+
+Also to decide: store billing takes a cut of in-app sales (commonly 15 to 30 percent), which changes these margins; and GST
+on digital services applies. Check both before fixing prices.
+
+Still open:
+
+1. **Wrapper:** Capacitor first (recommended, see chat notes) or React Native.
+2. **Sequencing:** the order above puts the work-in-the-hall phase and digital cards before accounts and payments. Swap
+   Phases 2 and 3 if you want paying users sooner.
 
 ## 6. Parked (small, do when convenient)
 
