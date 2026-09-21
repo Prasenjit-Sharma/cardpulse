@@ -1,0 +1,186 @@
+<title>Digital Card Options</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap">
+<style>
+:root{
+  --bg:#F2F4F5; --panel:#FFFFFF; --ink:#16191D; --muted:#4E545C; --line:rgba(22,25,29,.13); --brand:#0E6F67; --brand-ink:#FFFFFF;
+  --paper:#FBFAF7; --noir:#15181C;
+  --ac:#0E6F67; --acl:#4FC1B5;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#0F1214;--panel:#181C1F;--ink:#ECEEF0;--muted:#A0A5A9;--line:rgba(236,238,240,.16);--brand:#4FC1B5;--brand-ink:#062A27}}
+:root[data-theme="dark"]{--bg:#0F1214;--panel:#181C1F;--ink:#ECEEF0;--muted:#A0A5A9;--line:rgba(236,238,240,.16);--brand:#4FC1B5;--brand-ink:#062A27}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:'Archivo',system-ui,sans-serif;font-size:15px;line-height:1.5;padding-inline:16px;padding-block:28px 56px}
+.wrap{max-width:1040px;margin:0 auto}
+h1{font-size:30px;line-height:1.05;letter-spacing:-.02em;font-weight:700;font-stretch:88%;margin:0 0 8px}
+h2{font-size:18px;font-weight:650;letter-spacing:-.01em;margin:44px 0 6px;font-stretch:92%}
+p{margin:0 0 10px;max-width:68ch;text-wrap:pretty}
+.lede{color:var(--muted);font-size:16px}
+.cap{font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:600;font-stretch:80%;color:var(--muted)}
+.rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:14px}
+.rule{background:var(--panel);border-radius:6px;padding:14px 16px;border:1px solid var(--line)}
+.rule b{display:block;font-size:14px;margin-bottom:3px}
+.rule span{color:var(--muted);font-size:13px}
+.bar{display:flex;height:14px;border-radius:3px;overflow:hidden;margin:10px 0 2px}
+.swatches{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 6px}
+.sw{appearance:none;border:2px solid transparent;background:var(--c);width:44px;height:44px;border-radius:50%;cursor:pointer;padding:0;box-shadow:0 0 0 1px var(--line)}
+.sw[aria-pressed="true"]{border-color:var(--panel);box-shadow:0 0 0 3px var(--ink)}
+.sw:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
+.accname{font-size:13px;color:var(--muted);min-height:20px}
+.tablewrap{overflow-x:auto;margin-top:10px}
+table{border-collapse:collapse;width:100%;min-width:520px;font-variant-numeric:tabular-nums;font-size:13px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}
+th{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600}
+td i{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:8px;vertical-align:-1px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr));gap:26px 22px;margin-top:16px}
+.fig figcaption{margin-top:9px;font-size:13px;color:var(--muted)}
+.fig figcaption b{display:block;color:var(--ink);font-size:14px;margin-bottom:1px}
+/* ---- the cards ---- */
+.card{position:relative;aspect-ratio:1.75;width:100%;container-type:inline-size;border-radius:6px;overflow:hidden;box-shadow:0 1px 2px rgba(22,25,29,.18),0 10px 26px rgba(22,25,29,.16);font-family:'Archivo',system-ui,sans-serif;color:#16191D}
+.card *{margin:0;padding:0}
+.nm{display:block;font-size:7cqw;line-height:1.05;font-weight:700;letter-spacing:-.015em;font-stretch:90%}
+.tt{display:block;font-size:3.3cqw;font-weight:500;margin-top:.8cqw}
+.co{font-size:2.5cqw;font-weight:650;letter-spacing:.14em;text-transform:uppercase;font-stretch:82%}
+.ct{list-style:none;font-size:3cqw;line-height:1.55;font-variant-numeric:tabular-nums}
+.qr{position:absolute;background:#fff;padding:1.6cqw;border-radius:1.4cqw;line-height:0}
+.qr svg{width:100%;height:auto;display:block}
+.mono{position:absolute;display:grid;place-items:center;border-radius:50%;font-weight:700;font-stretch:88%}
+/* A: header block */
+.a{background:var(--paper)}
+.a .hd{position:absolute;inset:0 0 auto 0;height:39%;background:var(--ac);color:#fff;padding:0 6cqw 4cqw;display:flex;flex-direction:column;justify-content:flex-end}
+.a .bd{position:absolute;inset:39% 0 0 0;padding:4.4cqw 6cqw}
+.a .co{color:var(--ac);margin-bottom:1.6cqw}
+.a .qr{right:5cqw;bottom:4.6cqw;width:19cqw}
+/* B: ledger */
+.b{background:var(--paper);padding:5.4cqw 6cqw}
+.b .co{color:var(--ac)}
+.b .mono{right:6cqw;top:5cqw;width:9.4cqw;height:9.4cqw;background:var(--ac);color:#fff;font-size:3.6cqw}
+.b .nm{margin-top:6.4cqw}
+.b .tt{color:#4E545C}
+.b .rows{position:absolute;left:6cqw;right:6cqw;bottom:4.4cqw;width:58%}
+.b .r{display:flex;gap:2.4cqw;border-top:1px solid rgba(22,25,29,.16);padding:1.1cqw 0;font-size:2.9cqw;font-variant-numeric:tabular-nums}
+.b .r i{font-style:normal;width:2.6cqw;color:var(--ac);font-weight:700}
+.b .qr{right:5cqw;bottom:4.6cqw;width:19cqw}
+/* C: split */
+.c{background:var(--paper)}
+.c .side{position:absolute;inset:0 auto 0 0;width:37%;background:var(--ac)}
+.c .mono{left:5.4cqw;top:5.4cqw;width:11cqw;height:11cqw;background:#fff;color:var(--ac);font-size:4.4cqw}
+.c .qr{left:5.4cqw;bottom:5.4cqw;width:20.5cqw}
+.c .main{position:absolute;inset:0 0 0 37%;padding:6cqw 5.6cqw 5cqw 6cqw;display:flex;flex-direction:column}
+.c .nm{font-size:6.2cqw}
+.c .co{color:var(--ac);margin:auto 0 1.6cqw;padding-top:3cqw}
+/* D: noir */
+.d{background:var(--noir);color:#F1F3F4;padding:5.4cqw 6cqw}
+.d .co{color:var(--acl)}
+.d .nm{margin-top:9cqw;color:#F6F7F8}
+.d .tt{color:var(--acl)}
+.d .rule-s{display:block;width:9cqw;height:.9cqw;background:var(--acl);margin:3cqw 0 2.6cqw;border-radius:1px}
+.d .ct{color:#C9CDD2}
+.d .qr{right:5cqw;bottom:4.6cqw;width:19cqw}
+/* E: bold */
+.e{background:var(--ac);color:#fff;padding:5.4cqw 6cqw}
+.e .co{color:rgba(255,255,255,.86)}
+.e .nm{font-size:10.4cqw;font-weight:800;font-stretch:72%;text-transform:uppercase;letter-spacing:0;line-height:.94;margin-top:7cqw;max-width:66%}
+.e .tt{color:rgba(255,255,255,.9);margin-top:2cqw}
+.e .ct{position:absolute;left:6cqw;bottom:4.6cqw;color:rgba(255,255,255,.94)}
+.e .qr{right:5cqw;top:5cqw;width:19cqw}
+/* F: tint */
+.f{background:color-mix(in srgb,var(--ac) 9%,#fff);padding:5.4cqw 6cqw}
+.f .co{color:var(--ac)}
+.f .nm{margin-top:6.4cqw;color:var(--ac)}
+.f .tt{color:#3D434B}
+.f .ct{position:absolute;left:6cqw;bottom:4.6cqw;color:#16191D}
+.f .disc{position:absolute;right:-9cqw;bottom:-15cqw;width:60cqw;height:60cqw;border-radius:50%;background:var(--ac)}
+.f .qr{right:6cqw;bottom:5cqw;width:19cqw}
+/* stall mode */
+.stall{display:flex;flex-wrap:wrap;gap:26px;align-items:center;margin-top:16px}
+.phone{width:230px;aspect-ratio:9/17;border-radius:28px;background:#fff;color:#16191D;box-shadow:0 0 0 7px #1c2024,0 14px 34px rgba(0,0,0,.28);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:20px;text-align:center}
+.phone .qrb{width:100%;line-height:0}
+.phone .qrb svg{width:100%;height:auto}
+.phone b{font-size:19px;letter-spacing:-.01em;font-stretch:90%}
+.phone small{font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-stretch:80%;font-weight:600;color:#4E545C}
+.pick{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:16px 18px;margin-top:14px}
+.pick ol{margin:8px 0 0;padding-left:20px}
+.pick li{margin-bottom:6px;max-width:70ch}
+</style>
+
+<div class="wrap">
+<h1>Digital card options</h1>
+<p class="lede">Six card designs and eight accent colours for the CardPulse digital card, plus the stall screen. Pick an accent below and every card re-colours. Sample details only; the QR is a placeholder.</p>
+
+<h2>How the colour is chosen</h2>
+<div class="rules">
+  <div class="rule"><b>One accent, three proportions</b><span>About 60% paper or dark ground, 30% ink, 10% accent. A card with two loud colours reads as a flyer.</span>
+    <div class="bar" aria-hidden="true"><i style="flex:60;background:#FBFAF7;box-shadow:inset 0 0 0 1px rgba(22,25,29,.15)"></i><i style="flex:30;background:#16191D"></i><i style="flex:10;background:var(--ac)"></i></div></div>
+  <div class="rule"><b>Match the paper to the accent</b><span>Cool accents (navy, teal, indigo) sit on cool-white paper; warm ones (copper, burgundy) look richer on warm paper. Mixing temperatures reads as a mistake.</span></div>
+  <div class="rule"><b>Contrast first, taste second</b><span>Every accent is at least 5.7:1 against paper, and carries white text at 5.9:1 or better. Small text on a card is read on a phone in a bright hall.</span></div>
+  <div class="rule"><b>The QR is never coloured</b><span>Dark modules on a white plate with a clear margin, on every design. A tinted QR fails in poor light, and the QR is the point of the card.</span></div>
+  <div class="rule"><b>Dark cards use a lighter twin</b><span>A dark accent on a dark card disappears. Each accent has a lighter, slightly softer twin (7.2:1 or better on the dark ground) used only there.</span></div>
+</div>
+
+<h2>Accent set</h2>
+<p>Chosen to mean something in business: trust, growth, authority, craft, technology. Tap one.</p>
+<div class="swatches" id="sws" role="group" aria-label="Accent colour"></div>
+<div class="accname" id="accname" aria-live="polite"></div>
+<div class="tablewrap"><table>
+<thead><tr><th>Accent</th><th>White text on it</th><th>On paper</th><th>Light twin on dark card</th></tr></thead>
+<tbody>
+<tr><td><i style="background:#1C3F73"></i>Navy</td><td>10.5 : 1</td><td>10.0 : 1</td><td>7.9 : 1</td></tr>
+<tr><td><i style="background:#0E6F67"></i>Teal (brand)</td><td>6.0 : 1</td><td>5.8 : 1</td><td>8.2 : 1</td></tr>
+<tr><td><i style="background:#1F6B3A"></i>Forest</td><td>6.5 : 1</td><td>6.2 : 1</td><td>8.9 : 1</td></tr>
+<tr><td><i style="background:#8C2340"></i>Burgundy</td><td>8.6 : 1</td><td>8.3 : 1</td><td>7.2 : 1</td></tr>
+<tr><td><i style="background:#A34A08"></i>Copper</td><td>5.9 : 1</td><td>5.7 : 1</td><td>8.3 : 1</td></tr>
+<tr><td><i style="background:#3F4BA8"></i>Indigo</td><td>7.5 : 1</td><td>7.2 : 1</td><td>7.6 : 1</td></tr>
+<tr><td><i style="background:#6B2F7A"></i>Plum</td><td>9.1 : 1</td><td>8.7 : 1</td><td>7.7 : 1</td></tr>
+<tr><td><i style="background:#2A2F36"></i>Graphite</td><td>13.5 : 1</td><td>12.9 : 1</td><td>11.1 : 1</td></tr>
+</tbody></table></div>
+
+<h2>The six designs</h2>
+<p>All share the same proportions as a real business card (3.5 by 2 in). Each puts the name first, then the way to reach the person, with the QR always in a fixed, quiet spot.</p>
+<div class="grid" id="grid"></div>
+
+<h2>Stall mode</h2>
+<p>One tap from the card. The QR fills the screen for someone standing a metre away, the screen stays awake, and nothing else competes with it.</p>
+<div class="stall">
+  <div class="phone" aria-label="Stall mode preview"><small>Scan to save my contact</small><div class="qrb" data-qr></div><b>Rajesh Shah</b><small>ABC Polymers</small></div>
+  <div style="flex:1;min-width:230px;max-width:440px"><p><b>Why it beats a small QR on a card.</b> At a stall, people scan from arm's length and in a queue. A QR at 80% of screen width scans in a second; the one on a card takes a steady hand.</p><p class="cap">Screen stays awake · white plate · max size</p></div>
+</div>
+
+<h2>My recommendation</h2>
+<div class="pick">
+  <b>Ship five, keep one in reserve.</b>
+  <ol>
+    <li><b>Ledger</b> as the default. It is the CardPulse look: quiet, exact, and reads well small.</li>
+    <li><b>Header</b> for people who want colour at first glance.</li>
+    <li><b>Split</b> when there is a logo or photo, since the panel gives it a proper place.</li>
+    <li><b>Noir</b> for consultants and founders; it stands out in a stack of white cards.</li>
+    <li><b>Bold</b> for stalls: the name reads from across a table.</li>
+    <li><b>Tint</b> is the friendliest but least formal. Keep it back unless you want a sixth.</li>
+  </ol>
+  <p style="margin-top:10px">Default accent: <b>Teal</b> (the app's own colour), with Navy and Graphite as the two most conservative alternatives for banking, legal and industrial users.</p>
+</div>
+</div>
+
+<script>
+const ACCENTS=[['Navy','#1C3F73','#8AAEEA','Trust, banking, legal'],['Teal','#0E6F67','#4FC1B5','Modern, the CardPulse colour'],['Forest','#1F6B3A','#7BC894','Growth, agriculture, finance'],['Burgundy','#8C2340','#E58AA3','Authority, hospitality'],['Copper','#A34A08','#E8A25C','Warm, craft, manufacturing'],['Indigo','#3F4BA8','#9AA5F0','Technology, consulting'],['Plum','#6B2F7A','#C99AD8','Creative, design, health'],['Graphite','#2A2F36','#C8CDD3','Neutral, premium']];
+const sample={name:'Rajesh Shah',title:'General Manager',co:'ABC Polymers Pvt. Ltd.',ph:'+91 98240 22893',em:'rajesh@abcpolymers.com',web:'abcpolymers.com',ad:'GIDC Vatva, Ahmedabad',ini:'RS'};
+function qrSvg(seed){const n=25,m=[];let s=seed;const rnd=()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296};
+ for(let y=0;y<n;y++){m[y]=[];for(let x=0;x<n;x++)m[y][x]=rnd()>.52}
+ const fin=(ox,oy)=>{for(let y=0;y<7;y++)for(let x=0;x<7;x++){const edge=x==0||y==0||x==6||y==6,core=x>=2&&x<=4&&y>=2&&y<=4;m[oy+y][ox+x]=edge||core}
+  for(let i=-1;i<8;i++){[[oy-1,ox+i],[oy+7,ox+i],[oy+i,ox-1],[oy+i,ox+7]].forEach(([yy,xx])=>{if(m[yy]&&m[yy][xx]!==undefined&&(yy<7||yy>17)&&(xx<7||xx>17))m[yy][xx]=false})}};
+ fin(0,0);fin(n-7,0);fin(0,n-7);
+ let d='';for(let y=0;y<n;y++)for(let x=0;x<n;x++)if(m[y][x])d+=`M${x} ${y}h1v1h-1z`;
+ return `<svg viewBox="0 0 ${n} ${n}" shape-rendering="crispEdges" role="img" aria-label="QR code placeholder"><path d="${d}" fill="#16191D"/></svg>`}
+const T=[
+['Ledger','b','Paper, hairline rows, a monogram. The default.',s=>`<div class="co">${s.co}</div><div class="mono">${s.ini}</div><b class="nm">${s.name}</b><span class="tt">${s.title}</span><div class="rows"><div class="r"><i>M</i>${s.ph}</div><div class="r"><i>E</i>${s.em}</div><div class="r"><i>W</i>${s.web}</div></div><div class="qr" data-qr></div>`],
+['Header','a','A block of accent for the name, paper below.',s=>`<div class="hd"><b class="nm">${s.name}</b><span class="tt">${s.title}</span></div><div class="bd"><div class="co">${s.co}</div><ul class="ct"><li>${s.ph}</li><li>${s.em}</li><li>${s.web}</li></ul></div><div class="qr" data-qr></div>`],
+['Split','c','A colour panel holds the logo and the QR.',s=>`<div class="side"></div><div class="mono">${s.ini}</div><div class="qr" data-qr></div><div class="main"><b class="nm">${s.name}</b><span class="tt">${s.title}</span><div class="co">${s.co}</div><ul class="ct"><li>${s.ph}</li><li>${s.em}</li><li>${s.web}</li></ul></div>`],
+['Noir','d','Dark graphite, the light twin of your accent.',s=>`<div class="co">${s.co}</div><b class="nm">${s.name}</b><span class="tt">${s.title}</span><i class="rule-s"></i><ul class="ct"><li>${s.ph}</li><li>${s.em}</li><li>${s.web}</li></ul><div class="qr" data-qr></div>`],
+['Bold','e','Full colour, the name in big condensed capitals. For stalls.',s=>`<div class="co">${s.co}</div><b class="nm">${s.name}</b><span class="tt">${s.title}</span><ul class="ct"><li>${s.ph}</li><li>${s.em}</li></ul><div class="qr" data-qr></div>`],
+['Tint','f','A pale wash of the accent and a large disc behind the QR.',s=>`<div class="co">${s.co}</div><b class="nm">${s.name}</b><span class="tt">${s.title}</span><ul class="ct"><li>${s.ph}</li><li>${s.em}</li></ul><div class="disc"></div><div class="qr" data-qr></div>`]];
+document.getElementById('grid').innerHTML=T.map(([n,c,why,f])=>`<figure class="fig" style="margin:0"><div class="card ${c}">${f(sample)}</div><figcaption><b>${n}</b>${why}</figcaption></figure>`).join('');
+document.querySelectorAll('[data-qr]').forEach((el,i)=>{el.innerHTML=qrSvg(7)});
+const sws=document.getElementById('sws'),nameEl=document.getElementById('accname');
+function pick(i){const [n,a,l,why]=ACCENTS[i];const r=document.documentElement.style;r.setProperty('--ac',a);r.setProperty('--acl',l);nameEl.textContent=n+': '+why;[...sws.children].forEach((b,j)=>b.setAttribute('aria-pressed',j===i))}
+ACCENTS.forEach((a,i)=>{const b=document.createElement('button');b.className='sw';b.style.setProperty('--c',a[1]);b.setAttribute('aria-label',a[0]);b.setAttribute('aria-pressed','false');b.onclick=()=>pick(i);sws.appendChild(b)});
+pick(1);
+</script>
