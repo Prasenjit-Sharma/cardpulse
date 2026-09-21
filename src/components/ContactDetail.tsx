@@ -129,6 +129,8 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
     const orig = card.extracted?.[idx]
     return !!orig && !!c && JSON.stringify(orig[k]) !== JSON.stringify(c[k])
   }
+  /** Leaving edit mode counts as having reviewed the model's caveat, so it stops showing. */
+  const finishEditing = () => { setEditing(false); if (card.aiNotes) void onSave({ ...card, corrected: contacts, aiNotes: undefined }) }
   const setBack = async (back: Blob | undefined) => { await onSave({ ...card, back, reviewed: false }); onRetry() }
   const pickBack = async (f?: File) => { if (f) await setBack(await prepareCardImage(f)) }
   const removePerson = () => {
@@ -163,7 +165,7 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
         <button className="icon-btn ghost" onClick={onClose} aria-label="Back"><Icon name="back" /></button>
         <span className="grow" />
         {card.status === 'done' && c && (
-          <button className={`icon-btn ghost${editing ? ' on' : ''}`} onClick={() => setEditing(!editing)} aria-label={editing ? 'Done editing' : 'Edit'}><Icon name={editing ? 'check' : 'edit'} size={20} /></button>
+          <button className={`icon-btn ghost${editing ? ' on' : ''}`} onClick={() => (editing ? finishEditing() : setEditing(true))} aria-label={editing ? 'Done editing' : 'Edit'}><Icon name={editing ? 'check' : 'edit'} size={20} /></button>
         )}
         <button className="icon-btn ghost" onClick={() => setMenu(true)} aria-label="More options"><Icon name="more" /></button>
         <input id="back-file" type="file" accept="image/*" hidden onChange={(e) => { void pickBack(e.target.files?.[0]); e.target.value = '' }} />
@@ -317,7 +319,7 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
           <button className={card.reviewed ? 'outline ok' : 'cta small'} onClick={() => commit(contacts, !card.reviewed)}>
             {card.reviewed ? <><Icon name="check" size={18} /> Reviewed. Tap to undo</> : 'Mark card as reviewed'}
           </button>
-          <button className="outline" style={{ marginTop: 8 }} onClick={() => setEditing(false)}>Done</button>
+          <button className="outline" style={{ marginTop: 8 }} onClick={finishEditing}>Done</button>
         </>
       )}
 

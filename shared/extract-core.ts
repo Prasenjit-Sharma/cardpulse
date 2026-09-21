@@ -11,7 +11,7 @@ export type Layout = 'sides' | 'batch'
 export const MAX_IMAGES: Record<Layout, number> = { sides: 2, batch: 6 }
 
 /** A person as read from the photos, plus the number (1-based) of the photo they came from. */
-export interface ParsedContact extends Contact { image?: number }
+export interface ParsedContact extends Contact { image?: number; extras?: string }
 
 const str = { type: 'STRING' }
 const strList = { type: 'ARRAY', items: str }
@@ -30,8 +30,9 @@ export const responseSchema = {
           phones: strList, emails: strList,
           website: str, address: str, gstin: str, social: strList,
           image: { type: 'INTEGER', description: 'Number of the photo this person was read from (1 for a single card).' },
+          extras: { type: 'STRING', description: 'Other printed information that fits no field above. Empty if none.' },
         },
-        required: ['name', 'title', 'company', 'phones', 'emails', 'website', 'address', 'gstin', 'social', 'image'],
+        required: ['name', 'title', 'company', 'phones', 'emails', 'website', 'address', 'gstin', 'social', 'image', 'extras'],
       },
     },
   },
@@ -51,7 +52,8 @@ Rules:
 - "title" is the job designation only. "company" is the organisation only (no tagline). "address" is one line, comma-separated, including pincode.
 - "social" holds LinkedIn/Twitter/Instagram URLs or handles.
 - Emails lowercase. Websites as printed.
-- "notes": mention anything you could not read or were unsure about.
+- "extras": other useful printed information that fits no other field, as short plain text under 300 characters, or "" if none. Include: dealer/distributor/agent status ("Authorised Dealer for Hindustan Petroleum"), what the business deals in or makes ("Dealer: HDPE, LDPE; Mfg. of PP Fabric Roll"), certifications, and a client or brand list. Also include every extra address beyond the main one, each labelled "Factory:", "Branch:", "Works:" or "Godown:" as printed. The main "address" is the head/registered/office address. Leave out a person's name, title, company, phones, emails, website, GSTIN and social handles, and leave out a plain slogan.
+- "notes": mention anything you could not read or were unsure about, such as text cut off at an edge. Never put business information here.
 - "image": for every person, the number of the photo you read them from (1 when only one photo, or for the front of a card).`
 
 
@@ -114,6 +116,7 @@ export function parseResponse(json: any): Parsed {
       phones: strs(c.phones), emails: strs(c.emails).map((e) => e.toLowerCase()),
       website: str1(c.website), address: str1(c.address), gstin: str1(c.gstin).toUpperCase(), social: strs(c.social),
       image: Number.isInteger(c.image) && (c.image as number) > 0 ? (c.image as number) : undefined,
+      extras: str1(c.extras) || undefined,
     })),
     languages: strs(parsed.languages),
     notes: str1(parsed.notes),

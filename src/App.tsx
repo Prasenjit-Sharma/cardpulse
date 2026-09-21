@@ -83,7 +83,11 @@ export default function App() {
     })
   }, [])
 
-  const stripImage = (c: Contact & { image?: number }): Contact => { const { image: _image, ...rest } = c; return rest }
+  /** Drops the photo number; what the card says beyond the fixed fields becomes the contact's note, which the user may edit. */
+  const stripImage = (c: Contact & { image?: number; extras?: string }): Contact => {
+    const { image: _image, extras, ...rest } = c
+    return extras ? { ...rest, note: extras } : rest
+  }
 
   /**
    * Read one job: the cards in it share a SINGLE Gemini call. One card (or a front+back pair) is read as itself; several
