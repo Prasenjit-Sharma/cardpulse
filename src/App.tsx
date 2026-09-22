@@ -10,6 +10,7 @@ import { findDuplicates } from './lib/dupes'
 import { backupDue, backupFileName, backupNudgeUntil, buildBackup, lastBackupAt, markBackedUp, mergeEvents, parseBackup, planRestore, saveBackupFile, snoozeBackupNudge } from './lib/backup'
 import { applyAccent } from './lib/accents'
 import { classifyFailure } from './lib/errors'
+import { pullNewLeads } from './lib/leads'
 import { useOnline } from './lib/useOnline'
 import MyCards from './components/MyCards'
 import CardEditor from './components/CardEditor'
@@ -245,6 +246,17 @@ export default function App() {
   }, [enqueue])
   const online = useOnline()
   useEffect(() => { if (online) void resumePending() }, [online, resumePending])
+
+  const pullLeads = useCallback(async () => {
+    const found = await pullNewLeads(events)
+    if (!found.length) return
+    for (const { contact, eventId } of found) {
+      await putCard({ id: crypto.randomUUID(), createdAt: Date.now(), status: 'done', reviewed: false, extracted: [contact], corrected: [contact], eventId })
+    }
+    await refresh()
+    setToast({ id: Date.now(), title: `${found.length} new ${found.length === 1 ? 'lead' : 'leads'} from your stall`, sub: 'Ready to call, message or save' })
+  }, [events, refresh])
+  useEffect(() => { if (online) void pullLeads() }, [online, pullLeads])
 
   const addGroups = useCallback(async (groups: File[][], prepared: boolean) => {
     const { apiKey, model } = settingsRef.current

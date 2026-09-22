@@ -26,3 +26,16 @@ export async function submitLead(cardId: string, eventId: string | null, eventNa
   })
   if (error) throw error
 }
+
+/** New leads for events the signed-in user owns, turned into contacts. Marks each as pulled so it is not fetched twice. */
+export async function pullNewLeads(localEvents: EventRec[]): Promise<{ contact: Contact; eventId?: string }[]> {
+  if (!supabase) return []
+  const { data: sessionData } = await supabase.auth.getSession()
+  if (!sessionData.session) return []
+  const { data, error } = await supabase.from('leads').select('*').is('pulled_at', null).order('created_at', { ascending: true })
+  if (error || !data || !data.length) return []
+  const leads = data as Lead[]
+  const out = leads.map((lead) => leadToContact(lead, localEvents))
+  await supabase.from('leads').update({ pulled_at: new Date().toISOString() }).in('id', leads.map((l) => l.id))
+  return out
+}
