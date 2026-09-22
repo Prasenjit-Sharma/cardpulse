@@ -1,7 +1,7 @@
 // Run: node --test test/leads.test.mjs
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { leadToContact } from '../src/lib/leads.ts'
+import { applyPulledLeads, leadToContact } from '../src/lib/leads.ts'
 
 const lead = (o = {}) => ({ id: 'l1', card_id: 'c1', event_id: null, event_name: null, name: 'Visitor One', phone: '9990001111', email: null, company: null, created_at: '2026-09-22T10:00:00Z', ...o })
 const events = [{ id: 'e1', name: 'Plast India', createdAt: 1 }]
@@ -23,4 +23,21 @@ test('a name-only lead becomes a real contact with no crash, empty lists where n
 test('phone and email, when present, become single-item lists', () => {
   const { contact } = leadToContact(lead({ email: 'v@x.com' }), [])
   assert.deepEqual(contact.phones, ['9990001111']); assert.deepEqual(contact.emails, ['v@x.com'])
+})
+
+test('a write that fails leaves that lead unmarked, so it is retried on the next pull instead of lost; successes are reported', async () => {
+  const pulled = [{ leadId: 'a', contact: { name: 'A' } }, { leadId: 'b', contact: { name: 'B' } }, { leadId: 'c', contact: { name: 'C' } }]
+  let calls = 0
+  const write = async () => { calls++; if (calls === 2) throw new Error('boom') }
+  const succeeded = await applyPulledLeads(pulled, write)
+  assert.deepEqual(succeeded, ['a', 'c'])
+})
+test('every write succeeding marks every lead', async () => {
+  const pulled = [{ leadId: 'x', contact: { name: 'X' } }, { leadId: 'y', contact: { name: 'Y' } }]
+  const succeeded = await applyPulledLeads(pulled, async () => {})
+  assert.deepEqual(succeeded, ['x', 'y'])
+})
+test('every write failing marks nothing', async () => {
+  const succeeded = await applyPulledLeads([{ leadId: 'z', contact: { name: 'Z' } }], async () => { throw new Error('down') })
+  assert.deepEqual(succeeded, [])
 })

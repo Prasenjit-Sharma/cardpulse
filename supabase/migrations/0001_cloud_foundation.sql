@@ -33,12 +33,14 @@ create policy "owner deletes own cards" on public.cards for delete using (auth.u
 -- than JSON null, which would make a dead link look like a real, blank card. A set makes "not found" an
 -- unambiguous empty array.
 -- Postgres refuses to change a function's return type via CREATE OR REPLACE, so drop it first (idempotent
--- across re-runs of this file).
+-- across re-runs of this file). Named columns only, not `select *`: a visitor with the link should see the card's
+-- own fields, never owner_id, local_card_id or updated_at.
 drop function if exists public.get_public_card(text);
 create function public.get_public_card(p_slug text)
-returns setof public.cards
+returns table (id uuid, slug text, name text, title text, company text, phones text[], emails text[], website text, address text, social text[], photo_url text, template text, accent text, font text)
 language sql security definer set search_path = public as $$
-  select * from public.cards where slug = p_slug limit 1;
+  select id, slug, name, title, company, phones, emails, website, address, social, photo_url, template, accent, font
+  from public.cards where slug = p_slug limit 1;
 $$;
 grant execute on function public.get_public_card(text) to anon;
 

@@ -911,13 +911,19 @@ h3.section .link { position: relative } h3.section .link::after { content: ''; p
 .followbox .datechip svg { color: var(--ink-3); flex: none }
 .followbox .due { font-size: var(--t-s); text-transform: none; letter-spacing: 0; font-variation-settings: normal }
 
-/* the public card page: a plain, centred column, no app chrome */
-.public-card-page { max-width: 420px; margin: 0 auto; padding: 24px 16px calc(24px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 10px }
+/* the public card page: a plain, centred column, no app nav — but still a CardPulse page, not a bare form */
+.public-card-page {
+  max-width: 420px; margin: 0 auto; padding: 24px 16px calc(24px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 10px;
+  border-top: 4px solid var(--brand); background: var(--board); min-height: 100dvh;
+}
 .public-card-page .card-canvas { margin-bottom: 4px }
+.public-btn { min-height: 48px }
 .lead-form { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; padding-top: 14px; border-top: 1px solid var(--rule-soft) }
 .lead-form input { font-size: 16px }
+.public-card-foot { margin-top: 8px }
 
-/* stall mode's own segmented toggle, on its plain white ground */
-.stall-seg { width: min(80vw, 320px) }
-.stall-seg button[aria-pressed='true'] { color: #16191D }
+/* stall mode's own segmented toggle, on its plain white ground: colours are fixed, never theme-reactive, so it
+   never inherits dark mode's near-black `.seg` track onto the stall's deliberately always-light screen */
+.stall-seg { width: min(80vw, 320px); background: #F0F1F2; box-shadow: none }
+.stall-seg button[aria-pressed='true'] { background: #FFFFFF; color: #16191D }
 .stall-seg button:not([aria-pressed='true']) { color: #4E545C }

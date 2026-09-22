@@ -1,7 +1,7 @@
 // Run: node --test test/cloudcards.test.mjs
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { SLUG_LENGTH, buildCardPayload, generateSlug } from '../src/lib/cloudcards.ts'
+import { SLUG_LENGTH, buildCardPayload, conflictKind, generateSlug } from '../src/lib/cloudcards.ts'
 import { emptyCard } from '../src/lib/mycards.ts'
 
 test('a slug is 8 characters from the unambiguous alphabet', () => {
@@ -17,4 +17,11 @@ test('the payload carries the card fields but never the photo, and is sanitized 
   const p = buildCardPayload({ ...emptyCard(), id: 'local-1', name: '  Asha  ', photo: new Blob(['x']), phones: [' 1 ', ''] })
   assert.equal(p.local_card_id, 'local-1'); assert.equal(p.name, 'Asha'); assert.deepEqual(p.phones, ['1'])
   assert.equal('photo' in p, false)
+})
+test('a 23505 violation is classified by which unique constraint actually fired, not assumed to always be the slug', () => {
+  assert.equal(conflictKind({ code: '23505', message: 'duplicate key value violates unique constraint "cards_slug_key"' }), 'slug')
+  assert.equal(conflictKind({ code: '23505', message: 'duplicate key value violates unique constraint "cards_owner_id_local_card_id_key"' }), 'owner-local')
+  assert.equal(conflictKind({ code: '23503', message: 'insert or update on table violates foreign key constraint' }), 'other')
+  assert.equal(conflictKind(null), 'other')
+  assert.equal(conflictKind(undefined), 'other')
 })

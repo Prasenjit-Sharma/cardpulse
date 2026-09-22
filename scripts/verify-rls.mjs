@@ -55,6 +55,16 @@ async function main() {
   const { data: leadsAsAnon } = await anonClient.from('leads').select('*')
   check('anon cannot read leads directly', !leadsAsAnon || leadsAsAnon.length === 0)
 
+  console.log('The public RPCs also work for a signed-in but unrelated user (someone else\'s stall QR, while logged in)…')
+  const { data: pubAsB } = await b.client.rpc('get_public_card', { p_slug: card.slug })
+  check('a signed-in unrelated user can still fetch the card by its slug', pubAsB?.[0]?.name === 'Verify Test')
+  const { data: leadIdAsB, error: leadAsBErr } = await b.client.rpc('submit_lead', {
+    p_card_id: card.id, p_event_id: null, p_event_name: null, p_name: 'Visitor Two', p_phone: null, p_email: null, p_company: null,
+  })
+  check('a signed-in unrelated user can submit a lead too', !leadAsBErr && !!leadIdAsB, leadAsBErr?.message)
+  const { data: leadAsBRow } = await admin.from('leads').select('owner_id').eq('id', leadIdAsB).single()
+  check('...and that lead is still attributed to the card\'s real owner (A), not the submitter (B)', leadAsBRow?.owner_id === a.id)
+
   console.log('Owner isolation…')
   const { data: ownLeads } = await a.client.from('leads').select('*').eq('card_id', card.id)
   check('user A can read the lead on their own card', ownLeads?.some((l) => l.id === leadId) && ownLeads[0].owner_id === a.id)
@@ -64,6 +74,7 @@ async function main() {
   check('user B cannot read user A\'s card row directly', !otherCard || otherCard.length === 0)
 
   console.log('Cleaning up…')
+  await admin.from('leads').delete().eq('id', leadIdAsB)
   await a.client.from('cards').delete().eq('id', card.id)
   await admin.auth.admin.deleteUser(a.id)
   await admin.auth.admin.deleteUser(b.id)

@@ -43,12 +43,30 @@ async function uploadPhoto(ownerId: string, card: MyCard): Promise<string | unde
   return supabase.storage.from('card-photos').getPublicUrl(path).data.publicUrl
 }
 
+/**
+ * Which unique constraint a Postgres 23505 violation actually came from. `cards` has two: one on `slug` and one on
+ * `(owner_id, local_card_id)` — both raise the same error code, so the constraint name in the message is the only
+ * way to tell a genuine slug collision from a same-card double-publish race.
+ */
+export function conflictKind(error: { code?: string; message?: string } | null | undefined): 'slug' | 'owner-local' | 'other' {
+  if (!error || error.code !== '23505') return 'other'
+  if (error.message?.includes('cards_slug_key')) return 'slug'
+  if (error.message?.includes('cards_owner_id_local_card_id_key')) return 'owner-local'
+  return 'other'
+}
+
+async function findExisting(ownerId: string, localCardId: string): Promise<{ id: string; slug: string } | null> {
+  if (!supabase) return null
+  const { data } = await supabase.from('cards').select('id, slug').eq('owner_id', ownerId).eq('local_card_id', localCardId).maybeSingle()
+  return data
+}
+
 /** Publishes or refreshes a card. The slug is generated once on first publish and kept across every later republish. */
 export async function publishCard(card: MyCard, ownerId: string): Promise<{ slug: string; publicUrl: string }> {
   if (!supabase) throw new Error('Cloud features are not configured.')
   const payload = buildCardPayload(card)
   const photo_url = await uploadPhoto(ownerId, card)
-  const { data: existing } = await supabase.from('cards').select('id, slug').eq('owner_id', ownerId).eq('local_card_id', card.id).maybeSingle()
+  const existing = await findExisting(ownerId, card.id)
   if (existing) {
     const { error } = await supabase.from('cards').update({ ...payload, photo_url, updated_at: new Date().toISOString() }).eq('id', existing.id)
     if (error) throw error
@@ -58,7 +76,13 @@ export async function publishCard(card: MyCard, ownerId: string): Promise<{ slug
     const slug = generateSlug()
     const { error } = await supabase.from('cards').insert({ ...payload, owner_id: ownerId, photo_url, slug })
     if (!error) return { slug, publicUrl: publicCardUrl(slug) }
-    if (error.code !== '23505') throw error        // anything but "unique_violation" on the slug is a real failure
+    const kind = conflictKind(error)
+    if (kind === 'slug') continue                                      // genuine collision: try another random slug
+    if (kind === 'owner-local') {                                      // a concurrent publish of the SAME card won the race first
+      const race = await findExisting(ownerId, card.id)
+      if (race) return { slug: race.slug, publicUrl: publicCardUrl(race.slug) }
+    }
+    throw error
   }
   throw new Error('Could not publish the card. Try again.')
 }

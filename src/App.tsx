@@ -10,7 +10,7 @@ import { findDuplicates } from './lib/dupes'
 import { backupDue, backupFileName, backupNudgeUntil, buildBackup, lastBackupAt, markBackedUp, mergeEvents, parseBackup, planRestore, saveBackupFile, snoozeBackupNudge } from './lib/backup'
 import { applyAccent } from './lib/accents'
 import { classifyFailure } from './lib/errors'
-import { pullNewLeads } from './lib/leads'
+import { applyPulledLeads, markLeadsPulled, pullNewLeads } from './lib/leads'
 import { useOnline } from './lib/useOnline'
 import MyCards from './components/MyCards'
 import CardEditor from './components/CardEditor'
@@ -250,11 +250,15 @@ export default function App() {
   const pullLeads = useCallback(async () => {
     const found = await pullNewLeads(events)
     if (!found.length) return
-    for (const { contact, eventId } of found) {
+    // Only mark a lead pulled once its local contact is actually saved, so a failed write is retried next time
+    // instead of the lead being lost.
+    const succeeded = await applyPulledLeads(found, async (contact, eventId) => {
       await putCard({ id: crypto.randomUUID(), createdAt: Date.now(), status: 'done', reviewed: false, extracted: [contact], corrected: [contact], eventId })
-    }
+    })
+    if (!succeeded.length) return
+    await markLeadsPulled(succeeded)
     await refresh()
-    setToast({ id: Date.now(), title: `${found.length} new ${found.length === 1 ? 'lead' : 'leads'} from your stall`, sub: 'Ready to call, message or save' })
+    setToast({ id: Date.now(), title: `${succeeded.length} new ${succeeded.length === 1 ? 'lead' : 'leads'} from your stall`, sub: 'Ready to call, message or save' })
   }, [events, refresh])
   useEffect(() => { if (online) void pullLeads() }, [online, pullLeads])
 

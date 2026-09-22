@@ -27,15 +27,36 @@ export async function submitLead(cardId: string, eventId: string | null, eventNa
   if (error) throw error
 }
 
-/** New leads for events the signed-in user owns, turned into contacts. Marks each as pulled so it is not fetched twice. */
-export async function pullNewLeads(localEvents: EventRec[]): Promise<{ contact: Contact; eventId?: string }[]> {
+export interface PulledLead { leadId: string; contact: Contact; eventId?: string }
+
+/**
+ * New leads for events the signed-in user owns, turned into contacts. Does NOT mark anything as pulled — that is a
+ * separate step (`markLeadsPulled`), done by the caller only for the ones it actually wrote locally, so a lead is
+ * never marked pulled and then lost if the local write fails.
+ */
+export async function pullNewLeads(localEvents: EventRec[]): Promise<PulledLead[]> {
   if (!supabase) return []
   const { data: sessionData } = await supabase.auth.getSession()
   if (!sessionData.session) return []
   const { data, error } = await supabase.from('leads').select('*').is('pulled_at', null).order('created_at', { ascending: true })
   if (error || !data || !data.length) return []
-  const leads = data as Lead[]
-  const out = leads.map((lead) => leadToContact(lead, localEvents))
-  await supabase.from('leads').update({ pulled_at: new Date().toISOString() }).in('id', leads.map((l) => l.id))
-  return out
+  return (data as Lead[]).map((lead) => ({ leadId: lead.id, ...leadToContact(lead, localEvents) }))
+}
+
+export async function markLeadsPulled(leadIds: string[]): Promise<void> {
+  if (!supabase || !leadIds.length) return
+  await supabase.from('leads').update({ pulled_at: new Date().toISOString() }).in('id', leadIds)
+}
+
+/**
+ * Applies each pulled lead via `write` (the caller's local save). Only the ids whose write actually succeeded are
+ * returned — a lead whose local write fails stays unmarked and is picked up again on the next pull, instead of
+ * being silently lost.
+ */
+export async function applyPulledLeads(pulled: PulledLead[], write: (contact: Contact, eventId?: string) => Promise<void>): Promise<string[]> {
+  const succeeded: string[] = []
+  for (const { leadId, contact, eventId } of pulled) {
+    try { await write(contact, eventId); succeeded.push(leadId) } catch { /* left unmarked: retried on the next pull */ }
+  }
+  return succeeded
 }
