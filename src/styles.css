@@ -916,3 +916,8 @@ h3.section .link { position: relative } h3.section .link::after { content: ''; p
 .public-card-page .card-canvas { margin-bottom: 4px }
 .lead-form { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; padding-top: 14px; border-top: 1px solid var(--rule-soft) }
 .lead-form input { font-size: 16px }
+
+/* stall mode's own segmented toggle, on its plain white ground */
+.stall-seg { width: min(80vw, 320px) }
+.stall-seg button[aria-pressed='true'] { color: #16191D }
+.stall-seg button:not([aria-pressed='true']) { color: #4E545C }

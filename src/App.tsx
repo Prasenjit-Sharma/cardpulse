@@ -461,7 +461,10 @@ export default function App() {
       {sharingCard && myCards.find((c) => c.id === sharingCard) && (
         <CardShare card={myCards.find((c) => c.id === sharingCard)!} onClose={() => setSharingCard(null)} onStall={() => setStallCard(sharingCard)} />
       )}
-      {stallCard && myCards.find((c) => c.id === stallCard) && <StallMode card={myCards.find((c) => c.id === stallCard)!} onClose={() => setStallCard(null)} />}
+      {stallCard && myCards.find((c) => c.id === stallCard) && (
+        <StallMode card={myCards.find((c) => c.id === stallCard)!} eventId={activeEvent || undefined}
+          eventName={events.find((e) => e.id === activeEvent)?.name} onClose={() => setStallCard(null)} />
+      )}
       {camOpen && <Camera eventLabel={eventLabel} onSubmit={(cards) => { void addBatch(cards); goto('contacts') }} onGallery={(fs) => { void addFiles(fs) }} onClose={() => setCamOpen(false)} />}
       <input ref={fallbackInput} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { if (e.target.files) void addFiles(e.target.files); e.target.value = '' }} />
       <Toast toast={toast} onDone={() => setToast(null)} />
