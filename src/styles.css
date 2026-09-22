@@ -925,26 +925,11 @@ h3.section .link { position: relative } h3.section .link::after { content: ''; p
 .phone-row input:last-child { flex: 1; min-width: 0 }
 .public-card-foot { margin-top: 8px }
 
-/* stall mode's own segmented toggle, on its plain white ground: colours are fixed, never theme-reactive, so it
-   never inherits dark mode's near-black `.seg` track onto the stall's deliberately always-light screen.
-   Two segments only (unlike the 3-segment LogSheet kind picker `.seg` was built for), and nowrap so a two-word
-   label never wraps and throws the grid's implicit column sizing off, which is what made the pills uneven. */
-.stall-seg { width: min(86vw, 320px); grid-template-columns: repeat(2, 1fr); background: #F0F1F2; box-shadow: none }
+/* the setup sheet's mode toggle: an ordinary theme-reactive `.seg` (matching LogSheet's kind picker exactly), just
+   2 segments instead of 3, and nowrap so a two-word label never wraps and throws the grid's implicit column sizing
+   off, which is what made the pills uneven. */
+.stall-seg { grid-template-columns: repeat(2, 1fr) }
 .stall-seg button { white-space: nowrap }
-.stall-seg button[aria-pressed='true'] { background: #FFFFFF; color: #16191D }
-.stall-seg button:not([aria-pressed='true']) { color: #4E545C }
-
-/* the event picker inside stall mode, on its own light ground */
-.stall-event { min-height: 40px; padding: 0 12px; border-radius: var(--r-sleeve); background: #F0F1F2; color: #16191D; border: 0; box-shadow: none; font-size: var(--t-s); font-weight: 600 }
-
-/* the setup step: a left-aligned form, before the clean QR screen ever shows */
-.stall-setup { display: flex; flex-direction: column; align-items: stretch; gap: 16px; width: min(88vw, 340px); text-align: left }
-.stall-title { margin: 0; font-size: var(--t-xl); font-weight: 700; letter-spacing: -.01em; color: #16191D }
-.stall-field { display: flex; flex-direction: column; gap: 6px }
-.stall-field > span { font-size: var(--t-xs); font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: #4E545C }
-.stall-field input { min-height: 44px; padding: 0 12px; border-radius: var(--r-sleeve); border: 1px solid #D7D9DB; background: #FFFFFF; color: #16191D; font-size: 16px }
-.stall-field input:focus { border-color: var(--brand); background: #FFFFFF }
-.stall-hint.left { text-align: left; margin-top: -6px }
 
 /* the event name on the clean QR screen, shown only when one is set */
 .stall-event-tag { font-size: var(--t-xs); font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #16191D }

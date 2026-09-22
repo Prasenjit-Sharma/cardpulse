@@ -13,19 +13,21 @@ import { useOnline } from '../lib/useOnline'
 import { useWakeLock } from '../lib/wakelock'
 import Icon from './Icon'
 import Picker from './Picker'
+import Sheet from './Sheet'
 
 type Mode = 'share' | 'leads'
 type Step = 'setup' | 'show'
 
 /**
- * Two screens in one full-screen portal. Setup: pick just-share vs collect-leads, which event (leads only), and the
- * caption — all decided once, before anything is shown. Show: the QR as big as the screen allows, nothing else
- * competing, screen kept awake — the thing a stranger actually reads from across a table.
+ * Setup is a compact bottom sheet — mode, event and caption, all optional to change, same as every other sheet in
+ * the app. Only "Show QR" opens the full-screen view: the QR as big as the screen allows, nothing else competing,
+ * screen kept awake. "Just share" is the offline vCard QR (works with zero signal on either phone); "Collect leads"
+ * publishes the card and encodes a link instead, so the visitor's own phone can leave their details.
  */
 export default function StallMode({ card, events, initialEventId, onClose }: { card: MyCard; events: EventRec[]; initialEventId?: string; onClose: () => void }) {
   const canvas = useRef<HTMLCanvasElement>(null)
   const [step, setStep] = useState<Step>('setup')
-  useBackClose(true, () => (step === 'show' ? (setStep('setup'), false) : onClose()))
+  useBackClose(step === 'show', () => { setStep('setup'); return false })
   const { supported } = useWakeLock(step === 'show')
   const session = useSession()
   const online = useOnline()
@@ -77,46 +79,41 @@ export default function StallMode({ card, events, initialEventId, onClose }: { c
   const readyToShow = mode === 'share' || (canCollect && (slug || publishError))
 
   if (step === 'setup') {
-    return createPortal(
-      <div className="stall" role="dialog" aria-modal="true" aria-label="Set up the stall QR">
-        <button className="icon-btn ghost stall-close" onClick={onClose} aria-label="Close"><Icon name="x" size={24} /></button>
-        <div className="stall-setup">
-          <h1 className="stall-title">Show QR</h1>
-
+    return (
+      <Sheet open onClose={onClose} title="Show QR">
+        <div className="log-form">
           {cloudEnabled && (
             <div className="seg stall-seg" role="group" aria-label="Stall mode">
               <button aria-pressed={mode === 'share'} onClick={() => chooseMode('share')}>Just share</button>
               <button aria-pressed={mode === 'leads'} onClick={() => chooseMode('leads')} disabled={!canCollect}>Collect leads</button>
             </div>
           )}
-          {mode === 'leads' && !canCollect && <p className="stall-hint left">Sign in from Settings to collect leads.</p>}
-          {mode === 'leads' && canCollect && events.length > 0 && (
-            <div className="stall-field">
-              <span>Event</span>
-              <Picker className="stall-event" title="Filing leads under" value={eventChoice} onChange={setEventChoice}
-                options={[{ value: '', label: 'No event' }, ...events.map((e) => ({ value: e.id, label: e.name }))]} />
-            </div>
-          )}
+          {mode === 'leads' && !canCollect && <p className="hint">Sign in from Settings to collect leads.</p>}
 
-          <label className="stall-field">
-            <span>Caption</span>
+          <div className="log-field">
+            <span className="log-label">Event</span>
+            <Picker className="pick wide" title="Event" value={eventChoice} onChange={setEventChoice}
+              options={[{ value: '', label: 'No event' }, ...events.map((e) => ({ value: e.id, label: e.name }))]} />
+          </div>
+
+          <div className="log-field">
+            <span className="log-label">Caption</span>
             <input value={caption} onChange={(e) => { setCaption(e.target.value); setCaptionTouched(true) }} maxLength={60} aria-label="Caption shown above the QR" />
-          </label>
+          </div>
 
+          {mode === 'leads' && canCollect && publishError && <p className="hint bad">{publishError}</p>}
           <button className="cta wide" disabled={!readyToShow} onClick={() => setStep('show')}>
             {mode === 'leads' && publishing ? 'Setting up…' : 'Show QR'}
           </button>
-          {mode === 'leads' && canCollect && publishError && <p className="stall-hint left">{publishError}</p>}
         </div>
-      </div>,
-      document.body,
+      </Sheet>
     )
   }
 
   return createPortal(
     <div className="stall" role="dialog" aria-modal="true" aria-label="QR code for your contact card">
       <button className="icon-btn ghost stall-close" onClick={() => setStep('setup')} aria-label="Back to setup"><Icon name="back" size={22} /></button>
-      {mode === 'leads' && eventName && <span className="stall-event-tag">{eventName}</span>}
+      {eventName && <span className="stall-event-tag">{eventName}</span>}
       <p className="stall-cap">{caption}</p>
       {showQr && <canvas ref={canvas} className="stall-qr" role="img" aria-label={`Contact card QR for ${card.name}`} />}
       <strong className="stall-name">{card.name}</strong>
