@@ -7,6 +7,7 @@ import { DEFAULT_MODEL, listModels, serverMode } from '../lib/gemini'
 import type { Settings, Theme } from '../lib/db'
 import type { CardRecord } from '../lib/types'
 import { DEFAULT_NAME_FORMAT, displayName, NAME_FORMATS, type NameFormat } from '../lib/naming'
+import AccountSection from './AccountSection'
 import Icon from './Icon'
 import Picker from './Picker'
 import Logo from './Logo'
@@ -203,6 +204,8 @@ export default function SettingsPage({ cards, settings, install, onChange, onWip
           <Icon name="globe" /><span className="grow"><strong>Privacy policy</strong><small>How your data is handled</small></span><Icon name="back" size={16} />
         </a>
       </section>
+
+      <AccountSection />
 
       <h3 className="group">Your data</h3>
       <section className="card">
