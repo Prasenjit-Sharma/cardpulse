@@ -7,39 +7,45 @@ import type { MyCard } from '../lib/mycards'
 import { qrMatrix } from '../lib/qr'
 import { useBackClose } from '../lib/useBackClose'
 import { cloudEnabled } from '../lib/supabase'
+import type { EventRec } from '../lib/types'
 import { useOnline } from '../lib/useOnline'
 import { useWakeLock } from '../lib/wakelock'
 import Icon from './Icon'
+import Picker from './Picker'
 
 type Mode = 'share' | 'leads'
 
 /**
  * The QR as big as the screen allows, nothing else competing, screen kept awake. "Just share" is the offline vCard
  * QR (works with zero signal on either phone); "Collect leads" publishes the card and encodes a link instead, so the
- * visitor's own phone can leave their details — that needs a signal on the visitor's side to load the page.
+ * visitor's own phone can leave their details — that needs a signal on the visitor's side to load the page. Which
+ * event a lead is filed under is chosen here, independent of whatever event the rest of the app is scanning into.
  */
-export default function StallMode({ card, eventId, eventName, onClose }: { card: MyCard; eventId?: string; eventName?: string; onClose: () => void }) {
+export default function StallMode({ card, events, initialEventId, onClose }: { card: MyCard; events: EventRec[]; initialEventId?: string; onClose: () => void }) {
   const canvas = useRef<HTMLCanvasElement>(null)
   useBackClose(true, onClose)
   const { supported } = useWakeLock(true)
   const session = useSession()
   const online = useOnline()
   const [mode, setMode] = useState<Mode>('share')
-  const [linkUrl, setLinkUrl] = useState<string | null>(null)
+  const [eventChoice, setEventChoice] = useState(initialEventId ?? '')
+  const [slug, setSlug] = useState<string | null>(null)
   const [publishing, setPublishing] = useState(false)
   const [publishError, setPublishError] = useState('')
 
   const canCollect = cloudEnabled && !!session
+  const eventName = events.find((e) => e.id === eventChoice)?.name
+  const linkUrl = slug ? publicCardUrl(slug, eventChoice || undefined, eventName) : null
 
   useEffect(() => {
-    if (mode !== 'leads' || !canCollect || linkUrl || publishing) return
+    if (mode !== 'leads' || !canCollect || slug || publishing) return
     if (!online) { setPublishError('Needs internet to set up.'); return }
     setPublishing(true); setPublishError('')
     void publishCard(card, session!.user.id)
-      .then((r) => setLinkUrl(publicCardUrl(r.slug, eventId, eventName)))
+      .then((r) => setSlug(r.slug))
       .catch(() => setPublishError('Could not set this up. Try again.'))
       .finally(() => setPublishing(false))
-  }, [mode, canCollect, linkUrl, publishing, online, card, session, eventId, eventName])
+  }, [mode, canCollect, slug, publishing, online, card, session])
 
   useEffect(() => {
     const el = canvas.current
@@ -69,6 +75,10 @@ export default function StallMode({ card, eventId, eventName, onClose }: { card:
         </div>
       )}
       {mode === 'leads' && !canCollect && <p className="stall-hint">Sign in from Settings to collect leads.</p>}
+      {mode === 'leads' && canCollect && events.length > 0 && (
+        <Picker className="stall-event" title="Filing leads under" value={eventChoice} onChange={setEventChoice}
+          options={[{ value: '', label: 'No event' }, ...events.map((e) => ({ value: e.id, label: e.name }))]} />
+      )}
       {mode === 'leads' && canCollect && publishing && <p className="stall-hint">Setting up…</p>}
       {mode === 'leads' && canCollect && publishError && <p className="stall-hint">{publishError}</p>}
 

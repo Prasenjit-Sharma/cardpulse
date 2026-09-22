@@ -3,6 +3,7 @@ import { applyAccent } from '../lib/accents'
 import { buildCardVcf } from '../lib/cardvcf'
 import { cardFileName } from '../lib/cardshare'
 import { fetchPublicCard, type PublicCardData } from '../lib/cloudcards'
+import { canSendLead, formatPhone } from '../lib/leadform'
 import { submitLead } from '../lib/leads'
 import { emptyCard, type FontId, type MyCard, type TemplateId } from '../lib/mycards'
 import { withTimeout } from '../lib/withTimeout'
@@ -29,7 +30,7 @@ export default function PublicCard({ slug }: { slug: string }) {
   const eventId = params.get('event'), eventName = params.get('eventName')
   const [card, setCard] = useState<MyCard | 'notfound' | null>(null)
   const [cardId, setCardId] = useState('')
-  const [name, setName] = useState(''), [phone, setPhone] = useState(''), [email, setEmail] = useState(''), [company, setCompany] = useState('')
+  const [name, setName] = useState(''), [code, setCode] = useState('+91'), [phone, setPhone] = useState(''), [email, setEmail] = useState(''), [company, setCompany] = useState('')
   const [sent, setSent] = useState(false)
   const [error, setError] = useState('')
   const [sending, setSending] = useState(false)
@@ -62,9 +63,11 @@ export default function PublicCard({ slug }: { slug: string }) {
 
   const send = async () => {
     setError('')
-    if (!name.trim()) { setError('Add your name.'); return }
+    const check = canSendLead({ name, code, phone, email })
+    if (!check.ok) { setError(check.message); return }
     setSending(true)
-    try { await submitLead(cardId, eventId, eventName, { name, phone, email, company }); setSent(true) }
+    const fullPhone = phone.trim() ? formatPhone(code, phone) : ''
+    try { await submitLead(cardId, eventId, eventName, { name, phone: fullPhone, email, company }); setSent(true) }
     catch { setError('Could not send. Try again.') }
     finally { setSending(false) }
   }
@@ -88,7 +91,10 @@ export default function PublicCard({ slug }: { slug: string }) {
         <div className="lead-form">
           <h3 className="section">Share your details</h3>
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" aria-label="Your name" maxLength={80} />
-          <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone" inputMode="tel" aria-label="Your phone" maxLength={20} />
+          <div className="phone-row">
+            <input className="phone-code" value={code} onChange={(e) => setCode(e.target.value)} inputMode="tel" aria-label="Country code" maxLength={4} />
+            <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone" inputMode="tel" aria-label="Your phone" maxLength={16} />
+          </div>
           <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" inputMode="email" aria-label="Your email" maxLength={120} />
           <input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Company" aria-label="Your company" maxLength={80} />
           {error && <p className="hint bad" role="alert">{error}</p>}

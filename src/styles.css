@@ -920,10 +920,19 @@ h3.section .link { position: relative } h3.section .link::after { content: ''; p
 .public-btn { min-height: 48px }
 .lead-form { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; padding-top: 14px; border-top: 1px solid var(--rule-soft) }
 .lead-form input { font-size: 16px }
+.phone-row { display: flex; gap: 8px }
+.phone-code { flex: 0 0 60px; text-align: center; padding: 0 4px }
+.phone-row input:last-child { flex: 1; min-width: 0 }
 .public-card-foot { margin-top: 8px }
 
 /* stall mode's own segmented toggle, on its plain white ground: colours are fixed, never theme-reactive, so it
-   never inherits dark mode's near-black `.seg` track onto the stall's deliberately always-light screen */
-.stall-seg { width: min(80vw, 320px); background: #F0F1F2; box-shadow: none }
+   never inherits dark mode's near-black `.seg` track onto the stall's deliberately always-light screen.
+   Two segments only (unlike the 3-segment LogSheet kind picker `.seg` was built for), and nowrap so a two-word
+   label never wraps and throws the grid's implicit column sizing off, which is what made the pills uneven. */
+.stall-seg { width: min(86vw, 320px); grid-template-columns: repeat(2, 1fr); background: #F0F1F2; box-shadow: none }
+.stall-seg button { white-space: nowrap }
 .stall-seg button[aria-pressed='true'] { background: #FFFFFF; color: #16191D }
 .stall-seg button:not([aria-pressed='true']) { color: #4E545C }
+
+/* the event picker inside stall mode, on its own light ground */
+.stall-event { min-height: 40px; padding: 0 12px; border-radius: var(--r-sleeve); background: #F0F1F2; color: #16191D; border: 0; box-shadow: none; font-size: var(--t-s); font-weight: 600 }
