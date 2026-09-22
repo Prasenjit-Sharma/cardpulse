@@ -1,7 +1,10 @@
 import { createClient } from '@supabase/supabase-js'
 
-const url = (import.meta.env.VITE_SUPABASE_URL as string | undefined) ?? ''
-const key = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined) ?? ''
+// import.meta.env only exists under Vite; Node's own test runner (which loads this module transitively through
+// src/lib/cloudcards.ts and src/lib/leads.ts) leaves it undefined, so read through a guarded fallback.
+const env = (import.meta.env as Record<string, string | undefined> | undefined) ?? {}
+const url = env.VITE_SUPABASE_URL ?? ''
+const key = env.VITE_SUPABASE_PUBLISHABLE_KEY ?? ''
 
 /**
  * `null` when the app was built with no Supabase config. Every cloud feature checks this (directly or via

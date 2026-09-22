@@ -1,3 +1,4 @@
+import { supabase } from './supabase.ts'
 import type { Contact, EventRec } from './types.ts'
 
 export interface Lead {
@@ -15,4 +16,13 @@ export function leadToContact(lead: Lead, localEvents: EventRec[]): { contact: C
     website: '', address: '', gstin: '', social: [], note,
   }
   return matched ? { contact, eventId: matched.id } : { contact }
+}
+
+export async function submitLead(cardId: string, eventId: string | null, eventName: string | null, fields: { name: string; phone: string; email: string; company: string }): Promise<void> {
+  if (!supabase) throw new Error('Cloud features are not configured.')
+  const { error } = await supabase.rpc('submit_lead', {
+    p_card_id: cardId, p_event_id: eventId, p_event_name: eventName,
+    p_name: fields.name.trim(), p_phone: fields.phone.trim() || null, p_email: fields.email.trim() || null, p_company: fields.company.trim() || null,
+  })
+  if (error) throw error
 }

@@ -910,3 +910,9 @@ h3.section .link { position: relative } h3.section .link::after { content: ''; p
 .followbox .datechip { gap: 6px; text-transform: none; letter-spacing: 0; font-variation-settings: normal }
 .followbox .datechip svg { color: var(--ink-3); flex: none }
 .followbox .due { font-size: var(--t-s); text-transform: none; letter-spacing: 0; font-variation-settings: normal }
+
+/* the public card page: a plain, centred column, no app chrome */
+.public-card-page { max-width: 420px; margin: 0 auto; padding: 24px 16px calc(24px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 10px }
+.public-card-page .card-canvas { margin-bottom: 4px }
+.lead-form { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; padding-top: 14px; border-top: 1px solid var(--rule-soft) }
+.lead-form input { font-size: 16px }
