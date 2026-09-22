@@ -42,6 +42,10 @@ jobs:
           VITE_BASE: ${{ steps.base.outputs.value }}
           # Set once the API is deployed:  gh variable set API_URL --body https://cardpulse-api.<you>.workers.dev
           VITE_API_URL: ${{ vars.API_URL }}
+          # Set once: gh variable set SUPABASE_URL --body https://xxxxx.supabase.co
+          VITE_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          # Set once: gh variable set SUPABASE_PUBLISHABLE_KEY --body sb_publishable_...
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
         run: npm run build
 
       - name: Prepare artifact
