@@ -854,7 +854,7 @@ h3.section .link { float: right; min-height: 0; padding: 0; font-size: var(--t-x
 /* stall mode: the QR and nothing else */
 .stall { position: fixed; inset: 0; z-index: 40; overflow-y: auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: calc(24px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom)); background: #FFFFFF; color: #16191D; text-align: center }
 .stall-close { position: absolute; top: calc(10px + env(safe-area-inset-top)); right: 10px; width: 48px; height: 48px; min-height: 48px; color: #16191D }
-.stall-cap { margin: 0; font-size: var(--t-s); font-weight: 600; letter-spacing: .14em; text-transform: uppercase; font-variation-settings: 'wdth' 80; color: #4E545C }
+.stall-cap { margin: 0; font-size: var(--t-xs); font-weight: 500; letter-spacing: .1em; text-transform: uppercase; font-variation-settings: 'wdth' 80; color: #6E7378; max-width: min(84vw, 420px); overflow-wrap: anywhere }
 .stall-qr { width: min(80vw, 62dvh); height: min(80vw, 62dvh); display: block }
 .stall-name { font-size: 26px; font-weight: 700; letter-spacing: -.01em; line-height: 1.1; font-variation-settings: 'wdth' 90; overflow-wrap: anywhere }
 .stall-co { font-size: var(--t-l); color: #4E545C }
@@ -932,4 +932,4 @@ h3.section .link { position: relative } h3.section .link::after { content: ''; p
 .stall-seg button { white-space: nowrap }
 
 /* the event name on the clean QR screen, shown only when one is set */
-.stall-event-tag { font-size: var(--t-xs); font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #16191D }
+.stall-event-tag { display: block; font-size: var(--t-l); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; font-variation-settings: 'wdth' 84; line-height: 1.25; color: #16191D; max-width: min(84vw, 420px); overflow-wrap: anywhere }
