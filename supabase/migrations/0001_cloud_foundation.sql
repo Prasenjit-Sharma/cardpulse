@@ -28,9 +28,15 @@ create policy "owner updates own cards" on public.cards for update using (auth.u
 create policy "owner deletes own cards" on public.cards for delete using (auth.uid() = owner_id);
 
 -- The only public read path. security definer bypasses RLS inside the function, but the function only ever
--- returns one row for one known slug — there is no way to ask it for "all cards".
-create or replace function public.get_public_card(p_slug text)
-returns public.cards
+-- returns one row for one known slug — there is no way to ask it for "all cards". Returns a SET (zero or one
+-- rows), not a single composite: PostgREST serializes a NULL composite as an object of all-null fields rather
+-- than JSON null, which would make a dead link look like a real, blank card. A set makes "not found" an
+-- unambiguous empty array.
+-- Postgres refuses to change a function's return type via CREATE OR REPLACE, so drop it first (idempotent
+-- across re-runs of this file).
+drop function if exists public.get_public_card(text);
+create function public.get_public_card(p_slug text)
+returns setof public.cards
 language sql security definer set search_path = public as $$
   select * from public.cards where slug = p_slug limit 1;
 $$;
