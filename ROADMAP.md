@@ -87,19 +87,38 @@ is a new subsystem.
 
 - 2a, no server needed: card editor (name, title, company, photo or logo, phones, email, links, address, socials), a few
   clean templates free, a QR that carries the contact (works offline), share as image, vCard or link.
-- 2b, needs a small backend: hosted card page and short link; visitors can save the contact and leave their own details,
-  which arrive as a scanned-style contact.
-- Exhibition stall card: one QR for the stall; every visitor who scans it lands in the event's contact list.
-- Basic view counts free (HiHello locks analytics behind a paywall).
+- **2b built 2026-09-22, awaiting the real-phone check** (spec and plan in `docs/superpowers/`): Google sign-in; a card
+  published to a short public link (`?card=<slug>`, no path routing, works on GitHub Pages); a standalone public page a
+  visitor lands on with no account, showing the card, a save-contact button and a name/phone/email/company form; those
+  submissions pulled into ordinary local contacts when the owner is next online, tagged with the event when it still
+  exists locally. Secured by Postgres RLS plus two narrow `security definer` RPC functions (`get_public_card`,
+  `submit_lead`) rather than any public table SELECT — no public listing of anyone's cards or leads. Live-verified
+  against the real Supabase project by `scripts/verify-rls.mjs` (12/12, including cross-user isolation and that an
+  authenticated-but-unrelated caller still works correctly). A fresh code review and an Impeccable design review both
+  ran against the finished branch; their findings were fixed in the same pass (see the plan's ledger for the full list),
+  including a real lead-loss ordering bug, a photo fetch that could strand a visitor on a slow connection, and the
+  public page having no CardPulse branding or its card's own accent colour.
+- Exhibition stall card: **built** — Stall mode has a "Just share" (offline vCard QR, unchanged) / "Collect leads"
+  (publishes and encodes the link instead) toggle; leads land in the event's contact list automatically.
+- Basic view counts free (HiHello locks analytics behind a paywall) — **not built**, no view-count tracking yet.
 - Section 2 policies apply: no pop-ups to recipients, deletable cards, full vCard fields.
+- Test on real handsets (2a and 2b together): a second phone scanning the QR (Android and iPhone cameras should offer
+  Add contact), a long Hindi name, the Bold template's condensed capitals on iPhone, sharing the picture through
+  WhatsApp, stall mode keeping the screen awake, a HEIC or corrupt photo, backup then restore, Google sign-in, publishing
+  a card and scanning its "Collect leads" QR from a second phone with no account, submitting the lead form, and seeing
+  it arrive as a contact back on the first phone.
 
 ### Phase 3: Accounts, sync and compliance (about 2 to 3 weeks)
 
-- Supabase login; contacts and card photos in the cloud; multi-device sync.
+Auth foundation (Google sign-in via Supabase) was built ahead of schedule as part of Phase 2b, since 2b needed it. What
+remains here:
+
+- Full bidirectional sync of existing local contacts and card photos across devices (2b only does a one-way pull of
+  stall leads, not general sync — see the 2026-09-22 spec's Non-goals).
+- Phone-number sign-in, once an SMS provider account exists (India needs a DLT-registered sender; Google-only for now).
 - Per-user quotas replace the in-memory per-IP limit.
 - Paid Gemini tier (the free tier may use submitted images to improve Google's products).
 - DPDP: consent, retention, deletion on request, updated privacy page. Blocks launch; needs legal review.
-- Prerequisite for hosted digital cards at scale and for packs tied to an account.
 
 ### Phase 4: Packs and payments (about 2 weeks)
 
