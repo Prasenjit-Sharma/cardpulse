@@ -251,7 +251,13 @@ export default function App() {
   const online = useOnline()
   useEffect(() => { if (online) void resumePending() }, [online, resumePending])
 
+  const pullingLeads = useRef(false)
   const pullLeads = useCallback(async () => {
+    if (pullingLeads.current) return                 // one pull at a time, so a lead is never written (or announced) twice
+    pullingLeads.current = true
+    try { await pullLeadsOnce() } finally { pullingLeads.current = false }
+  }, [events, refresh])   // eslint-disable-line react-hooks/exhaustive-deps
+  const pullLeadsOnce = async () => {
     const found = await pullNewLeads(events)
     if (!found.length) return
     // Only mark a lead pulled once its local contact is actually saved, so a failed write is retried next time
@@ -269,11 +275,12 @@ export default function App() {
     if (!added) return
     await refresh()
     setToast({ id: Date.now(), title: `${added} new ${added === 1 ? 'lead' : 'leads'} from your stall`, sub: 'Ready to call, message or save' })
-  }, [events, refresh])
-  useEffect(() => { if (online) void pullLeads() }, [online, pullLeads])
-
+  }
   const session = useSession()
   const userId = session?.user.id
+  // New leads come in whenever the app is online (and on sign-in). A deleted digital card's link is taken down only
+  // after that, so leads still waiting on it are received first.
+  useEffect(() => { if (online) void pullLeads().finally(() => { if (userId) void flushUnpublish(userId) }) }, [online, pullLeads, userId])
   // Changes from another phone: reload every list. An active event that was deleted elsewhere is let go.
   const reloadAll = useCallback(() => {
     void refresh(); void refreshMyCards()
@@ -282,8 +289,6 @@ export default function App() {
     if (activeEventRef.current && !evs.some((e) => e.id === activeEventRef.current)) setActiveEvent('')
   }, [refresh, refreshMyCards])   // eslint-disable-line react-hooks/exhaustive-deps
   const sync = useSync(userId, online, reloadAll)
-  // A deleted digital card's link is taken down once online (after any leads waiting on it have been pulled in).
-  useEffect(() => { if (online && userId) void pullLeads().finally(() => flushUnpublish(userId)) }, [online, userId])   // eslint-disable-line react-hooks/exhaustive-deps
   const [cardStats, setCardStats] = useState<Map<string, CardStats>>()
   useEffect(() => {
     if (tab !== 'mycard' || !userId || !online) return
