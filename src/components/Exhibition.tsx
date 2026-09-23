@@ -6,6 +6,7 @@ import type { CardRecord, EventRec } from '../lib/types'
 import EmptyState from './EmptyState'
 import Icon from './Icon'
 import Sheet, { SheetItem } from './Sheet'
+import { showEvent } from '../lib/eventname'
 
 export default function Exhibition({ cards, events, activeEvent, onNew, onRename, onDelete, onScanHere, onView }: {
   cards: CardRecord[]
@@ -44,11 +45,11 @@ export default function Exhibition({ cards, events, activeEvent, onNew, onRename
             {live && <span className="event-tab">Scanning here</span>}
             <div className="event-head" onClick={() => onView(e.id)}>
               <div className="grow">
-                <strong>{e.name}</strong>
+                <strong>{showEvent(e.name)}</strong>
                 <span className="muted">{new Date(e.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
               </div>
               <button className="icon-btn ghost" onClick={(ev) => { ev.stopPropagation(); setMenu(e.id) }} aria-label="Event options"><Icon name="more" /></button>
-              <Sheet open={menu === e.id} onClose={() => setMenu('')} title={e.name}>
+              <Sheet open={menu === e.id} onClose={() => setMenu('')} title={showEvent(e.name)}>
                 <SheetItem icon="file" label="Export CSV" disabled={!done.length} onClick={() => { setMenu(''); download(`${fileSafe(e.name)}.csv`, buildCsv(done, eventName), 'text/csv') }} />
                 <SheetItem icon="download" label="Export vCard" disabled={!done.length} onClick={() => { setMenu(''); download(`${fileSafe(e.name)}.vcf`, buildVcf(done, eventName, currentNameFormat()), 'text/vcard') }} />
                 <SheetItem icon="edit" label="Rename" onClick={() => { setMenu(''); onRename(e.id) }} />

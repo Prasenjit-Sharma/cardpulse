@@ -834,3 +834,24 @@ a.public-btn { display: inline-flex; align-items: center; justify-content: cente
 .cal-day.on { background: var(--ink); color: var(--board); box-shadow: none; font-weight: 700 }
 .cal-day:disabled { opacity: .25 }
 .cal-day:active:not(:disabled) { background: var(--board-2); transform: none }
+
+/* ---------- QR scanning ---------- */
+.qr-shade { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none }
+.qr-window { position: relative; width: min(68vw, 280px); aspect-ratio: 1; border-radius: 28px; box-shadow: 0 0 0 100vmax rgba(6,8,9,.55) }
+.qr-window i { position: absolute; width: 38px; height: 38px; border: 4px solid #fff; }
+.qr-window i:nth-child(1) { left: -2px; top: -2px; border-right: 0; border-bottom: 0; border-top-left-radius: 28px }
+.qr-window i:nth-child(2) { right: -2px; top: -2px; border-left: 0; border-bottom: 0; border-top-right-radius: 28px }
+.qr-window i:nth-child(3) { left: -2px; bottom: -2px; border-right: 0; border-top: 0; border-bottom-left-radius: 28px }
+.qr-window i:nth-child(4) { right: -2px; bottom: -2px; border-left: 0; border-top: 0; border-bottom-right-radius: 28px }
+.qr-bottom { gap: 18px; padding-bottom: calc(28px + env(safe-area-inset-bottom)) }
+.qr-bottom .pillbar { margin: 0; white-space: normal; text-align: center; max-width: 320px; line-height: 1.35 }
+.qr-result .qr-person { display: flex; align-items: center; gap: 14px; margin: 2px 0 12px }
+.qr-person .grow { display: flex; flex-direction: column; gap: 2px } .qr-person strong { font-size: var(--t-l); font-weight: 650 } .qr-person small { color: var(--ink-3) }
+.qr-avatar { width: 52px; height: 52px; border-radius: 50% !important; font-size: var(--t-l) }
+.qr-fields { list-style: none; margin: 0 0 6px; padding: 4px 14px; background: var(--field); border-radius: var(--r-field) }
+.qr-fields li { display: flex; align-items: center; gap: 10px; padding: 9px 0; font-size: var(--t-m); overflow-wrap: anywhere }
+.qr-fields li + li { border-top: 1px solid var(--rule-soft) }
+.qr-fields li svg { color: var(--ink-3) }
+.qr-fields:empty { display: none }
+.qr-done { display: flex; align-items: center; gap: 12px; margin: 4px 0 6px; font-size: var(--t-m); color: var(--ink) }
+.qr-raw { margin: 0 0 4px; padding: 12px 14px; background: var(--field); border-radius: var(--r-field); font-size: var(--t-s); overflow-wrap: anywhere; max-height: 30dvh; overflow: auto }

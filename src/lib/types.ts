@@ -60,6 +60,8 @@ export interface CardRecord {
   opened?: boolean
   /** Exhibition/event this card was captured at. */
   eventId?: string
+  /** Where the contact came from when it was not read from a photo: a scanned QR code. Such cards never count towards accuracy. */
+  source?: 'qr'
   /** Last change on any phone (ms). Sync keeps the newest copy. Absent on cards from before sync: use `createdAt`. */
   updatedAt?: number
 }

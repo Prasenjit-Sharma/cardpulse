@@ -16,6 +16,7 @@ import StarButton from './StarButton'
 import Picker from './Picker'
 import { confirmAsk } from './Dialog'
 import DateChip from './DateChip'
+import { showEvent } from '../lib/eventname'
 
 const SUGGESTED_TAGS = ['Customer', 'Supplier', 'Partner', 'Investor', 'Hot lead']
 const withProtocol = (w: string) => (/^https?:\/\//i.test(w) ? w : `https://${w}`)
@@ -329,12 +330,12 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
           <h3 className="group">Connection</h3>
           <div className="infos">
             <div className="line"><Icon name="clock" size={18} /><span>Added on {when(card.createdAt)}</span></div>
-            <div className="line"><Icon name="camera" size={18} /><span>{eventName ? `Scanned at ${eventName}` : 'Scanned contact'}</span></div>
+            <div className="line"><Icon name="camera" size={18} /><span>{eventName ? `Scanned at ${showEvent(eventName)}` : 'Scanned contact'}</span></div>
           </div>
           <div className="field-box pickbox">
             <span>Associated event</span>
             <Picker className="pick flat" title="Associated event" value={card.eventId ?? ''} onChange={onMoveEvent}
-              options={[{ value: '', label: 'None' }, ...events.map((e) => ({ value: e.id, label: e.name }))]} />
+              options={[{ value: '', label: 'None' }, ...events.map((e) => ({ value: e.id, label: showEvent(e.name) }))]} />
           </div>
 
           {slides.length > 0 && (

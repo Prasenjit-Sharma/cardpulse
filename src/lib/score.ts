@@ -37,7 +37,7 @@ export interface CardScore {
  * fn = value the user had to add. Contacts are paired greedily by best overlap.
  */
 export function scoreCard(card: CardRecord): CardScore | null {
-  if (!card.extracted || !card.corrected) return null
+  if (!card.extracted || !card.corrected || card.source === 'qr') return null   // a QR is copied, not read: nothing to score
   const fields = emptyTallies()
   const pool = [...card.extracted]
   const pairs: [Contact | undefined, Contact | undefined][] = []

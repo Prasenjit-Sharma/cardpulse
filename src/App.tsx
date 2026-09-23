@@ -20,6 +20,9 @@ import MyCards from './components/MyCards'
 import CardEditor from './components/CardEditor'
 import CardShare from './components/CardShare'
 import StallMode from './components/StallMode'
+import QrScanner from './components/QrScanner'
+import QrResult from './components/QrResult'
+import { showEvent } from './lib/eventname'
 import { deleteMyCard, emptyCard, listMyCards, MAX_CARDS, planCardRestore, putMyCard, type MyCard } from './lib/mycards'
 import Companies from './components/Companies'
 import Home from './components/Home'
@@ -90,6 +93,8 @@ export default function App() {
     if (gone(stallCard)) setStallCard(null)
   }, [myCards, editingCard, sharingCard, stallCard])
   const [camOpen, setCamOpen] = useState(false)
+  const [qrOpen, setQrOpen] = useState(false)
+  const [qrText, setQrText] = useState('')
   const [toast, setToast] = useState<ToastData | null>(null)
   const toastAt = useRef({ at: 0, count: 0 })
   const install = useInstall()
@@ -506,7 +511,19 @@ export default function App() {
       {stallCard && myCards.find((c) => c.id === stallCard) && (
         <StallMode card={myCards.find((c) => c.id === stallCard)!} events={events} initialEventId={activeEvent || undefined} onClose={() => setStallCard(null)} />
       )}
-      {camOpen && <Camera eventLabel={eventLabel} onSubmit={(cards) => { void addBatch(cards); goto('contacts') }} onGallery={(fs) => { void addFiles(fs) }} onClose={() => setCamOpen(false)} />}
+      {camOpen && <Camera eventLabel={eventLabel} onQr={() => { setCamOpen(false); setQrOpen(true) }} onSubmit={(cards) => { void addBatch(cards); goto('contacts') }} onGallery={(fs) => { void addFiles(fs) }} onClose={() => setCamOpen(false)} />}
+      {qrOpen && (
+        <QrScanner paused={!!qrText} eventLabel={eventLabel ? showEvent(eventLabel) : ''} onFound={setQrText} onClose={() => { setQrOpen(false); setQrText('') }}
+          onPhotoMode={(m) => { try { localStorage.setItem('cardpulse.captureMode', m) } catch { /* ignore */ } setQrOpen(false); setQrText(''); setCamOpen(true) }} />
+      )}
+      {qrOpen && qrText && (
+        <QrResult raw={qrText} myCard={myCards[0]} onAgain={() => setQrText('')} onClose={() => { setQrText(''); setQrOpen(false) }}
+          onShowMyQr={() => { setQrText(''); setQrOpen(false); if (myCards[0]) setStallCard(myCards[0].id) }}
+          onSave={async (contact) => {
+            await putCard({ id: crypto.randomUUID(), createdAt: Date.now(), status: 'done', reviewed: true, source: 'qr', extracted: [contact], corrected: [structuredClone(contact)], eventId: activeEventRef.current || undefined })
+            await refresh()
+          }} />
+      )}
       <input ref={fallbackInput} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { if (e.target.files) void addFiles(e.target.files); e.target.value = '' }} />
       <Toast toast={toast} onDone={() => setToast(null)} />
       <DialogHost />

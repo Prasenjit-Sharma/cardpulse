@@ -7,6 +7,7 @@ import Picker from './Picker'
 import { ALL_FIELDS, type CardRecord, type EventRec, type FieldKey } from '../lib/types'
 import { overall, scoreCard, sumTallies, type CardScore } from '../lib/score'
 import Check from './Check'
+import { showEvent } from '../lib/eventname'
 
 const LABEL: Record<FieldKey, string> = {
   name: 'Name', title: 'Job title', company: 'Company', website: 'Website', address: 'Address', gstin: 'GSTIN',
@@ -43,7 +44,7 @@ export default function Report({ cards: allCards, events, dupes, onBack }: { car
       <h1>Accuracy</h1>
       {events.length > 0 && (
         <div className="eventbar">
-          <Picker title="Event" value={evId} onChange={setEvId} options={[{ value: '', label: 'All events' }, ...events.map((e) => ({ value: e.id, label: e.name }))]} />
+          <Picker title="Event" value={evId} onChange={setEvId} options={[{ value: '', label: 'All events' }, ...events.map((e) => ({ value: e.id, label: showEvent(e.name) }))]} />
         </div>
       )}
 

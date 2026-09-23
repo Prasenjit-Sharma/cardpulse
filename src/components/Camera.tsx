@@ -8,6 +8,7 @@ import { growQuad, quadSize, warpQuad, type Pt, type Quad } from '../lib/warp'
 import { useObjectUrl } from '../lib/useObjectUrl'
 import Icon from './Icon'
 import { confirmAsk } from './Dialog'
+import { showEvent } from '../lib/eventname'
 
 const MODE_KEY = 'cardpulse.captureMode'
 const AUTO_KEY = 'cardpulse.autoDetect'
@@ -34,13 +35,15 @@ interface VideoDet extends Detection { fw: number; fh: number; progress: number 
  * With Auto Detect on, the card is found, outlined and captured straightened when the phone is held still.
  * `single` (adding a back side to an existing card) skips the tray and hands the photo straight back.
  */
-export default function Camera({ onCard, onSubmit, onClose, onGallery, eventLabel = '', single = false, sidedOnly = false }: {
+export default function Camera({ onCard, onSubmit, onClose, onGallery, onQr, eventLabel = '', single = false, sidedOnly = false }: {
   /** Single-photo mode only. */
   onCard?: (files: File[]) => void
   /** Tray mode: the batch of cards to read. Each card is its photo(s): [front] or [front, back]. */
   onSubmit?: (cards: File[][]) => void
   onClose: () => void
   onGallery?: (files: FileList) => void
+  /** Switch to scanning a QR code instead of photographing the card. */
+  onQr?: () => void
   eventLabel?: string
   single?: boolean
   sidedOnly?: boolean
@@ -307,10 +310,11 @@ export default function Camera({ onCard, onSubmit, onClose, onGallery, eventLabe
             {!sidedOnly && !single && (
               <div className="seg" role="tablist">
                 {MODES.map((m) => <button key={m.id} className={mode === m.id ? 'on' : ''} onClick={() => pickMode(m.id)}>{m.label}</button>)}
+                {onQr && <button onClick={() => { if (requestClose()) onQr() }}>QR</button>}
               </div>
             )}
             <span className={`pillbar${notice ? ' notice' : ''}`} role="status" aria-live="polite">{status}</span>
-            {eventLabel && <span className="pillbar sub">{eventLabel}</span>}
+            {eventLabel && <span className="pillbar sub">{showEvent(eventLabel)}</span>}
           </div>
           <span className="round ghost" />
         </div>

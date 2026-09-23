@@ -4,6 +4,7 @@ import { useObjectUrl } from '../lib/useObjectUrl'
 import Avatar from './Avatar'
 import Icon from './Icon'
 import Picker from './Picker'
+import { showEvent } from '../lib/eventname'
 
 /** After a read: confirm who belongs, file them under an event, add a note, save. */
 export default function ScanResult({ card, events, onBack, onKeep, onEdit }: {
@@ -50,7 +51,7 @@ export default function ScanResult({ card, events, onBack, onKeep, onEdit }: {
       <div className="field-box pickbox">
         <span>Associated event</span>
         <Picker className="pick flat" title="Associated event" value={eventId} onChange={setEventId}
-          options={[{ value: '', label: 'None' }, ...events.map((e) => ({ value: e.id, label: e.name }))]} />
+          options={[{ value: '', label: 'None' }, ...events.map((e) => ({ value: e.id, label: showEvent(e.name) }))]} />
       </div>
       <label className="field-box">
         <span>Notes (optional)</span>

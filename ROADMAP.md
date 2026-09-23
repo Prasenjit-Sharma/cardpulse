@@ -138,6 +138,17 @@ Still open here:
 - DPDP legal review of the consent text, the privacy page and retention. Blocks launch.
 - Asking again for consent when the policy version changes (the version is recorded, nothing reads it yet).
 
+### QR exchange (built 2026-09-24, awaiting the real-phone check)
+
+- Scan > QR reads a card's QR code live or from a photo: vCard (printed cards and every CardPulse "Just share" QR),
+  MeCard, tel: and mailto: become a contact in one tap, with no reading cost and never counted towards accuracy.
+- Another CardPulse user's "Collect leads" QR opens their hosted card; saving it can send your own card back to them
+  as a lead in the same tap (a two-way exchange). After any save, "Let them scan my card" opens your QR.
+- Uses the phone's built-in QR detector where there is one (Android Chrome) and a small decoder (jsQR) elsewhere.
+- Event names are shown in capitals everywhere in the app (display only; stored as typed).
+- Test on real handsets: a printed card with a vCard QR, an iPhone and an Android scanning each other's My Card QR in
+  both "Just share" and "Collect leads" modes, and a QR photo from the gallery.
+
 ### Phase 4: Packs and payments (about 2 weeks)
 
 - Define the packs (see section 5), price them from measured cost, and test them with a few real users first.

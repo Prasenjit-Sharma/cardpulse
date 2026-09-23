@@ -11,6 +11,7 @@ import Icon from './Icon'
 import Picker from './Picker'
 import StarButton from './StarButton'
 import { confirmAsk } from './Dialog'
+import { showEvent } from '../lib/eventname'
 
 type Sort = 'recent' | 'name' | 'company'
 export type Flt = 'all' | 'priority' | 'attention' | 'followup'
@@ -110,7 +111,7 @@ export default function Contacts({ onScan, cards: allCards, events, activeEvent,
           <div className="tab-strip" role="group" aria-label="Event dividers">
             <button className={activeEvent === '' ? 'on' : ''} onClick={() => onSelectEvent('')} aria-current={activeEvent === '' ? 'true' : undefined}>All</button>
             {events.map((e) => (
-              <button key={e.id} className={activeEvent === e.id ? 'on' : ''} onClick={() => onSelectEvent(e.id)} aria-current={activeEvent === e.id ? 'true' : undefined} title={e.name}>{e.name}</button>
+              <button key={e.id} className={activeEvent === e.id ? 'on' : ''} onClick={() => onSelectEvent(e.id)} aria-current={activeEvent === e.id ? 'true' : undefined} title={e.name}>{showEvent(e.name)}</button>
             ))}
           </div>
           <div className="tab-sheet" />
@@ -169,7 +170,7 @@ export default function Contacts({ onScan, cards: allCards, events, activeEvent,
           <button className="link" onClick={() => setSel(new Set(rows.map((r) => r.key)))}>All</button>
 <Picker className="pick onbar" title="Move to" label="Move to…" value="" disabled={!chosen.length}
             onChange={(v) => { onMoveToEvent([...new Set(chosen.map((r) => r.card.id))], v === '__none' ? '' : v); exit() }}
-            options={[{ value: '__none', label: 'No event' }, ...events.map((e) => ({ value: e.id, label: e.name }))]} />
+            options={[{ value: '__none', label: 'No event' }, ...events.map((e) => ({ value: e.id, label: showEvent(e.name) }))]} />
           <button disabled={!chosen.length} onClick={() => { void shareVcf('contacts.vcf', chosen.map((r) => toVCard(r.p, [eventName(r.card.eventId), r.p.note].filter(Boolean).join(' — '), currentNameFormat())).join('\r\n'), `${chosen.length} contacts`, undefined, browserEnv(), false); exit() }} aria-label="Save to phone"><Icon name="download" size={18} /></button>
           <button className="bad" disabled={!chosen.length} onClick={() => void confirmAsk({ title: `Delete ${chosen.length} ${chosen.length === 1 ? 'contact' : 'contacts'}?`, confirmLabel: 'Delete', danger: true }).then((ok) => { if (ok) { onDeleteContacts(chosen.map((r) => r.key)); exit() } })} aria-label="Delete"><Icon name="trash" size={18} /></button>
         </div>

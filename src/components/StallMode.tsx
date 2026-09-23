@@ -14,6 +14,7 @@ import { useWakeLock } from '../lib/wakelock'
 import Icon from './Icon'
 import Picker from './Picker'
 import Sheet from './Sheet'
+import { showEvent } from '../lib/eventname'
 
 type Mode = 'share' | 'leads'
 type Step = 'setup' | 'show'
@@ -93,7 +94,7 @@ export default function StallMode({ card, events, initialEventId, onClose }: { c
           <div className="log-field">
             <span className="log-label">Event</span>
             <Picker className="pick wide" title="Event" value={eventChoice} onChange={setEventChoice}
-              options={[{ value: '', label: 'No event' }, ...events.map((e) => ({ value: e.id, label: e.name }))]} />
+              options={[{ value: '', label: 'No event' }, ...events.map((e) => ({ value: e.id, label: showEvent(e.name) }))]} />
           </div>
 
           <div className="log-field">
@@ -113,7 +114,7 @@ export default function StallMode({ card, events, initialEventId, onClose }: { c
   return createPortal(
     <div className="stall" role="dialog" aria-modal="true" aria-label="QR code for your contact card">
       <button className="icon-btn ghost stall-close" onClick={() => setStep('setup')} aria-label="Back to setup"><Icon name="back" size={22} /></button>
-      {eventName && <span className="stall-event-tag">{eventName}</span>}
+      {eventName && <span className="stall-event-tag">{showEvent(eventName)}</span>}
       <p className="stall-cap">{caption}</p>
       {showQr && <canvas ref={canvas} className="stall-qr" role="img" aria-label={`Contact card QR for ${card.name}`} />}
       <strong className="stall-name">{card.name}</strong>
