@@ -10,21 +10,16 @@ interface Install { mode: 'native' | 'ios' | null; visible: boolean; install: ()
 
 const isoToday = () => localISO()                       // the phone's own day, not UTC
 
-/** An open album page: three empty sleeves on punched board, waiting for cards. */
-function EmptySleeves() {
+/** The empty home: a stack of two blank cards, drawn in the app's own palette. */
+function EmptyCards() {
   return (
-    <svg className="empty-sleeves" viewBox="0 0 260 200" aria-hidden="true">
-      <rect x="10" y="8" width="240" height="184" rx="4" fill="var(--board-2)" stroke="var(--board-edge)" />
-      {[34, 100, 166].map((cy) => <circle key={cy} cx="22" cy={cy} r="4" fill="var(--punch-hole)" stroke="var(--punch)" />)}
-      {[22, 86, 150].map((y, i) => (
-        <g key={y} opacity={1 - i * 0.26}>
-          <rect x="38" y={y} width="198" height="52" rx="3" fill="var(--sleeve)" stroke="var(--board-edge)" />
-          <rect x="38" y={y} width="198" height="2" fill="var(--sleeve-lip)" />
-          <rect x="46" y={y + 8} width="60" height="36" rx="2" fill="var(--board-2)" stroke="var(--board-edge)" strokeDasharray="3 3" />
-          <rect x="116" y={y + 16} width="78" height="4" rx="2" fill="var(--rule)" />
-          <rect x="116" y={y + 26} width="52" height="3" rx="1.5" fill="var(--rule-soft)" />
-        </g>
-      ))}
+    <svg className="empty-sleeves" viewBox="0 0 220 150" aria-hidden="true">
+      <rect x="44" y="18" width="150" height="86" rx="10" fill="var(--board-2)" transform="rotate(-6 119 61)" />
+      <rect x="26" y="38" width="160" height="92" rx="10" fill="var(--sleeve)" stroke="var(--board-edge)" />
+      <rect x="42" y="56" width="30" height="30" rx="15" fill="var(--brand-wash)" />
+      <rect x="84" y="60" width="78" height="8" rx="4" fill="var(--rule)" />
+      <rect x="84" y="75" width="52" height="6" rx="3" fill="var(--rule-soft)" />
+      <rect x="42" y="102" width="96" height="6" rx="3" fill="var(--rule-soft)" />
     </svg>
   )
 }
@@ -87,9 +82,9 @@ export default function Home({ cards, dupes, ready, needsKey, install, backupNud
 
       {cards.length === 0 ? (
         <div className="empty-scan">
-          <EmptySleeves />
-          <h2>The album is empty</h2>
-          <p>Scan a card and it is seated in the first sleeve, with everything on it read and filed.</p>
+          <EmptyCards />
+          <h2>No cards yet</h2>
+          <p>Scan a business card and everything on it is read and saved as a contact, ready to call or message.</p>
         </div>
       ) : (
         <>

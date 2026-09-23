@@ -5,6 +5,7 @@ import './lib/debug'
 import App from './App'
 import ErrorBoundary from './components/ErrorBoundary'
 import PublicCard from './components/PublicCard'
+import '@fontsource-variable/inter/wght.css'
 import './styles.css'
 
 registerSW({ immediate: true })

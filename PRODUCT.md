@@ -81,8 +81,13 @@ Constraints:
 ## Brand Commitments
 
 Name: **CardPulse** (kept by default, but the user has confirmed nothing is fixed — name, logo, colours and
-structure are all open to replacement). Existing logo is a business card carrying a pulse line; existing
-accent is violet. Both are evidence, not commitments.
+structure are all open to replacement). Existing logo is a business card carrying a pulse line. The accent is
+user-selectable (Settings > Appearance), Graphite by default.
+
+**Standing look preference (user, 2026-09-24):** the interface must look professional and competitive in the
+class of Covve and HiHello, a blend of Covve's calm grouped lists and settings with HiHello's stronger card
+presentation. Convention played at full craft is the commitment; no skeuomorphic or novelty world (the earlier
+"Card Album" world was rejected as not professional). Recorded in DESIGN.md.
 
 ## Evidence on Hand
 
