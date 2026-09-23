@@ -9,3 +9,4 @@ server/.wrangler
 .code-review-graph/
 .superpowers/
 test/sync-sim/out/
+.impeccable/review/

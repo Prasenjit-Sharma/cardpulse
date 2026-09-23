@@ -624,20 +624,35 @@ nav button.on .ind { background: color-mix(in srgb, var(--brand) 14%, transparen
 .log-note .mic { position: absolute; right: 8px; bottom: 8px }
 .log-field .datechip { align-self: flex-start; min-height: 40px; margin: 4px 0 0 }
 
-/* ---------- my card ---------- */
+/* ---------- my card: the card on its own stage ---------- */
 .card-canvas { width: 100%; aspect-ratio: 1.75; display: block; border-radius: 14px; box-shadow: 0 2px 6px rgba(16,24,40,.08), 0 18px 40px rgba(16,24,40,.16); touch-action: pan-x }
-.mycards-track { display: flex; gap: 14px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; padding: 6px 4px 18px; margin: 0 -4px; -webkit-overflow-scrolling: touch }
+/* a full-bleed band in the card's own colour; the card sits over its lower edge */
+.mycards-hero { position: relative; margin: calc(-12px - env(safe-area-inset-top)) -16px 0; padding: calc(18px + env(safe-area-inset-top)) 16px 0; isolation: isolate }
+.mycards-hero::before {
+  content: ''; position: absolute; inset: 0 0 86px; z-index: -1; border-radius: 0 0 32px 32px;
+  /* a deeper shade of the card's colour, so a card whose own panel is that colour still stands off it */
+  background: radial-gradient(120% 90% at 100% 0%, rgba(255,255,255,.12), transparent 60%), color-mix(in srgb, var(--hero) 72%, #05070A);
+  transition: background var(--dur-3) var(--ease);
+}
+.mycards-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; margin: 0 0 18px }
+.mycards-head h1 { color: #fff; font-size: 32px; letter-spacing: -.03em }
+.mycards-label { display: inline-flex; align-items: center; min-height: 28px; padding: 0 12px; border-radius: var(--r-pill); background: rgba(255,255,255,.16); color: #fff; font-size: var(--t-s); font-weight: 600; max-width: 50%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.mycards-track { display: flex; gap: 16px; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scroll-padding: 0 16px; scrollbar-width: none; padding: 0 16px 40px; margin: 0 -16px -18px; -webkit-overflow-scrolling: touch }
 .mycards-track::-webkit-scrollbar { display: none }
+.mycards-track .card-canvas { box-shadow: 0 0 0 1px rgba(255,255,255,.14), 0 4px 10px rgba(8,10,14,.14), 0 18px 32px rgba(8,10,14,.20) }
 .mycards-item { flex: 0 0 100%; scroll-snap-align: center; position: relative; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none }
-.mycards-label { display: inline-block; margin-top: 12px; padding: 3px 10px; border-radius: var(--r-pill); background: var(--board-2); font-size: var(--t-xs); font-weight: 600; color: var(--ink-2) }
-.mycards-add { width: 100%; aspect-ratio: 1.75; display: flex; align-items: center; justify-content: center; gap: 10px; border: 1.5px dashed var(--board-edge); border-radius: 14px; background: none; color: var(--ink-3); font-weight: 600 }
-.mycards-add:active:not(:disabled) { transform: none; background: var(--board-2) }
-.mycards-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px }
-.mycards-actions button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 50px }
-.mycards-actions .outline { background: var(--sleeve); box-shadow: var(--seat) }
+.mycards-add { width: 100%; aspect-ratio: 1.75; display: flex; align-items: center; justify-content: center; gap: 10px; border: 1.5px dashed rgba(255,255,255,.5); border-radius: 14px; background: rgba(255,255,255,.08); color: #fff; font-weight: 600; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px) }
+.mycards-add:active:not(:disabled) { transform: none; background: rgba(255,255,255,.14) }
+.mycards-dots { margin: 0 0 12px }
+.mycards-actions { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; margin-top: 6px }
+.mycards-actions .cta { min-height: 52px; font-size: var(--t-l) }
+.icon-btn.big { width: 52px; height: 52px; min-height: 52px; background: var(--sleeve); box-shadow: var(--seat) }
+.mycards-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 14px 0 0 }
+.mycards-stats > div { display: flex; align-items: baseline; gap: 6px; padding: 14px 16px; background: var(--sleeve); border-radius: var(--r-sleeve); box-shadow: var(--seat) }
+.mycards-stats b { font-size: 24px; font-weight: 700; letter-spacing: -.02em } .mycards-stats span { color: var(--ink-3); font-size: var(--t-s) }
 .mycards-tip { text-align: center; margin-top: 16px }
-.mycards-stats { text-align: center; margin: 14px 0 0; font-variant-numeric: tabular-nums; color: var(--ink-2) }
 @media (prefers-reduced-motion: reduce) { .mycards-track { scroll-behavior: auto } }
+@media (min-width: 900px) { .mycards-hero { margin-left: -28px; margin-right: -28px; padding-left: 28px; padding-right: 28px } .mycards-hero .mycards-item { flex-basis: min(100%, 520px) } .mycards-track { margin-left: -28px; margin-right: -28px; padding-left: 28px; padding-right: 28px } }
 /* card editor */
 .editor-preview { position: sticky; top: 0; z-index: 3; padding: 8px 0 12px; background: var(--board) }
 .photo-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px } .photo-row .hint { flex-basis: 100%; margin: 0 }
