@@ -10,6 +10,7 @@ import EmptyState from './EmptyState'
 import Icon from './Icon'
 import Picker from './Picker'
 import StarButton from './StarButton'
+import { confirmAsk } from './Dialog'
 
 type Sort = 'recent' | 'name' | 'company'
 export type Flt = 'all' | 'priority' | 'attention' | 'followup'
@@ -170,7 +171,7 @@ export default function Contacts({ onScan, cards: allCards, events, activeEvent,
             onChange={(v) => { onMoveToEvent([...new Set(chosen.map((r) => r.card.id))], v === '__none' ? '' : v); exit() }}
             options={[{ value: '__none', label: 'No event' }, ...events.map((e) => ({ value: e.id, label: e.name }))]} />
           <button disabled={!chosen.length} onClick={() => { void shareVcf('contacts.vcf', chosen.map((r) => toVCard(r.p, [eventName(r.card.eventId), r.p.note].filter(Boolean).join(' — '), currentNameFormat())).join('\r\n'), `${chosen.length} contacts`, undefined, browserEnv(), false); exit() }} aria-label="Save to phone"><Icon name="download" size={18} /></button>
-          <button className="bad" disabled={!chosen.length} onClick={() => { if (confirm(`Delete ${chosen.length} contact(s)?`)) { onDeleteContacts(chosen.map((r) => r.key)); exit() } }} aria-label="Delete"><Icon name="trash" size={18} /></button>
+          <button className="bad" disabled={!chosen.length} onClick={() => void confirmAsk({ title: `Delete ${chosen.length} ${chosen.length === 1 ? 'contact' : 'contacts'}?`, confirmLabel: 'Delete', danger: true }).then((ok) => { if (ok) { onDeleteContacts(chosen.map((r) => r.key)); exit() } })} aria-label="Delete"><Icon name="trash" size={18} /></button>
         </div>
       )}
     </div>

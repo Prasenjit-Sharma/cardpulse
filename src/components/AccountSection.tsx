@@ -4,8 +4,9 @@ import { deleteAccount, deleteCloudData } from '../lib/cloudaccount'
 import { cloudEnabled } from '../lib/supabase'
 import type { SyncStatus } from '../lib/sync'
 import type { SyncControl } from '../lib/useSync'
-import Icon from './Icon'
+import { confirmAsk } from './Dialog'
 import Sheet from './Sheet'
+import { SettingGroup, SettingRow, SwitchRow } from './SettingRow'
 
 function statusLine(s: SyncStatus, enabled: boolean, now = Date.now()): string {
   if (!enabled) return 'Off. Contacts stay on this phone only.'
@@ -35,41 +36,40 @@ export default function AccountSection({ sync }: { sync: SyncControl }) {
   const userId = session?.user.id ?? ''
   const toggle = () => { if (sync.enabled) void act(sync.turnOff); else setConsent(true) }
   const turnOn = () => { setConsent(false); void act(sync.turnOn) }
-  const clearCloud = () => {
-    if (!confirm('Delete everything CardPulse keeps for your account on the server? Synced contacts and photos, your card links and any leads not yet received. This phone keeps its own copy.')) return
-    void act(async () => { await deleteCloudData(userId); await sync.cleared(); return 'Your cloud data is deleted. Sync is off.' })
+  const clearCloud = async () => {
+    const ok = await confirmAsk({
+      title: 'Delete cloud data?',
+      message: 'Everything CardPulse keeps for your account on the server is deleted: synced contacts and photos, your card links, and any leads not yet received. This phone keeps its own copy.',
+      confirmLabel: 'Delete', danger: true,
+    })
+    if (ok) void act(async () => { await deleteCloudData(userId); await sync.cleared(); return 'Your cloud data is deleted. Sync is off.' })
   }
-  const removeAccount = () => {
-    if (!confirm('Delete your CardPulse account and everything it keeps on the server? Your card links stop working. This phone keeps its own contacts. This cannot be undone.')) return
-    void act(async () => { await deleteAccount(userId); await sync.cleared(); return 'Your account is deleted.' })
+  const removeAccount = async () => {
+    const ok = await confirmAsk({
+      title: 'Delete your account?',
+      message: 'Your account and everything it keeps on the server are deleted, and your card links stop working. This phone keeps its own contacts. This cannot be undone.',
+      confirmLabel: 'Delete account', danger: true,
+    })
+    if (ok) void act(async () => { await deleteAccount(userId); await sync.cleared(); return 'Your account is deleted.' })
   }
+  const name = (session?.user.user_metadata as { full_name?: string } | undefined)?.full_name
 
   return (
     <>
-      <h3 className="group">Account</h3>
-      <section className="card">
-        {session ? (
-          <>
-            <p className="hint" style={{ marginTop: 0 }}>Signed in as {session.user.email}.</p>
-            <button role="switch" aria-checked={sync.enabled} className="switch-row" disabled={busy} onClick={toggle}>
-              <Icon name="cloud" size={20} />
-              <span className="grow"><strong>Sync across devices</strong><small role="status">{statusLine(sync.status, sync.enabled)}</small></span>
-              <span className="switch" aria-hidden="true"><i /></span>
-            </button>
-            {msg && <p className={msg.ok ? 'hint ok' : 'hint bad'} role="status">{msg.text}</p>}
-            <button className="outline wide" disabled={busy} onClick={() => void signOut()}>Sign out</button>
-            <div className="account-danger">
-              <button className="link-danger" disabled={busy} onClick={clearCloud}>Delete cloud data</button>
-              <button className="link-danger" disabled={busy} onClick={removeAccount}>Delete account</button>
-            </div>
-          </>
-        ) : (
-          <>
-            <p className="hint">Sign in to get a shareable link for your digital card, collect visitor details at a stall, and sync your contacts between phones. Everything else in the app works without this.</p>
-            <button className="cta small wide" onClick={() => void signInWithGoogle()}><Icon name="share" size={18} /> Sign in with Google</button>
-          </>
-        )}
-      </section>
+      {session ? (
+        <SettingGroup title="Account">
+          <SettingRow icon="user" label={name || session.user.email || 'Signed in'} hint={name ? session.user.email : 'Signed in with Google'} />
+          <SwitchRow icon="cloud" label="Sync across devices" hint={statusLine(sync.status, sync.enabled)} checked={sync.enabled} disabled={busy} onChange={toggle} />
+          <SettingRow icon="logout" label="Sign out" chevron={false} disabled={busy} onClick={() => void signOut()} />
+          <SettingRow icon="trash" label="Delete cloud data" hint="Keeps this phone's copy" danger disabled={busy} onClick={() => void clearCloud()} />
+          <SettingRow icon="userx" label="Delete account" danger disabled={busy} onClick={() => void removeAccount()} />
+        </SettingGroup>
+      ) : (
+        <SettingGroup title="Account" footer="Everything else in the app works without an account.">
+          <SettingRow icon="user" label="Sign in with Google" hint="A shareable card link, stall leads, and sync between phones" onClick={() => void signInWithGoogle()} />
+        </SettingGroup>
+      )}
+      {msg && <p className={msg.ok ? 'hint ok setting-msg' : 'hint bad setting-msg'} role="status">{msg.text}</p>}
 
       <Sheet open={consent} onClose={() => setConsent(false)} title="Sync across devices">
         <div className="consent">
@@ -82,7 +82,7 @@ export default function AccountSection({ sync }: { sync: SyncControl }) {
           <a href={`${import.meta.env.BASE_URL}privacy.html`} target="_blank" rel="noreferrer">How your data is handled</a>
           <div className="consent-actions">
             <button className="outline" onClick={() => setConsent(false)}>Not now</button>
-            <button className="cta" onClick={turnOn}>Turn on sync</button>
+            <button className="cta" onClick={turnOn}>Turn on</button>
           </div>
         </div>
       </Sheet>

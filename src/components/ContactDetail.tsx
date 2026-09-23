@@ -14,6 +14,7 @@ import LogSheet from './LogSheet'
 import PhotoAdjust from './PhotoAdjust'
 import StarButton from './StarButton'
 import Picker from './Picker'
+import { confirmAsk } from './Dialog'
 
 const SUGGESTED_TAGS = ['Customer', 'Supplier', 'Partner', 'Investor', 'Hot lead']
 const withProtocol = (w: string) => (/^https?:\/\//i.test(w) ? w : `https://${w}`)
@@ -200,8 +201,8 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
 
       <Sheet open={menu} onClose={() => setMenu(false)} title={c?.name || 'Contact'}>
         {c && <SheetItem icon="file" label="Download contact file (.vcf)" onClick={() => { setMenu(false); download(`${c.name || 'contact'}.vcf`, toVCard(c, noteFor(), currentNameFormat()), 'text/x-vcard'); setFlash('Downloaded. Open the file to choose Contacts.') }} />}
-        <SheetItem icon="trash" danger label="Delete contact" onClick={() => { setMenu(false); if (confirm('Remove this person?')) removePerson() }} />
-        <SheetItem icon="trash" danger label="Delete card" onClick={() => { setMenu(false); if (confirm('Delete the whole card and all its contacts?')) onDelete() }} />
+        <SheetItem icon="trash" danger label="Delete contact" onClick={() => { setMenu(false); void confirmAsk({ title: 'Delete this contact?', confirmLabel: 'Delete', danger: true }).then((ok) => ok && removePerson()) }} />
+        <SheetItem icon="trash" danger label="Delete card" onClick={() => { setMenu(false); void confirmAsk({ title: 'Delete the whole card?', message: 'Every contact on it is deleted too.', confirmLabel: 'Delete', danger: true }).then((ok) => ok && onDelete()) }} />
       </Sheet>
 
       {contacts.length > 1 && (
@@ -324,7 +325,7 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
           <h3 className="section">Activity <button className="link" onClick={() => setLogOpen(true)}>+ Log</button></h3>
           {(c.log?.length ?? 0) > 0 && (
             <div className="activity" role="list" aria-label="Calls and notes with this contact">
-              {c.log!.map((e) => <ActivityRow key={e.id} e={e} onRemove={() => confirm('Remove this entry?') && commit(contacts.map((x, j) => (j === idx ? removeInteraction(x, e.id) : x)), card.reviewed)} />)}
+              {c.log!.map((e) => <ActivityRow key={e.id} e={e} onRemove={() => void confirmAsk({ title: 'Remove this entry?', confirmLabel: 'Remove', danger: true }).then((ok) => ok && commit(contacts.map((x, j) => (j === idx ? removeInteraction(x, e.id) : x)), card.reviewed))} />)}
             </div>
           )}
 

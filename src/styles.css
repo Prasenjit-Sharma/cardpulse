@@ -225,7 +225,9 @@ input:focus, textarea:focus, select:focus { outline: none; border-bottom-color: 
 textarea { padding: 10px 12px; resize: vertical; line-height: 1.45 }
 input::placeholder, textarea::placeholder { color: var(--ink-3) }
 input[inputmode='tel'], .num input { font-variant-numeric: tabular-nums }
-label.check { display: flex; align-items: center; gap: 9px; font-size: var(--t-s); margin: 14px 0 0 } label.check input { width: auto; min-height: 0 }
+.check-row { width: 100%; min-height: 44px; margin: 10px 0 0; padding: 4px 0; border: 0; border-radius: 0; background: none; box-shadow: none; justify-content: flex-start; gap: 11px; text-align: left; font-weight: 400; font-size: var(--t-m); color: var(--ink) }
+.check-row .grow { display: flex; flex-direction: column } .check-row small { color: var(--ink-3) }
+.check-row:active:not(:disabled) { transform: none }
 .field-box { padding: 10px 14px; margin: 12px 0 }
 .field-box > span { display: block; font-size: var(--t-xs); font-weight: 600; letter-spacing: .1em; text-transform: uppercase; font-variation-settings: 'wdth' var(--wdth-label); color: var(--ink-3); margin-bottom: 2px }
 .field-box select, .field-box input, .field-box textarea { border: 0; background: none; padding: 0; min-height: 30px; font-size: var(--t-l); font-weight: 600 }
@@ -696,8 +698,8 @@ nav button.on::after { content: ''; position: absolute; left: 50%; top: 0; width
 .followbox { display: flex; align-items: center; gap: 8px; padding: 2px 4px 2px 12px }
 .followbox .lbl { font-size: var(--t-xs); font-weight: 600; letter-spacing: .1em; text-transform: uppercase; font-variation-settings: 'wdth' 80; color: var(--ink-3); flex: none }
 .followbox { min-height: 44px }
-.followbox .datechip { position: relative; display: inline-flex; align-items: center; flex: none; min-height: 32px; padding: 0 10px; border-radius: 4px; background: var(--board-2); font-size: var(--t-m); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap }
-.followbox .datechip input { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; padding: 0; opacity: 0; cursor: pointer; font-size: 16px }
+.datechip { position: relative; display: inline-flex; align-items: center; flex: none; min-height: 32px; padding: 0 10px; border-radius: 4px; background: var(--board-2); font-size: var(--t-m); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap }
+.datechip input { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; padding: 0; opacity: 0; cursor: pointer; font-size: 16px }
 .followbox .due { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
 .followbox .due { color: var(--red); font-weight: 600; font-size: var(--t-xs); letter-spacing: .1em; text-transform: uppercase; flex: none }
 .newtag { display: flex; gap: 6px } .newtag input { min-height: 34px; padding: 0 10px } .newtag button { min-height: 34px; flex: none }
@@ -821,12 +823,14 @@ h3.section .link { float: right; min-height: 0; padding: 0; font-size: var(--t-x
 /* accent colour choice */
 .accent-pick { margin-top: 14px }
 .accent-label { display: block; margin-bottom: 8px; font-size: var(--t-s); color: var(--ink-3) } .accent-label b { color: var(--ink); font-weight: 600; margin-left: 6px }
-.accent-row { display: flex; flex-wrap: wrap; gap: 10px }
-.accent-sw { width: 44px; height: 44px; min-height: 44px; padding: 0; border-radius: 50%; background: var(--sw); border: 2px solid transparent; box-shadow: 0 0 0 1px var(--rule); }
-.accent-sw[aria-checked='true'] { border-color: var(--sleeve); box-shadow: 0 0 0 3px var(--ink) }
-.accent-sw:active:not(:disabled) { transform: scale(.94); box-shadow: 0 0 0 1px var(--rule) }
-@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) .accent-sw { background: var(--sw-l) } }
-:root[data-theme='dark'] .accent-sw { background: var(--sw-l) }
+/* compact: a 28px dot drawn inside a full-height cell, so eight fit one row and each still has a 44px-tall target */
+.accent-row { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 0; max-width: 360px }
+.accent-sw { width: 100%; height: 44px; min-height: 44px; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none }
+.accent-sw::before { content: ''; width: 28px; height: 28px; border-radius: 50%; background: var(--sw); box-shadow: 0 0 0 1px var(--rule); transition: box-shadow var(--dur-1) var(--ease), transform var(--dur-1) var(--ease) }
+.accent-sw[aria-checked='true']::before { box-shadow: 0 0 0 2px var(--sleeve), 0 0 0 4px var(--ink) }
+.accent-sw:active:not(:disabled) { transform: none } .accent-sw:active:not(:disabled)::before { transform: scale(.9) }
+@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) .accent-sw::before { background: var(--sw-l) } }
+:root[data-theme='dark'] .accent-sw::before { background: var(--sw-l) }
 
 /* my card: a row of real business cards you swipe through */
 .card-canvas { width: 100%; aspect-ratio: 1.75; display: block; border-radius: 6px; box-shadow: var(--seat-deep); touch-action: pan-x }
@@ -899,16 +903,16 @@ h3.section .link { position: relative } h3.section .link::after { content: ''; p
 .pill[aria-pressed='true'] { background: var(--brand-wash); border-color: var(--brand-edge); color: var(--brand) }
 .pill:active:not(:disabled) { transform: none; box-shadow: none }
 .log-note { position: relative } .log-note textarea { width: 100%; min-height: 0; padding: 9px 44px 9px 12px; font-size: var(--t-m); line-height: 1.4; resize: none }
-@supports (-webkit-touch-callout: none) { .log-note textarea, .log-date { font-size: 16px } }   /* iPhone zooms into fields under 16px */
+@supports (-webkit-touch-callout: none) { .log-note textarea { font-size: 16px } }   /* iPhone zooms into fields under 16px */
 .log-note .mic { position: absolute; right: 6px; bottom: 6px; width: 32px; height: 32px; min-height: 32px }
-.log-date { align-self: flex-start; min-height: 38px; padding: 0 10px; font-size: var(--t-m) }
+.log-field .datechip { align-self: flex-start; min-height: 38px; margin: 8px 0 0 }
 
 .home-stats button b small { font-size: var(--t-s); font-weight: 500; color: var(--ink-3) }
 .followbox .due { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }   /* after the older rule, so the status takes the spare width and shortens instead of pushing the buttons out */
 
 /* the follow-up row: sentence case, so the date and its status fit on one line on a narrow phone */
-.followbox .datechip { gap: 6px; text-transform: none; letter-spacing: 0; font-variation-settings: normal }
-.followbox .datechip svg { color: var(--ink-3); flex: none }
+.datechip { gap: 6px; text-transform: none; letter-spacing: 0; font-variation-settings: normal }
+.datechip svg { color: var(--ink-3); flex: none }
 .followbox .due { font-size: var(--t-s); text-transform: none; letter-spacing: 0; font-variation-settings: normal }
 
 /* the public card page: a plain, centred column, no app nav — but still a CardPulse page, not a bare form */
@@ -935,18 +939,11 @@ h3.section .link { position: relative } h3.section .link::after { content: ''; p
 .stall-event-tag { display: block; font-size: var(--t-l); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; font-variation-settings: 'wdth' 84; line-height: 1.25; color: #16191D; max-width: min(84vw, 420px); overflow-wrap: anywhere }
 
 /* ---------- account: sync switch, consent sheet, deletion ---------- */
-.switch-row { width: 100%; min-height: 58px; padding: 8px 0; margin: 4px 0 10px; border: 0; border-top: 1px solid var(--rule-soft); border-bottom: 1px solid var(--rule-soft); border-radius: 0; background: none; box-shadow: none; justify-content: flex-start; text-align: left; gap: 13px; color: var(--ink); font-weight: 400 }
-.switch-row > svg { color: var(--brand); flex: none }
-.switch-row .grow { display: flex; flex-direction: column; min-width: 0 } .switch-row strong { font-weight: 600 } .switch-row small { color: var(--ink-3) }
-.switch-row:active:not(:disabled) { transform: none }
 /* the switch is a small card seated in a slot: square corners like every other control in the album */
 .switch { width: 44px; height: 26px; flex: none; position: relative; border-radius: var(--r-card); background: var(--board-2); box-shadow: inset 0 0 0 1.5px var(--board-edge); transition: background var(--dur-2) var(--ease), box-shadow var(--dur-2) var(--ease) }
 .switch i { position: absolute; top: 4px; left: 4px; width: 18px; height: 18px; border-radius: 2px; background: var(--sleeve); box-shadow: 0 1px 2px rgba(22,25,29,.28); transition: transform var(--dur-2) var(--ease) }
-.switch-row[aria-checked='true'] .switch { background: var(--brand); box-shadow: none }
-.switch-row[aria-checked='true'] .switch i { transform: translateX(18px); background: var(--brand-ink) }
-.account-danger { display: flex; justify-content: space-between; gap: 12px; margin-top: 12px; padding-top: 4px }
-button.link-danger { min-height: 44px; padding: 0 2px; border: 0; background: none; box-shadow: none; color: var(--red); font-weight: 600; font-size: var(--t-m); text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px }
-button.link-danger:active:not(:disabled) { transform: none; opacity: .7 }
+[role='switch'][aria-checked='true'] .switch { background: var(--brand); box-shadow: none }
+[role='switch'][aria-checked='true'] .switch i { transform: translateX(18px); background: var(--brand-ink) }
 .consent { padding: 0 14px 4px; font-size: var(--t-m); color: var(--ink-2); line-height: 1.5 }
 .consent p { margin: 0 0 10px } .consent b { color: var(--ink); font-weight: 600 }
 .consent ul { margin: 0 0 12px; padding-left: 18px } .consent li { margin: 6px 0 }
@@ -955,3 +952,41 @@ button.link-danger:active:not(:disabled) { transform: none; opacity: .7 }
 .consent-actions button { display: inline-flex; align-items: center; justify-content: center }
 .mycards-stats { text-align: center; margin: 12px 0 0; font-variant-numeric: tabular-nums; color: var(--ink-2) }
 .lead-note { margin: 2px 0 0; text-align: center } .lead-note a { color: var(--brand); text-underline-offset: 3px }
+
+/* ---------- settings: titled groups of ruled rows ---------- */
+.setting-group { margin-bottom: 4px }
+.setting-row {
+  width: 100%; min-height: 56px; padding: 9px 16px; margin: 0; border: 0; border-radius: 0; background: none; box-shadow: none;
+  display: flex; align-items: center; justify-content: flex-start; gap: 13px; text-align: left; color: var(--ink);
+  font-weight: 400; font-size: var(--t-m); text-decoration: none; cursor: default;
+}
+button.setting-row, a.setting-row, label.setting-row { cursor: pointer }
+.setting-row + .setting-row { border-top: 1px solid var(--rule-soft) }
+.setting-row > svg:first-child { color: var(--brand); flex: none }
+.setting-row > svg:last-child:not(:first-child) { color: var(--ink-3); flex: none }
+.setting-row .grow { display: flex; flex-direction: column; gap: 1px; min-width: 0 }
+.setting-row strong { font-weight: 600; overflow-wrap: anywhere } .setting-row small { color: var(--ink-3); font-size: var(--t-s) }
+.setting-row:active:not(:disabled) { transform: none; background: var(--board-2) }
+.setting-row.danger, .setting-row.danger > svg:first-child { color: var(--red) }
+.setting-value { color: var(--ink-3); font-size: var(--t-m); white-space: nowrap; flex: none; max-width: 45%; overflow: hidden; text-overflow: ellipsis }
+.setting-foot { margin: 6px 4px 0 } .setting-msg { margin: 8px 4px 0 }
+/* the accent row: label on top, the swatches on a line of their own under it */
+.accent-row-wrap { flex-wrap: wrap; row-gap: 2px; padding-bottom: 4px }
+.accent-row-wrap .accent-row { flex-basis: 100%; margin-left: 20px }
+.accent-dot { width: 20px; height: 20px; border-radius: 50%; background: var(--brand); flex: none }
+
+/* ---------- the app's own confirm and prompt ---------- */
+.dialog { padding: 0 14px 4px; font-size: var(--t-m); color: var(--ink-2); line-height: 1.5 }
+.dialog p { margin: 0 0 6px }
+.dialog-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px }
+.dialog-actions button { min-height: 48px }
+button.danger-solid { background: var(--red); color: #fff; border: 0; box-shadow: none; letter-spacing: .1em; text-transform: uppercase; font-variation-settings: 'wdth' 84 }
+:root[data-theme='dark'] button.danger-solid { color: #1A0B0A }
+@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) button.danger-solid { color: #1A0B0A } }
+.sheet-body { padding: 0 14px 4px }
+.diag-log { max-height: 50dvh; overflow: auto; margin: 0; padding: 10px 12px; background: var(--board-2); border-radius: var(--r-card); font-size: var(--t-xs); line-height: 1.5; white-space: pre-wrap; word-break: break-word }
+/* the phone's own date and colour chrome follows the app's chosen theme, not only the system one */
+:root[data-theme='dark'] { color-scheme: dark } :root[data-theme='light'] { color-scheme: light }
+/* the form rule above styles any span inside a label as a small-caps field label; a row or chip that is a label is not one */
+label.setting-row > span:not(.sr), label.datechip > span:not(.sr) { font-size: inherit; font-weight: inherit; letter-spacing: 0; text-transform: none; font-variation-settings: inherit; color: inherit; margin: 0 }
+label.setting-row > span.grow:not(.sr) { display: flex } label.datechip > span:not(.sr) { display: inline }

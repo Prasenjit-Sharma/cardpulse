@@ -6,6 +6,7 @@ import Icon from './Icon'
 import Picker from './Picker'
 import { ALL_FIELDS, type CardRecord, type EventRec, type FieldKey } from '../lib/types'
 import { overall, scoreCard, sumTallies, type CardScore } from '../lib/score'
+import Check from './Check'
 
 const LABEL: Record<FieldKey, string> = {
   name: 'Name', title: 'Job title', company: 'Company', website: 'Website', address: 'Address', gstin: 'GSTIN',
@@ -68,7 +69,7 @@ export default function Report({ cards: allCards, events, dupes, onBack }: { car
       )}
 
       <h3 className="group">Export</h3>
-      <label className="check"><input type="checkbox" checked={skipDupes} onChange={(e) => setSkipDupes(e.target.checked)} /> Export duplicates once only ({[...dupes.keys()].filter((id) => done.some((c) => c.id === id)).length} cards flagged)</label>
+      <Check checked={skipDupes} onChange={setSkipDupes}>Export duplicates once only ({[...dupes.keys()].filter((id) => done.some((c) => c.id === id)).length} cards flagged)</Check>
       <div className="actions">
         <button onClick={exportCsv} disabled={!done.length}>Export CSV</button>
         <button onClick={exportVcf} disabled={!done.length}>Export vCard (phone)</button>

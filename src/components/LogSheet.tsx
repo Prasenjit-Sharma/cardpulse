@@ -3,6 +3,7 @@ import { MAX_NOTE, PRESETS, localISO, newEntry, presetDate, type Interaction, ty
 import { speechSupported, startDictation } from '../lib/speech'
 import Icon from './Icon'
 import Sheet from './Sheet'
+import DateChip from './DateChip'
 
 const KINDS: { id: Kind; label: string }[] = [{ id: 'call', label: 'Call' }, { id: 'meeting', label: 'Meeting' }, { id: 'message', label: 'Message' }]
 const OUTCOMES: { id: Outcome; label: string }[] = [{ id: 'connected', label: 'Connected' }, { id: 'no-answer', label: 'No answer' }, { id: 'call-back', label: 'Call back' }]
@@ -59,7 +60,7 @@ export default function LogSheet({ name, onSave, onClose }: { name: string; onSa
             {PRESETS.map((p) => <button key={p.id} className="pill" aria-pressed={next === p.id} onClick={() => setNext(p.id)}>{p.short}</button>)}
             <button className="pill" aria-pressed={next === 'date'} onClick={() => setNext('date')}>Pick date</button>
           </div>
-          {next === 'date' && <input className="log-date" type="date" value={date} min={localISO()} onChange={(e) => setDate(e.target.value)} aria-label="Follow-up date" autoFocus />}
+          {next === 'date' && <DateChip value={date} min={localISO()} onChange={setDate} label="Follow-up date" autoFocus />}
         </div>
 
         <button className="cta wide" disabled={!canSave} onClick={save}>Save</button>

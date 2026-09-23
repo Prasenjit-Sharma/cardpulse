@@ -7,6 +7,7 @@ import { FONTS, MAX_LIST, sanitizeCard, TEMPLATES, type FontId, type MyCard, typ
 import { useBackClose } from '../lib/useBackClose'
 import CardCanvas from './CardCanvas'
 import Icon from './Icon'
+import { confirmAsk } from './Dialog'
 
 const TEMPLATE_NAME: Record<TemplateId, string> = { ledger: 'Ledger', header: 'Header', split: 'Split', noir: 'Noir', bold: 'Bold' }
 const FONT_NAME: Record<FontId, string> = { archivo: 'Archivo', inter: 'Inter' }
@@ -56,7 +57,8 @@ export default function CardEditor({ card, isNew, onSave, onDelete, onClose }: {
   const canSave = draft.name.trim().length > 0 && !busy
 
   const requestClose = (): boolean | void => {
-    if (dirty && !confirm('Discard your changes?')) return false
+    // Back stays on this screen while the question is open; the answer then closes it or not.
+    if (dirty) { void confirmAsk({ title: 'Discard your changes?', confirmLabel: 'Discard', cancelLabel: 'Keep editing', danger: true }).then((ok) => ok && onClose()); return false }
     onClose()
   }
   useBackClose(true, requestClose)
@@ -129,7 +131,7 @@ export default function CardEditor({ card, isNew, onSave, onDelete, onClose }: {
         </div>
       </div>
 
-      {!isNew && <button className="danger wide" onClick={() => confirm('Delete this card?') && onDelete(card.id)}>Delete card</button>}
+      {!isNew && <button className="danger wide" onClick={() => void confirmAsk({ title: 'Delete this card?', message: 'Its link stops working too.', confirmLabel: 'Delete', danger: true }).then((ok) => ok && onDelete(card.id))}>Delete card</button>}
     </div>
   )
 }

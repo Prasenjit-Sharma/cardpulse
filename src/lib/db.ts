@@ -34,7 +34,9 @@ export interface Settings { apiKey: string; model: string; keepPhotos: KeepPhoto
 export const readerReady = (s: Settings) => (serverMode && !s.useOwnKey) || (!!s.apiKey && !!s.model)
 export function loadSettings(): Settings {
   try {
-    return { apiKey: '', model: '', keepPhotos: 'full', ...JSON.parse(localStorage.getItem(KEY) ?? '{}') }
+    const s: Settings = { apiKey: '', model: '', keepPhotos: 'full', ...JSON.parse(localStorage.getItem(KEY) ?? '{}') }
+    // The own-key developer switch is no longer shown when the reading service exists; a phone that had it on must not be stuck needing a key.
+    return serverMode ? { ...s, useOwnKey: false } : s
   } catch {
     return { apiKey: '', model: '', keepPhotos: 'full' }
   }

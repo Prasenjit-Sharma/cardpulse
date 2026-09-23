@@ -7,6 +7,7 @@ import { useBackClose } from '../lib/useBackClose'
 import { growQuad, quadSize, warpQuad, type Pt, type Quad } from '../lib/warp'
 import { useObjectUrl } from '../lib/useObjectUrl'
 import Icon from './Icon'
+import { confirmAsk } from './Dialog'
 
 const MODE_KEY = 'cardpulse.captureMode'
 const AUTO_KEY = 'cardpulse.autoDetect'
@@ -203,7 +204,10 @@ export default function Camera({ onCard, onSubmit, onClose, onGallery, eventLabe
   const requestClose = (): boolean => {
     if (!single && !submitted.current && collect().length > 0) {
       const n = collect().length
-      if (!window.confirm(`Discard ${n} unread ${n === 1 ? 'photo' : 'photos'}?`)) return false
+      // The camera stays open while the question is asked; discarding then closes it.
+      void confirmAsk({ title: `Discard ${n} unread ${n === 1 ? 'photo' : 'photos'}?`, confirmLabel: 'Discard', cancelLabel: 'Keep', danger: true })
+        .then((ok) => { if (ok) { log('camera closed'); onClose() } })
+      return false
     }
     log('camera closed')
     onClose()

@@ -33,6 +33,7 @@ import SettingsPage from './components/SettingsPage'
 import Camera from './components/Camera'
 import Icon from './components/Icon'
 import Toast, { type ToastData } from './components/Toast'
+import { confirmAsk, DialogHost, promptAsk } from './components/Dialog'
 import { useInstall } from './lib/useInstall'
 import { useBackClose } from './lib/useBackClose'
 
@@ -352,14 +353,14 @@ export default function App() {
   const openCard = open ? cards.find((c) => c.id === open.id) : undefined
   const eventLabel = events.find((e) => e.id === activeEvent)?.name ?? ''
 
-  const renameEvent = (id: string) => {
-    const n = prompt('Rename', events.find((e) => e.id === id)?.name ?? '')?.trim()
+  const renameEvent = async (id: string) => {
+    const n = await promptAsk({ title: 'Rename event', value: events.find((e) => e.id === id)?.name ?? '' })
     if (!n) return
     const next = events.map((e) => (e.id === id ? { ...e, name: n } : e))
     setEvents(next); saveEvents(next)
   }
   const removeEvent = async (id: string) => {
-    if (!confirm('Delete this event? Its contacts are kept, just no longer grouped.')) return
+    if (!await confirmAsk({ title: 'Delete this event?', message: 'Its contacts are kept, just no longer grouped under it.', confirmLabel: 'Delete', danger: true })) return
     const next = events.filter((e) => e.id !== id)
     setEvents(next); saveEvents(next)
     if (activeEvent === id) setActiveEvent('')
@@ -394,7 +395,7 @@ export default function App() {
     if (rest.length) await putCard({ ...c, corrected: rest, reviewed: false, eventId: extras.eventId || undefined }); else await deleteCard(cardId)
     await refresh()
   }
-  const newEventPrompt = () => { const n = prompt('Exhibition / event name'); if (n?.trim()) newEvent(n.trim()) }
+  const newEventPrompt = async () => { const n = await promptAsk({ title: 'New event', placeholder: 'Exhibition or event name', confirmLabel: 'Create' }); if (n) newEvent(n) }
   const goto = (t: Tab, from?: Tab) => { if (from) setBackTab(from); setOpen(null); setTab(t) }
   const gotoTab = (t: Tab) => { setContactsFilter(undefined); setContactsCompany(''); goto(t) }
   /** Open Contacts pre-filtered from Home or Companies. The list spans every event, so the event tab resets to All. */
@@ -494,8 +495,6 @@ export default function App() {
             onChange={(s) => { setSettings(s); saveSettings(s) }}
             onWipe={async () => { await Promise.all(cards.map((c) => deleteCard(c.id))); await refresh() }}
             onBackup={backupNow} onRestore={restoreFrom}
-            onOpenAccuracy={() => goto('accuracy', 'settings')}
-            onOpenInsights={() => goto('insights', 'settings')}
             onBack={() => setTab(backTab)}
           />
         )}
@@ -510,6 +509,7 @@ export default function App() {
       {camOpen && <Camera eventLabel={eventLabel} onSubmit={(cards) => { void addBatch(cards); goto('contacts') }} onGallery={(fs) => { void addFiles(fs) }} onClose={() => setCamOpen(false)} />}
       <input ref={fallbackInput} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { if (e.target.files) void addFiles(e.target.files); e.target.value = '' }} />
       <Toast toast={toast} onDone={() => setToast(null)} />
+      <DialogHost />
       {!openCard && !editorCard && (tab === 'home' || tab === 'contacts') && (
         <button className="fab-scan" onClick={scan} aria-label="Scan a card"><Icon name="camera" size={22} />Scan</button>
       )}
