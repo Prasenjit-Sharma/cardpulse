@@ -1,10 +1,11 @@
-// Run: npx -y -p @electric-sql/pglite node scripts/check-migrations.mjs   (or install @electric-sql/pglite anywhere on NODE_PATH)
+// Run: npm run test:db
 // Runs both migrations against PGlite with stand-ins for Supabase's auth and storage schemas, then checks behaviour.
 import { PGlite } from '@electric-sql/pglite'
 import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import assert from 'node:assert/strict'
 
-const ROOT = new URL('../supabase/migrations/', import.meta.url).pathname
+const ROOT = fileURLToPath(new URL('../supabase/migrations/', import.meta.url))
 const db = new PGlite()
 await db.exec(`
   create role anon nologin; create role authenticated nologin;
