@@ -6,6 +6,10 @@ import { fitForBatch, prepareImage } from './lib/image'
 import { prepareCardImage } from './lib/cardImage'
 import type { CardRecord, Contact, EventRec } from './lib/types'
 import { loadActiveEvent, loadEvents, saveActiveEvent, saveEvents } from './lib/events'
+import { useSession } from './lib/auth'
+import { fetchCardStats, flushUnpublish, queueUnpublish, type CardStats } from './lib/cloudaccount'
+import { leadCardId } from './lib/synccore'
+import { useSync } from './lib/useSync'
 import { findDuplicates } from './lib/dupes'
 import { backupDue, backupFileName, backupNudgeUntil, buildBackup, lastBackupAt, markBackedUp, mergeEvents, parseBackup, planRestore, saveBackupFile, snoozeBackupNudge } from './lib/backup'
 import { applyAccent } from './lib/accents'
@@ -251,16 +255,42 @@ export default function App() {
     const found = await pullNewLeads(events)
     if (!found.length) return
     // Only mark a lead pulled once its local contact is actually saved, so a failed write is retried next time
-    // instead of the lead being lost.
-    const succeeded = await applyPulledLeads(found, async (contact, eventId) => {
-      await putCard({ id: crypto.randomUUID(), createdAt: Date.now(), status: 'done', reviewed: false, extracted: [contact], corrected: [contact], eventId })
+    // instead of the lead being lost. The contact's id comes from the lead, so a lead that is already here (another
+    // phone pulled it and it synced, or the server delete did not land) is never written twice or over an edit.
+    let added = 0
+    const succeeded = await applyPulledLeads(found, async (contact, eventId, leadId) => {
+      const id = leadCardId(leadId)
+      if (await getCard(id)) return
+      await putCard({ id, createdAt: Date.now(), status: 'done', reviewed: false, extracted: [contact], corrected: [contact], eventId })
+      added++
     })
     if (!succeeded.length) return
     await markLeadsPulled(succeeded)
+    if (!added) return
     await refresh()
-    setToast({ id: Date.now(), title: `${succeeded.length} new ${succeeded.length === 1 ? 'lead' : 'leads'} from your stall`, sub: 'Ready to call, message or save' })
+    setToast({ id: Date.now(), title: `${added} new ${added === 1 ? 'lead' : 'leads'} from your stall`, sub: 'Ready to call, message or save' })
   }, [events, refresh])
   useEffect(() => { if (online) void pullLeads() }, [online, pullLeads])
+
+  const session = useSession()
+  const userId = session?.user.id
+  // Changes from another phone: reload every list. An active event that was deleted elsewhere is let go.
+  const reloadAll = useCallback(() => {
+    void refresh(); void refreshMyCards()
+    const evs = loadEvents()
+    setEvents(evs)
+    if (activeEventRef.current && !evs.some((e) => e.id === activeEventRef.current)) setActiveEvent('')
+  }, [refresh, refreshMyCards])   // eslint-disable-line react-hooks/exhaustive-deps
+  const sync = useSync(userId, online, reloadAll)
+  // A deleted digital card's link is taken down once online (after any leads waiting on it have been pulled in).
+  useEffect(() => { if (online && userId) void pullLeads().finally(() => flushUnpublish(userId)) }, [online, userId])   // eslint-disable-line react-hooks/exhaustive-deps
+  const [cardStats, setCardStats] = useState<Map<string, CardStats>>()
+  useEffect(() => {
+    if (tab !== 'mycard' || !userId || !online) return
+    let live = true
+    void fetchCardStats().then((m) => { if (live) setCardStats(m) })
+    return () => { live = false }
+  }, [tab, userId, online])
 
   const addGroups = useCallback(async (groups: File[][], prepared: boolean) => {
     const { apiKey, model } = settingsRef.current
@@ -409,7 +439,10 @@ export default function App() {
         {editorCard ? (
           <CardEditor key={editorCard.id} card={editorCard} isNew={editingCard === 'new'}
             onSave={async (c) => { await putMyCard(c); await refreshMyCards(); setEditingCard(null); setTab('mycard') }}
-            onDelete={async (id) => { await deleteMyCard(id); await refreshMyCards(); setEditingCard(null) }}
+            onDelete={async (id) => {
+              await deleteMyCard(id); queueUnpublish(id); await refreshMyCards(); setEditingCard(null)
+              if (userId && navigator.onLine) void pullLeads().finally(() => flushUnpublish(userId))
+            }}
             onClose={() => setEditingCard(null)} />
         ) : openCard && open?.review ? (
           <ScanResult key={`r-${openCard.id}`} card={openCard} events={events} onBack={() => setOpen(null)}
@@ -434,7 +467,7 @@ export default function App() {
             onOpenContact={(id, idx) => setOpen({ id, idx })} onContacts={() => openContacts()} onCompanies={() => goto('companies')} onStarred={() => openContacts('priority')}
             onAttention={() => openContacts('attention')} onInsights={() => goto('insights', 'home')} onAccuracy={() => goto('accuracy', 'home')} onSetup={() => goto('settings', 'home')} />
         ) : tab === 'mycard' ? (
-          <MyCards cards={myCards} onAdd={() => myCards.length < MAX_CARDS && setEditingCard('new')} onEdit={setEditingCard} onShare={setSharingCard} onStall={setStallCard} />
+          <MyCards cards={myCards} stats={cardStats} onAdd={() => myCards.length < MAX_CARDS && setEditingCard('new')} onEdit={setEditingCard} onShare={setSharingCard} onStall={setStallCard} />
         ) : tab === 'companies' ? (
           <Companies cards={cards} onBack={() => setTab('home')} onOpenCompany={(name) => openContacts(undefined, name)} />
         ) : tab === 'contacts' ? (
@@ -452,6 +485,7 @@ export default function App() {
             cards={cards}
             settings={settings}
             install={install}
+            sync={sync}
             onChange={(s) => { setSettings(s); saveSettings(s) }}
             onWipe={async () => { await Promise.all(cards.map((c) => deleteCard(c.id))); await refresh() }}
             onBackup={backupNow} onRestore={restoreFrom}

@@ -58,10 +58,10 @@ export async function markLeadsPulled(leadIds: string[]): Promise<void> {
  * returned — a lead whose local write fails stays unmarked and is picked up again on the next pull, instead of
  * being silently lost.
  */
-export async function applyPulledLeads(pulled: PulledLead[], write: (contact: Contact, eventId?: string) => Promise<void>): Promise<string[]> {
+export async function applyPulledLeads(pulled: PulledLead[], write: (contact: Contact, eventId: string | undefined, leadId: string) => Promise<void>): Promise<string[]> {
   const succeeded: string[] = []
   for (const { leadId, contact, eventId } of pulled) {
-    try { await write(contact, eventId); succeeded.push(leadId) } catch { /* left unmarked: retried on the next pull */ }
+    try { await write(contact, eventId, leadId); succeeded.push(leadId) } catch { /* left unmarked: retried on the next pull */ }
   }
   return succeeded
 }

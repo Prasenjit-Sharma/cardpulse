@@ -7,6 +7,7 @@ import { DEFAULT_MODEL, listModels, serverMode } from '../lib/gemini'
 import type { Settings, Theme } from '../lib/db'
 import type { CardRecord } from '../lib/types'
 import { DEFAULT_NAME_FORMAT, displayName, NAME_FORMATS, type NameFormat } from '../lib/naming'
+import type { SyncControl } from '../lib/useSync'
 import AccountSection from './AccountSection'
 import Icon from './Icon'
 import Picker from './Picker'
@@ -16,8 +17,9 @@ const MODELS_KEY = 'cardpulse.models'
 
 interface Install { mode: 'native' | 'ios' | null; install: () => void }
 
-export default function SettingsPage({ cards, settings, install, onChange, onWipe, onBackup, onRestore, onOpenAccuracy, onOpenInsights, onBack }: {
+export default function SettingsPage({ cards, settings, install, sync, onChange, onWipe, onBackup, onRestore, onOpenAccuracy, onOpenInsights, onBack }: {
   cards: CardRecord[]
+  sync: SyncControl
   settings: Settings
   install: Install
   onChange: (s: Settings) => void
@@ -205,11 +207,13 @@ export default function SettingsPage({ cards, settings, install, onChange, onWip
         </a>
       </section>
 
-      <AccountSection />
+      <AccountSection sync={sync} />
 
       <h3 className="group">Your data</h3>
       <section className="card">
-        <p className="hint">Contacts and photos are stored only on this phone. Clearing the app's data removes them, so keep a backup.</p>
+        <p className="hint">{sync.enabled
+          ? 'Contacts and photos are on this phone and synced to your account. A backup file is still the copy only you hold.'
+          : "Contacts and photos are stored only on this phone. Clearing the app's data removes them, so keep a backup."}</p>
         <button className="cta small wide" disabled={busyData} onClick={() => void runData(onBackup)}><Icon name="download" size={18} /> Back up all contacts</button>
         <p className="hint">{last ? `Last backup: ${new Date(last).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}` : 'No backup yet.'} Saves a file with every contact and card photo. Send it to Drive or WhatsApp to keep it safe.</p>
         <label className="outline wide restore">
@@ -217,7 +221,9 @@ export default function SettingsPage({ cards, settings, install, onChange, onWip
           <input type="file" accept=".zip,application/zip" hidden disabled={busyData} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void runData(() => onRestore(f)) }} />
         </label>
         {dataMsg && <p className={dataMsg.ok ? 'hint ok' : 'hint bad'} role="status">{dataMsg.text}</p>}
-        <button className="danger wide" onClick={() => confirm('Delete ALL cards and contacts from this device? This cannot be undone.') && onWipe()}>Delete all data</button>
+        <button className="danger wide" onClick={() => confirm(sync.enabled
+          ? 'Delete ALL cards and contacts from this phone AND from your other synced phones? This cannot be undone.'
+          : 'Delete ALL cards and contacts from this device? This cannot be undone.') && onWipe()}>Delete all data</button>
       </section>
 
       <h3 className="group">Help</h3>

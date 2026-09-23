@@ -20,22 +20,30 @@
 <body>
 <main>
   <h1>Privacy policy</h1>
-  <p class="meta">CardPulse · Last updated 19 September 2026</p>
-  <p>CardPulse turns photos of business cards into contacts. This page explains what happens to your data. In short: your contacts stay on your device, and the only thing that leaves it is the card photo you choose to scan.</p>
+  <p class="meta">CardPulse · Last updated 23 September 2026 · This page describes what the app does; it has not yet been reviewed by a lawyer.</p>
+  <p>CardPulse turns photos of business cards into contacts, and lets you share your own digital card. In short: your contacts live on your phone. They leave it only when you scan a card, when you turn on sync, or when someone you share your card with sends you their details.</p>
 
-  <h2>What we store, and where</h2>
+  <h2>Without an account</h2>
   <ul>
-    <li>Contacts, notes, follow-up dates, events, and (if you choose to keep them) card photos are stored <strong>only in your browser or installed app</strong> on this device.</li>
-    <li>Your Gemini API key is stored on this device too.</li>
-    <li>We run no servers, have no accounts, and cannot see, recover or delete your data for you.</li>
+    <li>Contacts, notes, follow-ups, events, your own digital cards and (if you keep them) card photos are stored <strong>only on this phone</strong>, in the app's own storage.</li>
+    <li><strong>Card photos you scan</strong> are sent to the CardPulse reading service (a Cloudflare Worker we run), which passes them to Google's Gemini API to read the text. They are not stored or logged by us. Google processes them under the <a href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noreferrer">Gemini API terms</a>; on Google's free tier, Google may use submitted content to improve its products. If you use the developer option to read with your own Gemini key, photos go straight to Google instead.</li>
+    <li><strong>Voice notes</strong> use your browser's built-in speech recognition; in some browsers, such as Chrome, audio is processed by the browser vendor's speech service. CardPulse records nothing.</li>
+    <li>There is no analytics, advertising or tracking, and no third-party scripts are loaded.</li>
   </ul>
 
-  <h2>What leaves your device</h2>
+  <h2>With an account (Google sign-in)</h2>
+  <p>Signing in is optional. The account, and anything stored with it, is held by Supabase, the database service CardPulse uses. We receive your name and email address from Google.</p>
   <ul>
-    <li><strong>Card photos.</strong> When you scan, the photo is sent to Google's Gemini API, using your own API key, to read the text on the card. Google processes it under its own terms. On Google's free tier, Google may use submitted content to improve its products; paid usage is treated differently. Please review <a href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noreferrer">Google's Gemini API terms</a> before scanning cards that contain sensitive information.</li>
-    <li><strong>Voice notes.</strong> If you tap the microphone to dictate a note, your browser's built-in speech recognition is used. In some browsers, such as Chrome, the audio is processed by the browser vendor's speech service. Nothing is recorded by CardPulse.</li>
-    <li>Nothing else. There is no analytics, advertising or tracking, and no third-party scripts or fonts are loaded.</li>
+    <li><strong>Scanning while signed in:</strong> we count how many cards you read each day (a number per day, nothing about the cards), to keep a fair daily limit per account.</li>
+    <li><strong>A published card</strong> (a shareable link, or a stall QR in "Collect leads" mode) stores the card's details and photo so anyone with the link can see it. We count how many times the link is opened and how many people sent their details. Deleting the card in the app takes the link down.</li>
+    <li><strong>Sync, only if you turn it on:</strong> a copy of your contacts, their card photos, notes, follow-ups, events and your own cards is kept with your account so it appears on your other phones. Photos are private to your account. We record when you agreed and to which version of this page.</li>
   </ul>
+
+  <h2 id="visitors">If you sent your details through someone's card</h2>
+  <p>The name, phone, email and company you type on a CardPulse card page go only to the person whose card it is. They are held on our server just until that person's app next comes online, then deleted from the server; from then on they are in that person's own contacts. To have them removed, ask that person, or contact us (below) and we will pass the request on.</p>
+
+  <h2>Other people's details</h2>
+  <p>Contacts you scan are the personal data of the people on the cards. Keep and use them only for a genuine business reason, in line with the law (in India, the Digital Personal Data Protection Act, 2023) and with those people's expectations. If you turn on sync, you are choosing to store their details in the cloud.</p>
 
   <h2>Permissions</h2>
   <ul>
@@ -44,10 +52,14 @@
   </ul>
 
   <h2>Sharing and export</h2>
-  <p>Contacts are shared or exported (vCard, CSV, the phone's share sheet) only when you tap those actions. Contact details are the personal data of the people on the cards you scan; please use them in line with the law and with those people's expectations.</p>
+  <p>Contacts are shared or exported (vCard, CSV, the phone's share sheet) only when you tap those actions. Export is always free.</p>
 
   <h2>Deleting your data</h2>
-  <p>Use <strong>Settings → Delete all data</strong>, or clear this site's data in your browser, or uninstall the app. Because nothing is stored on our side, that removes everything CardPulse holds.</p>
+  <ul>
+    <li><strong>On this phone:</strong> Settings → Delete all data, or clear this site's data, or uninstall the app. With sync on, deleting contacts also deletes them on your other synced phones.</li>
+    <li><strong>On the server:</strong> Settings → Account → Delete cloud data removes synced contacts and photos, published cards and any details not yet received, and keeps your phone's copy.</li>
+    <li><strong>The account:</strong> Settings → Account → Delete account removes all of the above and the account itself.</li>
+  </ul>
 
   <h2>Children</h2>
   <p>CardPulse is a business tool and is not directed at children.</p>

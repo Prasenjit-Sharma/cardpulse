@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { applyAccent } from '../lib/accents'
 import { buildCardVcf } from '../lib/cardvcf'
 import { cardFileName } from '../lib/cardshare'
+import { recordCardView } from '../lib/cloudaccount'
 import { fetchPublicCard, type PublicCardData } from '../lib/cloudcards'
 import { canSendLead, formatPhone } from '../lib/leadform'
 import { submitLead } from '../lib/leads'
@@ -42,6 +43,7 @@ export default function PublicCard({ slug }: { slug: string }) {
       if (!live) return
       if (!d) { setCard('notfound'); return }
       setCardId(d.id)
+      void recordCardView(slug).catch(() => { /* a missed count never matters to the visitor */ })
       applyAccent(d.accent)
       setCard(cardWithoutPhoto(d))
       if (d.photo_url) {
@@ -99,6 +101,7 @@ export default function PublicCard({ slug }: { slug: string }) {
           <input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Company" aria-label="Your company" maxLength={80} />
           {error && <p className="hint bad" role="alert">{error}</p>}
           <button className="cta wide public-btn" disabled={sending} onClick={() => void send()}>{sending ? 'Sending…' : 'Send'}</button>
+          <p className="hint lead-note">Sent only to {card.name || 'the owner of this card'}. <a href={`${import.meta.env.BASE_URL}privacy.html#visitors`} target="_blank" rel="noreferrer">How it is handled</a></p>
         </div>
       )}
 

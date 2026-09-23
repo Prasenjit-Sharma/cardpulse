@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import type { CardStats } from '../lib/cloudaccount'
 import { MAX_CARDS, type MyCard } from '../lib/mycards'
 import CardCanvas from './CardCanvas'
 import CardStack from './CardStack'
@@ -7,8 +8,12 @@ import Icon from './Icon'
 const LONG_PRESS_MS = 600
 
 /** The user's own digital cards: a swipeable row, with Edit and Share for the one in view. A long press opens stall mode. */
-export default function MyCards({ cards, onAdd, onEdit, onShare, onStall }: {
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
+
+export default function MyCards({ cards, stats, onAdd, onEdit, onShare, onStall }: {
   cards: MyCard[]
+  /** Counts for cards that have a public link, by card id. */
+  stats?: Map<string, CardStats>
   onAdd: () => void
   onEdit: (id: string) => void
   onShare: (id: string) => void
@@ -59,6 +64,9 @@ export default function MyCards({ cards, onAdd, onEdit, onShare, onStall }: {
               <button className="outline" onClick={() => onEdit(current.id)}><Icon name="edit" size={18} /> Edit</button>
               <button className="cta" onClick={() => onShare(current.id)}><Icon name="share" size={18} /> Share</button>
             </div>
+          )}
+          {current && stats?.get(current.id) && (
+            <p className="hint mycards-stats">Link opened {plural(stats.get(current.id)!.views, 'time', 'times')} · {plural(stats.get(current.id)!.leads, 'lead', 'leads')}</p>
           )}
           <p className="hint mycards-tip">Press and hold a card, or use Share, to show its QR full screen.</p>
         </>
