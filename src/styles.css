@@ -149,6 +149,7 @@ button {
 }
 button:active:not(:disabled) { transform: scale(.98) }
 button:disabled { opacity: .45; cursor: default }
+button svg, a svg { flex-shrink: 0 }   /* an icon keeps its size however little room its button has */
 button.cta {
   width: 100%; min-height: 50px; background: var(--primary-fill, var(--brand)); color: var(--brand-ink); border: 0; font-size: var(--t-m); font-weight: 650;
   box-shadow: 0 1px 2px rgba(16,24,40,.08), 0 6px 16px color-mix(in srgb, var(--brand) 22%, transparent);
@@ -586,10 +587,9 @@ table { width: 100%; border-collapse: collapse; background: var(--sleeve); borde
 th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--rule-soft) } th { color: var(--ink-3); font-weight: 600; font-size: var(--t-xs) }
 td { font-variant-numeric: tabular-nums }
 .eventbar { display: flex; gap: 8px; margin: 0 0 14px } .eventbar select { flex: 1; min-width: 0 }
-.company-row { width: 100%; text-align: left; min-height: 56px; background: var(--sleeve); border-radius: 0; color: var(--ink); font-weight: 400; justify-content: flex-start; padding: 0 16px }
-.company-row + .company-row { border-top: 1px solid var(--rule-soft) }
-.company-row:first-child { border-radius: var(--r-sleeve) var(--r-sleeve) 0 0 } .company-row:last-child { border-radius: 0 0 var(--r-sleeve) var(--r-sleeve) }
-.company-row:only-child { border-radius: var(--r-sleeve) }
+.list:has(> .company-row) { background: var(--sleeve); border-radius: var(--r-sleeve); box-shadow: var(--seat); overflow: hidden }
+.company-row { width: 100%; text-align: left; min-height: 56px; background: none; border: 0; border-radius: 0; color: var(--ink); font-weight: 400; justify-content: flex-start; padding: 0 16px; position: relative }
+.company-row + .company-row::before { content: ''; position: absolute; top: 0; left: 72px; right: 0; height: 1px; background: var(--rule-soft) }
 .company-row:active:not(:disabled) { background: var(--board-2); transform: none }
 .company-row .count { font-size: var(--t-m); font-weight: 600; color: var(--ink-3) }
 .offline-bar { margin: 0 0 12px; padding: 10px 14px; border-radius: var(--r-field); background: var(--amber-wash); color: var(--amber); font-size: var(--t-s); font-weight: 600; line-height: 1.35 }

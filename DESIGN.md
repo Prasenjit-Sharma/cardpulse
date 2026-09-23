@@ -139,10 +139,14 @@ Everything interactive is round: pill buttons, chips, segmented controls, switch
 
 - **Buttons:** primary (accent fill, 50px, the one main action per screen), tonal (grey fill, 44px, the default), outline (1px ring), danger (red wash as a secondary, solid red in a confirm), text links. Press is a slight scale-down, never an offset shadow.
 - **Fields:** filled rounded rectangles; focus turns the field white with an accent border and a 3px accent halo. Labels sit above in 13px, sentence case. Inline edit rows (contact and card editor) are borderless inside a white card, with an accent underline on focus.
-- **Pickers:** never the native `<select>`: a pill trigger (or a field-shaped one) that opens the app's own option sheet (`Picker`). Dates are a pill chip over an invisible native date input (`DateChip`).
+- **Pickers:** never the native `<select>`: a pill trigger (or a field-shaped one) that opens the app's own option sheet (`Picker`). Dates are a pill chip that opens the app's own Monday-first calendar sheet (`DateChip`, `CalendarSheet`); no native date input anywhere.
+- **Selection:** one grammar: the chosen chip, pill, filter, choice, event tab or calendar day is filled with ink (inverted in dark). Segmented controls lift the chosen segment in white instead. Actions (Tags, Notes, Follow-up) are text buttons; tag values are outlined white tokens with a remove ×; suggestions are tonal with a plus.
 - **Confirm and prompt:** never `window.confirm`/`prompt`: a bottom sheet with a title, one line of detail, and Cancel beside the action (solid red when destructive) (`Dialog`).
 - **Checkbox and switch:** a 22px rounded square check (`Check`) and a 48x28 pill switch with a round knob.
-- **Lists:** people are white rows with the card photo as a 68x42 thumbnail, the name at 16px semibold, company and title muted, a star at the end. Settings are titled groups of ruled rows inside one white card (`SettingGroup`, `SettingRow`, `SwitchRow`), value and chevron on the right.
+- **Lists:** each section of people (and companies) is one white grouped card, rows ruled apart by an inset hairline; a person row shows the card photo as a 68x42 thumbnail, the name at 16px semibold, company and title muted, a star at the end. Settings are titled groups of ruled rows inside one white card (`SettingGroup`, `SettingRow`, `SwitchRow`), value and chevron on the right.
+- **My Card:** a full-bleed band in the card's own colour (a deeper shade of it), 32px white title and label pill, the digital card seated over the band's lower edge with one seating motion; Share card is the single primary beside round QR and Edit buttons.
+- **Contact page:** leads with the card photo (148px), then name, a grouped details card with round tonal action buttons, and grey-caps sections; header buttons are white circles.
+- **Dark primary:** the accent's light twin lifted towards white (`--primary-fill`), with no coloured glow; a disabled primary turns tonal grey.
 - **Tab bar:** five tabs, icon over an 11px label; the active tab's icon sits in a soft accent pill.
 - **Sheets:** white, 24px top corners, a grey handle, a 17px title, rows of 54px.
 
