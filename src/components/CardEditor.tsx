@@ -31,7 +31,7 @@ function ListRows({ label, values, placeholder, inputMode, onChange }: {
           {v && <button className="x" onClick={() => onChange(rows.filter((_, j) => j !== i))} aria-label={`Remove ${label.toLowerCase()} ${i + 1}`}><Icon name="x" size={16} /></button>}
         </div>
       ))}
-      {rows.length < MAX_LIST && rows[rows.length - 1] !== '' && <button className="link add" onClick={() => onChange([...values, ''])}>+ Add</button>}
+      {rows.length < MAX_LIST && rows[rows.length - 1] !== '' && <button className="link add with-icon" onClick={() => onChange([...values, ''])}><Icon name="plus" size={14} /> Add</button>}
     </Row>
   )
 }

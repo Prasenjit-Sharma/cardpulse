@@ -319,14 +319,14 @@ export default function Camera({ onCard, onSubmit, onClose, onGallery, eventLabe
 
         <div className="cam-bottom">
           {struggling && auto && mode !== 'many' && tray.length === 0 && (
-            <button className="tips" onClick={() => setStruggling(false)}>Trouble? Use a plain background, or turn off Auto Detect</button>
+            <button className="tips" onClick={() => setStruggling(false)}>Trouble? Use a plain background, or turn off Auto detect</button>
           )}
           <div className="toggles">
             {torchOk && (
               <label className="toggle"><button className={`round dark${torch ? ' on' : ''}`} onClick={() => void toggleTorch()} aria-pressed={torch} aria-label="Flash"><Icon name={torch ? 'bolt' : 'boltoff'} size={20} /></button><span>Flash</span></label>
             )}
             {mode !== 'many' && (
-              <label className="toggle"><button className={`round dark${auto ? ' on' : ''}`} onClick={toggleAuto} aria-pressed={auto} aria-label="Auto Detect"><Icon name="frame" size={20} /></button><span>Auto Detect</span></label>
+              <label className="toggle"><button className={`round dark${auto ? ' on' : ''}`} onClick={toggleAuto} aria-pressed={auto} aria-label="Auto detect"><Icon name="frame" size={20} /></button><span>Auto detect</span></label>
             )}
           </div>
 

@@ -15,6 +15,7 @@ import PhotoAdjust from './PhotoAdjust'
 import StarButton from './StarButton'
 import Picker from './Picker'
 import { confirmAsk } from './Dialog'
+import DateChip from './DateChip'
 
 const SUGGESTED_TAGS = ['Customer', 'Supplier', 'Partner', 'Investor', 'Hot lead']
 const withProtocol = (w: string) => (/^https?:\/\//i.test(w) ? w : `https://${w}`)
@@ -22,7 +23,6 @@ const when = (t: number) => new Date(t).toLocaleString(undefined, { month: 'shor
 
 const KIND_LABEL = { call: 'Call', meeting: 'Meeting', message: 'Message' } as const
 const OUTCOME_LABEL = { connected: 'Connected', 'no-answer': 'No answer', 'call-back': 'Call back' } as const
-const dayLabel = (iso: string) => new Date(`${iso}T00:00`).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })
 const shortDate = (iso: string) => new Date(`${iso}T00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
 
 /** One line of the timeline: what, how it went, what was said, and the next date. */
@@ -64,7 +64,7 @@ function ListRows({ label, values, edited, placeholder, inputMode, onChange }: {
           {v && <button className="x" onClick={() => onChange(rows.filter((_, j) => j !== i).filter(Boolean))} aria-label="Remove"><Icon name="x" size={16} /></button>}
         </div>
       ))}
-      {values.length > 0 && values[values.length - 1] !== '' && <button className="link add" onClick={() => onChange([...values, ''])}>+ Add</button>}
+      {values.length > 0 && values[values.length - 1] !== '' && <button className="link add with-icon" onClick={() => onChange([...values, ''])}><Icon name="plus" size={14} /> Add</button>}
     </Row>
   )
 }
@@ -111,7 +111,6 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
   const noteRef = useRef<HTMLDivElement>(null)
   const noteInput = useRef<HTMLTextAreaElement>(null)
   const followRef = useRef<HTMLDivElement>(null)
-  const followInput = useRef<HTMLInputElement>(null)
   const [fab, setFab] = useState(false)
   const [flash, setFlash] = useState('')
   const stopRef = useRef<(() => void) | null>(null)
@@ -131,7 +130,7 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
     if (!tagsOpen && !noteOpen && !followOpen) return
     const onDown = (e: PointerEvent) => {
       const t = e.target as HTMLElement
-      if (t.closest?.('[data-adder]')) return                                   // the toggle buttons handle themselves
+      if (t.closest?.('[data-adder]') || t.closest?.('.sheet-wrap')) return   // the toggle buttons handle themselves; a sheet (the calendar) is part of the editor it opened from                                   // the toggle buttons handle themselves
       const within = (r: { current: HTMLElement | null }) => !!r.current?.contains(t)
       if (tagsOpen && !within(tagsRef)) setTagsOpen(false)
       if (noteOpen && !within(noteRef) && !(contacts[idx]?.note ?? '').trim()) setNoteOpen(false)
@@ -190,13 +189,13 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
   return (
     <div className="page-plain">
       <header className="bar-top">
-        <button className="icon-btn ghost" onClick={onClose} aria-label="Back"><Icon name="back" /></button>
+        <button className="icon-btn" onClick={onClose} aria-label="Back"><Icon name="back" /></button>
         <span className="grow" />
         {card.status === 'done' && c && <StarButton on={!!c.priority} onToggle={() => patch({ priority: !c.priority }, false)} />}
         {card.status === 'done' && c && (
-          <button className={`icon-btn ghost${editing ? ' on' : ''}`} onClick={() => (editing ? finishEditing() : setEditing(true))} aria-label={editing ? 'Done editing' : 'Edit'}><Icon name={editing ? 'check' : 'edit'} size={20} /></button>
+          <button className={`icon-btn${editing ? ' on' : ''}`} onClick={() => (editing ? finishEditing() : setEditing(true))} aria-label={editing ? 'Done editing' : 'Edit'}><Icon name={editing ? 'check' : 'edit'} size={20} /></button>
         )}
-        <button className="icon-btn ghost" onClick={() => setMenu(true)} aria-label="More options"><Icon name="more" /></button>
+        <button className="icon-btn" onClick={() => setMenu(true)} aria-label="More options"><Icon name="more" /></button>
       </header>
 
       <Sheet open={menu} onClose={() => setMenu(false)} title={c?.name || 'Contact'}>
@@ -239,6 +238,7 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
       {card.status === 'done' && c && !editing && (
         <>
           <div className="namecard">
+            {url && <button className="namecard-photo" onClick={() => setLight(url)} aria-label="View the card photo"><img src={url} alt="" /></button>}
             <h1>{c.name || '(no name)'}</h1>
             {c.title && <strong>{c.title}</strong>}
             {c.company && <span className="co">{c.company}</span>}
@@ -290,7 +290,7 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
           {tagsOpen && (
             <div className="editor-box" ref={tagsRef}>
               <div className="chipline">
-                {SUGGESTED_TAGS.filter((t) => !(c.tags ?? []).includes(t)).map((t) => <button key={t} className="tagchip add" onClick={() => patch({ tags: [...(c.tags ?? []), t] }, false)}>+ {t}</button>)}
+                {SUGGESTED_TAGS.filter((t) => !(c.tags ?? []).includes(t)).map((t) => <button key={t} className="tagchip add" onClick={() => patch({ tags: [...(c.tags ?? []), t] }, false)}><Icon name="plus" size={12} />{t}</button>)}
               </div>
               <form className="newtag" onSubmit={(e) => { e.preventDefault(); const t = newTag.trim(); if (t) { patch({ tags: [...new Set([...(c.tags ?? []), t])] }, false); setNewTag('') } }}>
                 <input value={newTag} onChange={(e) => setNewTag(e.target.value)} placeholder="Your own tag" maxLength={24} aria-label="New tag" />
@@ -311,25 +311,22 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
           )}
           {(c.followUp || followOpen) && (
             <div className="editor-box followbox" ref={followRef}>
-              {/* the date is drawn as text so it is never clipped; the real date field sits invisibly on top and opens the phone's picker */}
-              <label className="datechip">
-                <Icon name="calendar" size={14} /><span>{c.followUp ? dayLabel(c.followUp) : 'Pick a date'}</span>
-                <input ref={followInput} type="date" value={c.followUp ?? ''} autoFocus={followOpen && !c.followUp} onChange={(e) => { patch({ followUp: e.target.value }, false); if (!e.target.value) setFollowOpen(false) }} aria-label="Follow-up date" />
-              </label>
+              <DateChip value={c.followUp ?? ''} label="Follow-up date" autoOpen={followOpen} onChange={(v) => patch({ followUp: v }, false)} />
               {c.followUp && <small className={`due${dueStatus(c.followUp, today).state === 'upcoming' ? ' soon' : ''}`}>{dueLabel(c.followUp, today)}</small>}
-              {c.followUp && <button className="x-btn cal" title="Add to calendar" aria-label="Add to calendar" onClick={() => { download(`follow-up-${(c.name || 'contact').replace(/[^\p{L}\p{N}]+/gu, '-')}.ics`, followUpIcs(c, c.followUp!), 'text/calendar'); setFlash('Opens in your calendar app.') }}><Icon name="download" size={16} /></button>}
+              {c.followUp && <button className="x-btn cal" title="Add to calendar" aria-label="Add to calendar" onClick={() => { download(`follow-up-${(c.name || 'contact').replace(/[^\p{L}\p{N}]+/gu, '-')}.ics`, followUpIcs(c, c.followUp!), 'text/calendar'); setFlash('Opens in your calendar app.') }}><Icon name="calendar" size={18} /></button>}
               <button className="x-btn" onClick={() => { patch({ followUp: '' }, false); setFollowOpen(false) }} aria-label="Remove follow-up"><Icon name="x" size={16} /></button>
             </div>
           )}
 
-          <h3 className="section">Activity <button className="link" onClick={() => setLogOpen(true)}>+ Log</button></h3>
+          <h3 className="group">Activity</h3>
+          <button className="log-add" onClick={() => setLogOpen(true)}><Icon name="plus" size={18} /> {(c.log?.length ?? 0) ? 'Log another call, meeting or message' : 'Log a call, meeting or message'}</button>
           {(c.log?.length ?? 0) > 0 && (
             <div className="activity" role="list" aria-label="Calls and notes with this contact">
               {c.log!.map((e) => <ActivityRow key={e.id} e={e} onRemove={() => void confirmAsk({ title: 'Remove this entry?', confirmLabel: 'Remove', danger: true }).then((ok) => ok && commit(contacts.map((x, j) => (j === idx ? removeInteraction(x, e.id) : x)), card.reviewed))} />)}
             </div>
           )}
 
-          <h3 className="section">Connection</h3>
+          <h3 className="group">Connection</h3>
           <div className="infos">
             <div className="line"><Icon name="clock" size={18} /><span>Added on {when(card.createdAt)}</span></div>
             <div className="line"><Icon name="camera" size={18} /><span>{eventName ? `Scanned at ${eventName}` : 'Scanned contact'}</span></div>
@@ -342,7 +339,7 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
 
           {slides.length > 0 && (
             <>
-              <h3 className="section">Scanned card {canRead && <button className="link" onClick={() => setAdjusting(slide === 1 && card.back ? 'back' : 'image')}>Adjust</button>}</h3>
+              <h3 className="group">Scanned card {canRead && <button className="link" onClick={() => setAdjusting(slide === 1 && card.back ? 'back' : 'image')}>Adjust</button>}</h3>
               <div className="carousel" onScroll={(e) => setSlide(Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth))}>
                 {slides.map((s, i) => <img key={i} src={s} alt={i ? 'Back of card' : 'Front of card'} onClick={() => setLight(s)} onLoad={fitImage} />)}
               </div>

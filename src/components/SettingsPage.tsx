@@ -41,7 +41,7 @@ function PickRow<T extends string>({ icon, label, value, options, onChange }: { 
   )
 }
 
-export default function SettingsPage({ cards, settings, install, sync, onChange, onWipe, onBackup, onRestore, onBack }: {
+export default function SettingsPage({ cards, settings, install, sync, onChange, onWipe, onBackup, onRestore }: {
   cards: CardRecord[]
   sync: SyncControl
   settings: Settings
@@ -79,12 +79,12 @@ export default function SettingsPage({ cards, settings, install, sync, onChange,
 
   return (
     <>
-      <header className="page-head"><div className="head-left"><button className="icon-btn" onClick={onBack} aria-label="Back"><Icon name="back" /></button><h1>Settings</h1></div></header>
+      <header className="page-head"><h1>Settings</h1></header>
 
       <AccountSection sync={sync} />
 
-      <SettingGroup title="General" footer="Your phone's call screen shows only a contact's name, so putting the company in the name makes it show on incoming calls.">
-        <PickRow icon="phone" label="Name on your phone" value={settings.nameFormat ?? DEFAULT_NAME_FORMAT} options={NAMES} onChange={(v) => onChange({ ...settings, nameFormat: v })} />
+      <SettingGroup title="General" footer="How contacts are named when you save them to your phone. The call screen shows only the name, so adding the company makes it show on incoming calls.">
+        <PickRow icon="phone" label="Saved as" value={settings.nameFormat ?? DEFAULT_NAME_FORMAT} options={NAMES} onChange={(v) => onChange({ ...settings, nameFormat: v })} />
         <PickRow icon="image" label="Keep card photos" value={settings.keepPhotos} options={PHOTOS} onChange={(v) => onChange({ ...settings, keepPhotos: v })} />
         {install.mode && (
           <SettingRow icon="download" label="Install app" hint={install.mode === 'ios' ? 'Tap Share, then Add to Home Screen' : 'Add CardPulse to your home screen'}
@@ -93,9 +93,9 @@ export default function SettingsPage({ cards, settings, install, sync, onChange,
       </SettingGroup>
 
       <SettingGroup title="Display">
-        <PickRow icon="sliders" label="Theme" value={settings.theme ?? 'system'} options={THEMES} onChange={(v) => onChange({ ...settings, theme: v })} />
+        <PickRow icon="moon" label="Theme" value={settings.theme ?? 'system'} options={THEMES} onChange={(v) => onChange({ ...settings, theme: v })} />
         <div className="setting-row accent-row-wrap">
-          <span className="accent-dot" aria-hidden="true" />
+          <Icon name="droplet" size={20} />
           <span className="grow"><strong>Accent colour</strong><small>{accent.name}</small></span>
           <div className="accent-row" role="radiogroup" aria-label="Accent colour">
             {ACCENTS.map((a) => (

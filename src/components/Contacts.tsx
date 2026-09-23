@@ -153,7 +153,7 @@ export default function Contacts({ onScan, cards: allCards, events, activeEvent,
                 <CardThumb blob={r.card.image} name={r.p.name} />
                 <div className="grow">
                   <strong>{r.p.name || '(no name)'}</strong>
-                  <span className="muted">{[r.p.company, r.p.title].filter(Boolean).join(' | ') || r.p.phones[0] || r.p.emails[0] || ''}</span>
+                  <span className="muted">{[r.p.company, r.p.title].filter(Boolean).join(' · ') || r.p.phones[0] || r.p.emails[0] || ''}</span>
                   {needsAttention(r.card, dupes.has(r.card.id)) && <span className="dup-note">{attentionReasons(r.card, dupes.has(r.card.id))[0]}</span>}
                 </div>
                 {!sel && <StarButton on={!!r.p.priority} onToggle={() => onTogglePriority(r.card.id, r.i)} />}

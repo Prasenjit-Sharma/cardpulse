@@ -150,10 +150,16 @@ button {
 button:active:not(:disabled) { transform: scale(.98) }
 button:disabled { opacity: .45; cursor: default }
 button.cta {
-  width: 100%; min-height: 50px; background: var(--brand); color: var(--brand-ink); border: 0; font-size: var(--t-m); font-weight: 650;
+  width: 100%; min-height: 50px; background: var(--primary-fill, var(--brand)); color: var(--brand-ink); border: 0; font-size: var(--t-m); font-weight: 650;
   box-shadow: 0 1px 2px rgba(16,24,40,.08), 0 6px 16px color-mix(in srgb, var(--brand) 22%, transparent);
 }
 button.cta.small { width: auto; min-height: 44px; padding: 0 22px }
+button.cta:disabled { opacity: 1; background: var(--board-2); color: var(--ink-3); box-shadow: none }
+/* dark: the accent's light twin, lifted further towards white so the one primary reads as the strongest thing on the screen; no coloured glow */
+:root[data-theme='dark'] { --primary-fill: color-mix(in srgb, var(--brand-lite) 62%, #fff) }
+@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) { --primary-fill: color-mix(in srgb, var(--brand-lite) 62%, #fff) } }
+:root[data-theme='dark'] :is(button.cta:not(:disabled), .fab-scan, .fab-main, nav button.on .ind) { box-shadow: none }
+@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) :is(button.cta:not(:disabled), .fab-scan, .fab-main) { box-shadow: none } }
 button.primary { background: var(--brand); color: var(--brand-ink) }
 button.outline { background: transparent; box-shadow: inset 0 0 0 1px var(--board-edge); width: 100% }
 button.outline.center { width: auto; margin: 14px auto 0; padding: 0 22px }
@@ -201,6 +207,7 @@ input, textarea, select {
 }
 input:focus, textarea:focus, select:focus { border-color: var(--brand); background: var(--sleeve); box-shadow: 0 0 0 3px var(--brand-wash) }
 textarea { padding: 12px 14px; resize: vertical; line-height: 1.45 }
+input { text-overflow: ellipsis }
 input::placeholder, textarea::placeholder { color: var(--ink-3) }
 input[inputmode='tel'], .num input { font-variant-numeric: tabular-nums }
 .field-box { padding: 10px 14px; margin: 12px 0 }
@@ -229,7 +236,7 @@ input[inputmode='tel'], .num input { font-variant-numeric: tabular-nums }
 .seg button:active:not(:disabled) { transform: none }
 .pills { display: flex; flex-wrap: wrap; gap: 8px }
 .pill { min-height: 36px; padding: 0 14px; background: var(--sleeve); box-shadow: inset 0 0 0 1px var(--board-edge); color: var(--ink-2); font-size: var(--t-s); font-weight: 600 }
-.pill[aria-pressed='true'] { background: var(--brand-wash); box-shadow: inset 0 0 0 1px var(--brand-edge); color: var(--brand) }
+.pill[aria-pressed='true'] { background: var(--ink); box-shadow: none; color: var(--board) }
 .pill:active:not(:disabled) { transform: none }
 
 /* the app's option picker (replaces every native <select>) */
@@ -250,11 +257,16 @@ input[inputmode='tel'], .num input { font-variant-numeric: tabular-nums }
 .page-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 4px 0 14px; min-height: 44px }
 .page-head p { margin: 3px 0 0 }
 .head-left { display: flex; align-items: center; gap: 8px; min-width: 0 }
-.head-left .icon-btn { margin-left: -6px; background: none }
+.page-head .icon-btn { background: var(--sleeve); box-shadow: var(--seat) }
+.page-head .icon-btn.on { background: var(--ink); color: var(--board) }
 .page-plain { padding-bottom: 24px }
 .bar-top { display: flex; align-items: center; gap: 4px; margin: -2px -6px 10px; position: relative }
 .bar-top .title { flex: 1; text-align: center; font-size: var(--t-l); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 0 }
-.bar-top .icon-btn { background: none }
+.bar-top .icon-btn { background: var(--sleeve); box-shadow: var(--seat) }
+.bar-top .icon-btn.on { background: var(--primary-fill, var(--brand)); color: var(--brand-ink) }
+.bar-top .star-btn { width: 40px; height: 40px; min-height: 40px; border-radius: 50%; background: var(--sleeve); box-shadow: var(--seat) }
+.bar-top { gap: 8px; margin: 0 0 12px }
+.bar-top + h1 { margin: 4px 0 14px }
 .chip-pill { display: inline-flex; align-items: center; gap: 7px; background: var(--sleeve); border-radius: var(--r-pill); padding: 8px 14px; font-size: var(--t-s); font-weight: 600; color: var(--ink-2); box-shadow: var(--seat) }
 .brand { display: flex; align-items: center; gap: 9px; font-weight: 600 }
 
@@ -264,15 +276,16 @@ input[inputmode='tel'], .num input { font-variant-numeric: tabular-nums }
 .album-head .tally { font-size: var(--t-s); color: var(--ink-3) }
 
 /* ---------- lists of people ---------- */
-.plain-list { display: flex; flex-direction: column; gap: 8px }
+/* people are one grouped white card per section, rows ruled apart by an inset hairline (as Covve lists them) */
+.plain-list { display: flex; flex-direction: column; background: var(--sleeve); border-radius: var(--r-sleeve); box-shadow: var(--seat); overflow: hidden }
 .scan-row, .contact-row {
-  display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 10px; min-height: 64px;
-  cursor: pointer; min-width: 0; border-radius: 14px; position: relative; overflow: hidden;
-  background: var(--sleeve); box-shadow: var(--seat);
+  display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 14px; min-height: 66px;
+  cursor: pointer; min-width: 0; position: relative; background: none;
   animation: rise .3s var(--ease) both; animation-delay: calc(min(var(--i, 0), 10) * 20ms);
-  transition: background var(--dur-1) linear, transform var(--dur-1) var(--ease);
+  transition: background var(--dur-1) linear;
 }
-.scan-row:active, .contact-row:active { transform: scale(.99); background: color-mix(in srgb, var(--sleeve) 94%, var(--ink)) }
+.scan-row + .scan-row::before, .contact-row + .contact-row::before { content: ''; position: absolute; top: 0; left: 94px; right: 0; height: 1px; background: var(--rule-soft) }
+.scan-row:active, .contact-row:active { background: var(--board-2) }
 .contact-row.off { opacity: .45 }
 .scan-row .grow, .contact-row .grow { display: flex; flex-direction: column; gap: 2px }
 .scan-row strong, .contact-row strong { font-size: 16px; font-weight: 600; line-height: 1.25; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow-wrap: anywhere; letter-spacing: -.005em }
@@ -338,7 +351,7 @@ input[inputmode='tel'], .num input { font-variant-numeric: tabular-nums }
 .fab-scan {
   position: fixed; z-index: 6; bottom: calc(var(--rail-h) + env(safe-area-inset-bottom) + 16px);
   right: max(16px, calc(50% - 280px + 16px)); height: 56px; min-height: 56px; padding: 0 22px 0 20px; gap: 10px; border-radius: var(--r-pill);
-  background: var(--brand); color: var(--brand-ink); font-size: var(--t-l); font-weight: 650;
+  background: var(--primary-fill, var(--brand)); color: var(--brand-ink); font-size: var(--t-l); font-weight: 650;
   box-shadow: 0 2px 6px color-mix(in srgb, var(--brand) 30%, transparent), 0 12px 28px color-mix(in srgb, var(--brand) 30%, transparent);
   animation: fab-rise var(--dur-3) var(--ease) both;
 }
@@ -365,13 +378,13 @@ body:has(.selbar) .fab-scan { display: none }
 .filters { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 2px 16px 6px; align-items: center }
 .filters::-webkit-scrollbar { display: none }
 .filter-ico { width: 36px; height: 36px; border-radius: 50%; background: var(--sleeve); box-shadow: inset 0 0 0 1px var(--board-edge); display: inline-flex; align-items: center; justify-content: center; flex: none; color: var(--ink-2) }
-.filter-ico.on { background: var(--brand); color: var(--brand-ink); box-shadow: none }
+.filter-ico.on { background: var(--ink); color: var(--board); box-shadow: none }
 .pill-select { flex: none; width: auto; min-height: 36px; padding: 0 12px; border-radius: var(--r-pill); background: var(--sleeve); border: 1px solid var(--board-edge); font-size: var(--t-s); font-weight: 600; color: var(--ink) }
 .countbar { display: flex; justify-content: space-between; align-items: center; margin: 14px 4px 6px; min-height: 34px; color: var(--ink-3); font-size: var(--t-s) }
 .chips { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap }
 .chips.scroll { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-right: -16px; padding-right: 16px } .chips.scroll::-webkit-scrollbar { display: none }
 .chip { flex: none; width: auto; min-height: 36px; padding: 0 14px; font-size: var(--t-s); white-space: nowrap; font-weight: 600; color: var(--ink-2); background: var(--sleeve); box-shadow: inset 0 0 0 1px var(--board-edge) }
-.chip.on { background: var(--brand); color: var(--brand-ink); box-shadow: none }
+.chip.on { background: var(--ink); color: var(--board); box-shadow: none }
 /* event tabs: a scrolling row of pills */
 .tab-strip { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; align-items: center; margin: 14px -16px 0; padding: 2px 16px 4px }
 .tab-strip::-webkit-scrollbar { display: none }
@@ -398,6 +411,11 @@ body:has(.selbar) .fab-scan { display: none }
 .dots-row { display: flex; justify-content: center; gap: 6px; margin: 10px 0 } .dots-row i { width: 6px; height: 6px; border-radius: 50%; background: var(--board-edge) } .dots-row i.on { background: var(--brand); width: 16px; border-radius: 3px }
 .lightbox { position: fixed; inset: 0; z-index: 20; background: rgba(6,8,9,.94); display: flex; align-items: center; justify-content: center; animation: fade-in var(--dur-2) var(--ease) both } .lightbox img { max-width: 100%; max-height: 100% }
 .namecard { padding: 4px 0 4px; margin: 10px 0 14px; display: flex; flex-direction: column; gap: 2px }
+.namecard-photo { align-self: flex-start; width: 148px; aspect-ratio: 1.75; padding: 0; margin: 0 0 14px; border-radius: 10px; overflow: hidden; background: var(--sleeve); box-shadow: 0 0 0 1px var(--rule), 0 8px 20px rgba(16,24,40,.12) }
+.namecard-photo img { width: 100%; height: 100%; object-fit: cover; display: block }
+.log-add { width: 100%; justify-content: flex-start; gap: 10px; min-height: 48px; margin: 0 0 10px; padding: 0 16px; border-radius: 14px; background: var(--sleeve); box-shadow: var(--seat); color: var(--ink-2); font-weight: 500 }
+.log-add svg { color: var(--ink-3) }
+.log-add:active:not(:disabled) { transform: none; background: var(--board-2) }
 .namecard h1 { display: flex; align-items: center; gap: 9px; font-size: 26px }
 .namecard strong { font-size: var(--t-m); font-weight: 500; color: var(--ink-2) }
 .namecard .co { color: var(--ink-3); font-size: var(--t-m) }
@@ -418,23 +436,26 @@ body:has(.selbar) .fab-scan { display: none }
 .acts { display: flex; gap: 8px; flex: none }
 .act { width: 40px; height: 40px; min-height: 40px; padding: 0; border-radius: 50%; background: var(--brand-wash); display: inline-flex; align-items: center; justify-content: center; color: var(--brand); text-decoration: none }
 .line { display: flex; align-items: center; gap: 12px; color: var(--ink-2); padding: 8px 0; font-size: var(--t-s) } .line svg { color: var(--ink-3); flex: none }
-.panel { padding: 4px 16px; margin: 10px 0 }
-.frow { display: grid; grid-template-columns: 96px 1fr; gap: 8px; align-items: start; padding: 2px 0 } .frow + .frow { border-top: 1px solid var(--rule-soft) }
-.frow > span { color: var(--ink-3); font-size: var(--t-s); font-weight: 500; padding-top: 14px } .frow > div { min-width: 0 }
-.frow input, .frow textarea, .frow select { border: 0; background: none; padding: 0 2px; min-height: 46px; border-radius: 0; box-shadow: none }
-.frow input:focus, .frow textarea:focus { background: none; box-shadow: inset 0 -2px 0 var(--brand) }
-.frow textarea { padding: 12px 2px }
-.frow.edited input, .frow.edited textarea { background: var(--amber-wash); border-radius: 8px; padding-left: 8px }
-.lrow { display: flex; align-items: center } .lrow .x { background: none; min-height: 44px; min-width: 36px; padding: 0; color: var(--ink-3); flex: none }
+.panel { padding: 8px 16px; margin: 10px 0 }
+.frow { display: flex; flex-direction: column; gap: 6px; padding: 8px 0 }
+.frow > span { color: var(--ink-2); font-size: var(--t-s); font-weight: 500 } .frow > div { min-width: 0; display: flex; flex-direction: column; gap: 8px }
+.frow.edited input, .frow.edited textarea { background: var(--amber-wash) }
+.frow.edited input:focus, .frow.edited textarea:focus { background: var(--sleeve) }
+.lrow { display: flex; align-items: center; gap: 6px } .lrow input { flex: 1; min-width: 0 } .lrow .x { background: none; min-height: 44px; min-width: 40px; padding: 0; color: var(--ink-3); flex: none }
+.link.with-icon, button.add.with-icon { display: inline-flex; align-items: center; gap: 4px }
 button.add { min-height: 36px; padding: 0 2px; font-size: var(--t-s); background: none; color: var(--brand) }
 /* tags, notes, follow-up */
 .adders { display: flex; flex-wrap: nowrap; gap: 8px; margin: 0 0 10px }
-.adder { flex: none; min-height: 34px; padding: 0 12px; gap: 6px; background: var(--sleeve); box-shadow: inset 0 0 0 1px var(--board-edge); font-size: var(--t-s); font-weight: 600; color: var(--ink-2) }
-.adder.on { background: var(--brand-wash); box-shadow: none; color: var(--brand) }
+.adders { margin-left: -10px }
+.adder { flex: none; min-height: 36px; padding: 0 10px; gap: 6px; background: none; font-size: var(--t-s); font-weight: 600; color: var(--ink-2) }
+.adder svg { color: var(--ink-3) }
+.adder:active:not(:disabled) { background: var(--board-2); transform: none }
+.adder.on { color: var(--ink) } .adder.on svg { color: var(--ink) }
 .adder b { font-size: var(--t-xs); background: var(--brand); color: var(--brand-ink); border-radius: var(--r-pill); padding: 0 6px; min-width: 18px; text-align: center }
 .chipline { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px }
-.tagchip { min-height: 30px; padding: 0 12px; gap: 6px; background: var(--brand-wash); color: var(--brand); font-size: var(--t-s); font-weight: 600 }
-.tagchip.add { background: transparent; box-shadow: inset 0 0 0 1px var(--board-edge); color: var(--ink-2) }
+.tagchip { min-height: 32px; padding: 0 10px 0 12px; gap: 6px; background: var(--sleeve); box-shadow: inset 0 0 0 1px var(--board-edge); color: var(--ink); font-size: var(--t-s); font-weight: 600 }
+.tagchip svg { color: var(--ink-3) }
+.tagchip.add { background: var(--board-2); box-shadow: none; color: var(--ink-2); padding: 0 12px 0 10px }
 .editor-box { position: relative; background: var(--sleeve); border-radius: 14px; box-shadow: var(--seat); padding: 10px 12px; margin: 0 0 10px; animation: rise .2s var(--ease) both }
 .editor-box textarea { border: 0; background: none; padding: 0 70px 0 0; min-height: 0; resize: none; line-height: 1.45; overflow: hidden; box-shadow: none }
 .editor-box textarea:focus { box-shadow: none; background: none }
@@ -465,7 +486,7 @@ button.add { min-height: 36px; padding: 0 2px; font-size: var(--t-s); background
 .act-row .x-btn { margin: -4px -6px -4px 0 }
 /* the actions button on the contact page */
 .fab-menu { position: fixed; right: max(16px, calc(50% - 280px + 16px)); bottom: calc(18px + env(safe-area-inset-bottom)); z-index: 9; display: flex; flex-direction: column; align-items: flex-end; gap: 14px }
-.fab-main { width: 56px; height: 56px; min-height: 56px; padding: 0; border-radius: 50%; background: var(--brand); color: var(--brand-ink); box-shadow: 0 2px 6px color-mix(in srgb, var(--brand) 30%, transparent), 0 12px 28px color-mix(in srgb, var(--brand) 26%, transparent); transition: transform var(--dur-2) var(--ease) }
+.fab-main { width: 56px; height: 56px; min-height: 56px; padding: 0; border-radius: 50%; background: var(--primary-fill, var(--brand)); color: var(--brand-ink); box-shadow: 0 2px 6px color-mix(in srgb, var(--brand) 30%, transparent), 0 12px 28px color-mix(in srgb, var(--brand) 26%, transparent); transition: transform var(--dur-2) var(--ease) }
 .fab-main.open { transform: rotate(90deg) } .fab-main.open svg { transform: rotate(-90deg) }
 .fab-item { background: none; min-height: 0; padding: 0; gap: 14px; color: #fff; font-weight: 600; font-size: var(--t-l); animation: rise .22s var(--ease) both }
 .fab-item:nth-of-type(2) { animation-delay: 45ms }
@@ -564,7 +585,7 @@ label.setting-row > span.grow:not(.sr) { display: flex } label.datechip > span:n
 table { width: 100%; border-collapse: collapse; background: var(--sleeve); border-radius: var(--r-sleeve); overflow: hidden; font-size: var(--t-s); box-shadow: var(--seat) }
 th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--rule-soft) } th { color: var(--ink-3); font-weight: 600; font-size: var(--t-xs) }
 td { font-variant-numeric: tabular-nums }
-.eventbar { display: flex; gap: 8px; margin-bottom: 13px } .eventbar select { flex: 1; min-width: 0 }
+.eventbar { display: flex; gap: 8px; margin: 0 0 14px } .eventbar select { flex: 1; min-width: 0 }
 .company-row { width: 100%; text-align: left; min-height: 56px; background: var(--sleeve); border-radius: 0; color: var(--ink); font-weight: 400; justify-content: flex-start; padding: 0 16px }
 .company-row + .company-row { border-top: 1px solid var(--rule-soft) }
 .company-row:first-child { border-radius: var(--r-sleeve) var(--r-sleeve) 0 0 } .company-row:last-child { border-radius: 0 0 var(--r-sleeve) var(--r-sleeve) }
@@ -631,7 +652,7 @@ nav button.on .ind { background: color-mix(in srgb, var(--brand) 14%, transparen
 .mycards-hero::before {
   content: ''; position: absolute; inset: 0 0 86px; z-index: -1; border-radius: 0 0 32px 32px;
   /* a deeper shade of the card's colour, so a card whose own panel is that colour still stands off it */
-  background: radial-gradient(120% 90% at 100% 0%, rgba(255,255,255,.12), transparent 60%), color-mix(in srgb, var(--hero) 72%, #05070A);
+  background: color-mix(in srgb, var(--hero) 72%, #05070A);
   transition: background var(--dur-3) var(--ease);
 }
 .mycards-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; margin: 0 0 18px }
@@ -639,7 +660,7 @@ nav button.on .ind { background: color-mix(in srgb, var(--brand) 14%, transparen
 .mycards-label { display: inline-flex; align-items: center; min-height: 28px; padding: 0 12px; border-radius: var(--r-pill); background: rgba(255,255,255,.16); color: #fff; font-size: var(--t-s); font-weight: 600; max-width: 50%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
 .mycards-track { display: flex; gap: 16px; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scroll-padding: 0 16px; scrollbar-width: none; padding: 0 16px 40px; margin: 0 -16px -18px; -webkit-overflow-scrolling: touch }
 .mycards-track::-webkit-scrollbar { display: none }
-.mycards-track .card-canvas { box-shadow: 0 0 0 1px rgba(255,255,255,.14), 0 4px 10px rgba(8,10,14,.14), 0 18px 32px rgba(8,10,14,.20) }
+.mycards-track .card-canvas { animation: seat-card .56s var(--ease) both; box-shadow: 0 0 0 1px rgba(255,255,255,.14), 0 4px 10px rgba(8,10,14,.14), 0 18px 32px rgba(8,10,14,.20) }
 .mycards-item { flex: 0 0 100%; scroll-snap-align: center; position: relative; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none }
 .mycards-add { width: 100%; aspect-ratio: 1.75; display: flex; align-items: center; justify-content: center; gap: 10px; border: 1.5px dashed rgba(255,255,255,.5); border-radius: 14px; background: rgba(255,255,255,.08); color: #fff; font-weight: 600; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px) }
 .mycards-add:active:not(:disabled) { transform: none; background: rgba(255,255,255,.14) }
@@ -660,7 +681,7 @@ nav button.on .ind { background: color-mix(in srgb, var(--brand) 14%, transparen
 .design-panel .accent-label { margin: 6px 0 0 }
 .choice-row { display: flex; flex-wrap: wrap; gap: 8px }
 .choice { min-height: 40px; padding: 0 16px; background: var(--sleeve); box-shadow: inset 0 0 0 1px var(--board-edge); color: var(--ink); font-weight: 600 }
-.choice[aria-checked='true'] { background: var(--brand); color: var(--brand-ink); box-shadow: none }
+.choice[aria-checked='true'] { background: var(--ink); color: var(--board); box-shadow: none }
 .choice:active:not(:disabled) { transform: none }
 @media (max-height: 700px) { .editor-preview .card-canvas { width: 60%; margin-inline: auto } }
 
@@ -761,11 +782,11 @@ a.public-btn { display: inline-flex; align-items: center; justify-content: cente
 .camera .tray-wrap { width: 100% }
 .camera .tray-cap { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: var(--t-xs); color: rgba(255,255,255,.75); font-variant-numeric: tabular-nums }
 .camera .tray { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; width: 100% }
-.camera .slot { position: relative; aspect-ratio: 1.75; border-radius: 6px; border: 1px dashed rgba(255,255,255,.38); background: rgba(12,14,16,.42); display: flex; align-items: center; justify-content: center }
+.camera .slot { position: relative; aspect-ratio: 1.75; border-radius: 6px; background: rgba(255,255,255,.12); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center }
 .camera .slot i { font-style: normal; font-size: var(--t-xs); color: rgba(255,255,255,.5); font-variant-numeric: tabular-nums }
 .camera .slot img { width: 100%; height: 100%; object-fit: cover; border-radius: 5px; display: block }
-.camera .slot.filled { border: 1.5px solid #fff; background: none; animation: slot-in .28s var(--ease) both }
-.camera .slot.pending { border: 1.5px dashed #fff; background: none } .camera .slot.pending img { opacity: .55 }
+.camera .slot.filled { box-shadow: 0 0 0 2px #fff; background: none; animation: slot-in .28s var(--ease) both }
+.camera .slot.pending { box-shadow: 0 0 0 2px rgba(255,255,255,.6); background: none } .camera .slot.pending img { opacity: .55 }
 .camera .slot em { position: absolute; left: 3px; bottom: 2px; font-style: normal; font-size: var(--t-xs); font-weight: 600; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.8) }
 .camera .slot .rm { position: absolute; top: -8px; right: -8px; width: 18px; height: 18px; min-height: 0; padding: 0; border-radius: 50%; background: #111418; color: #fff; border: 1.5px solid #fff; z-index: 1 }
 .camera .slot .rm::after { content: ''; position: absolute; inset: -9px }
@@ -780,7 +801,6 @@ a.public-btn { display: inline-flex; align-items: center; justify-content: cente
   nav, .toast, .selbar { max-width: 880px }
   .fab-scan, .fab-menu { right: calc(50% - 440px + 20px) }
   main { padding-left: 28px; padding-right: 28px }
-  .plain-list { display: grid; grid-template-columns: 1fr 1fr; gap: 10px }
   .filters, .tab-strip { margin-left: -28px; margin-right: -28px; padding-left: 28px; padding-right: 28px }
 }
 
@@ -791,6 +811,7 @@ a.public-btn { display: inline-flex; align-items: center; justify-content: cente
 @keyframes sheet-in { from { transform: translateY(100%) } to { transform: none } }
 @keyframes sheet-out { from { transform: none } to { transform: translateY(100%) } }
 @keyframes slip-in { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: none } }
+@keyframes seat-card { from { opacity: 0; transform: translateY(18px) scale(.965) } to { opacity: 1; transform: none } }
 @keyframes pop { from { transform: scale(.4); opacity: 0 } to { transform: none; opacity: 1 } }
 @keyframes fab-rise { from { opacity: 0; translate: 0 10px } to { opacity: 1; translate: 0 0 } }
 @keyframes pulse { 50% { box-shadow: 0 0 0 8px var(--red-wash) } }
@@ -798,3 +819,18 @@ a.public-btn { display: inline-flex; align-items: center; justify-content: cente
 @keyframes shot-flash { from { opacity: .85 } to { opacity: 0 } }
 @keyframes slot-in { from { opacity: 0; transform: scale(.7) } to { opacity: 1; transform: none } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important } }
+
+/* ---------- the app's own calendar ---------- */
+.datechip { cursor: pointer }
+.cal { padding: 0 12px 6px }
+.cal-head { display: flex; align-items: center; justify-content: space-between; margin: 0 0 8px }
+.cal-head strong { font-size: var(--t-l); font-weight: 650 }
+.cal-head .icon-btn:last-child svg { transform: none }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px }
+.cal-wd { text-align: center; font-size: var(--t-xs); font-weight: 600; color: var(--ink-3); padding: 6px 0 }
+.cal-day { min-height: 44px; padding: 0; border-radius: 50%; background: none; font-weight: 500; font-variant-numeric: tabular-nums; aspect-ratio: 1; min-width: 0 }
+.cal-day.out { color: var(--ink-3); opacity: .55 }
+.cal-day.today { box-shadow: inset 0 0 0 1.5px var(--ink) }
+.cal-day.on { background: var(--ink); color: var(--board); box-shadow: none; font-weight: 700 }
+.cal-day:disabled { opacity: .25 }
+.cal-day:active:not(:disabled) { background: var(--board-2); transform: none }

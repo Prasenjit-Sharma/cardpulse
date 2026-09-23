@@ -60,7 +60,7 @@ export default function LogSheet({ name, onSave, onClose }: { name: string; onSa
             {PRESETS.map((p) => <button key={p.id} className="pill" aria-pressed={next === p.id} onClick={() => setNext(p.id)}>{p.short}</button>)}
             <button className="pill" aria-pressed={next === 'date'} onClick={() => setNext('date')}>Pick date</button>
           </div>
-          {next === 'date' && <DateChip value={date} min={localISO()} onChange={setDate} label="Follow-up date" autoFocus />}
+          {next === 'date' && <DateChip value={date} min={localISO()} onChange={setDate} label="Follow-up date" autoOpen />}
         </div>
 
         <button className="cta wide" disabled={!canSave} onClick={save}>Save</button>

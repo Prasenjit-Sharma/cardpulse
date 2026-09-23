@@ -41,7 +41,7 @@ export default function Exhibition({ cards, events, activeEvent, onNew, onRename
         const live = activeEvent === e.id
         return (
           <section key={e.id} className={`event-card${live ? ' live' : ''}`} style={{ ['--i' as string]: i }}>
-            <span className="event-tab">{live ? 'Scanning here' : 'Event'}</span>
+            {live && <span className="event-tab">Scanning here</span>}
             <div className="event-head" onClick={() => onView(e.id)}>
               <div className="grow">
                 <strong>{e.name}</strong>

@@ -72,7 +72,7 @@ export default function Report({ cards: allCards, events, dupes, onBack }: { car
       <Check checked={skipDupes} onChange={setSkipDupes}>Export duplicates once only ({[...dupes.keys()].filter((id) => done.some((c) => c.id === id)).length} cards flagged)</Check>
       <div className="actions">
         <button onClick={exportCsv} disabled={!done.length}>Export CSV</button>
-        <button onClick={exportVcf} disabled={!done.length}>Export vCard (phone)</button>
+        <button onClick={exportVcf} disabled={!done.length}>Export vCard</button>
       </div>
     </>
   )
