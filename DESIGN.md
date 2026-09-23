@@ -49,6 +49,9 @@ typography:
     fontSize: "12px"
     fontWeight: 600
     letterSpacing: "0.06em"
+  card-face:
+    fontFamily: "Archivo, system-ui, sans-serif"
+    fontWeight: 600
 rounded:
   thumb: "6px"
   photo: "8px"
@@ -118,7 +121,7 @@ Restrained: neutral greys plus one accent. The accent is user-chosen (Settings >
 
 ## Typography
 
-Inter Variable for the whole interface, sentence case everywhere. Five sizes: 28 page titles (700, tight tracking), 17 titles and sheet headings (650), 15 body, 13 captions, 12 labels. Uppercase appears only in section headings (12px, 600, +0.06em, muted), the way a phone's own settings label its groups. Inputs are 16px so iPhone Safari never zooms on focus. Figures in counts and dates are tabular. The digital cards are drawn on canvas in their own faces (Archivo or Inter) and are not governed by this ramp.
+Inter Variable for the whole interface, sentence case everywhere. Five sizes: 28 page titles (700, tight tracking), 17 titles and sheet headings (650), 15 body, 13 captions, 12 labels. Uppercase appears only in section headings (12px, 600, +0.06em, muted), the way a phone's own settings label its groups. Inputs are 16px so iPhone Safari never zooms on focus. Figures in counts and dates are tabular. The digital cards are drawn on canvas in their own faces (`card-face`: Archivo, the default card font, or Inter) and are not governed by this ramp; Archivo is loaded only for them and is never used for interface text.
 
 ## Layout
 
