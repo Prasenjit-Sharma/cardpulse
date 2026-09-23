@@ -1,6 +1,6 @@
 # CardPulse: consolidated plan
 
-Last revised 2026-09-21. Supersedes the earlier five-phase plan and the separate review notes.
+Last revised 2026-09-23. Supersedes the earlier five-phase plan and the separate review notes.
 `PRODUCT.md` records what is already shipped and today's constraints; this file records what comes next and why.
 
 ## 1. Who and what
@@ -100,7 +100,8 @@ is a new subsystem.
   public page having no CardPulse branding or its card's own accent colour.
 - Exhibition stall card: **built** — Stall mode has a "Just share" (offline vCard QR, unchanged) / "Collect leads"
   (publishes and encodes the link instead) toggle; leads land in the event's contact list automatically.
-- Basic view counts free (HiHello locks analytics behind a paywall) — **not built**, no view-count tracking yet.
+- Basic view counts free (HiHello locks analytics behind a paywall) — **built 2026-09-23** with Phase 3: My Card shows
+  "Link opened N times · M leads" for a published card (one view per visitor session).
 - Section 2 policies apply: no pop-ups to recipients, deletable cards, full vCard fields.
 - Test on real handsets (2a and 2b together): a second phone scanning the QR (Android and iPhone cameras should offer
   Add contact), a long Hindi name, the Bold template's condensed capitals on iPhone, sharing the picture through
@@ -110,15 +111,32 @@ is a new subsystem.
 
 ### Phase 3: Accounts, sync and compliance (about 2 to 3 weeks)
 
-Auth foundation (Google sign-in via Supabase) was built ahead of schedule as part of Phase 2b, since 2b needed it. What
-remains here:
+Auth foundation (Google sign-in via Supabase) was built ahead of schedule as part of Phase 2b, since 2b needed it.
 
-- Full bidirectional sync of existing local contacts and card photos across devices (2b only does a one-way pull of
-  stall leads, not general sync — see the 2026-09-22 spec's Non-goals).
+**Built 2026-09-23, awaiting the migration and the real-phone check** (spec in `docs/superpowers/specs/2026-09-23-sync-quotas-privacy-design.md`).
+Every decision in it was made without a conversation, at the user's request, and is listed there to review.
+
+- **Sync across devices, opt-in** (Settings → Account): contacts with their card photos, events and the user's own
+  cards; last writer wins per record; deletions travel; unfinished reads stay on the phone that took them. Consent is
+  recorded server-side. Checked by a two-phone simulation against the real engine (`npm run test:sync`, 9 scenarios).
+- **Per-account scan quota:** signed-in reads are counted per account per day (300, an abuse brake, not a price) and
+  the 30-per-10-minutes burst follows the account; signed-out use keeps the per-IP limit; any quota failure falls back
+  to per-IP. The Worker holds no Supabase secret (it uses the caller's own token).
+- **DPDP groundwork:** leads are deleted from the server once they reach the phone; deleting a digital card takes its
+  link down; "Delete cloud data" and "Delete account" in Settings; the privacy page rewritten (it still claimed there
+  were no servers or accounts). Still needs legal review before launch.
+- Migration `supabase/migrations/0002_sync_quota_privacy.sql`: checked against a real Postgres with Supabase stand-ins
+  (`npm run test:db`); `scripts/verify-sync.mjs` checks it on the live project once applied.
+- Test on real handsets: turn sync on with two phones on one account, edit and delete on each, a photo on a slow
+  connection, sync off/on, Delete cloud data, Delete account; deleting a published card and opening its old link; the
+  view/lead counts on My Card; a visitor's lead arriving and leaving the server.
+
+Still open here:
+
 - Phone-number sign-in, once an SMS provider account exists (India needs a DLT-registered sender; Google-only for now).
-- Per-user quotas replace the in-memory per-IP limit.
-- Paid Gemini tier (the free tier may use submitted images to improve Google's products).
-- DPDP: consent, retention, deletion on request, updated privacy page. Blocks launch; needs legal review.
+- Paid Gemini tier (the free tier may use submitted images to improve Google's products). A billing step in Google's console.
+- DPDP legal review of the consent text, the privacy page and retention. Blocks launch.
+- Asking again for consent when the policy version changes (the version is recorded, nothing reads it yet).
 
 ### Phase 4: Packs and payments (about 2 weeks)
 

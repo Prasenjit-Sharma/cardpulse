@@ -10,6 +10,7 @@ Business-card scanner PWA — multi-contact cards, India-ready, built for exhibi
 - **Contact screen:** card image carousel, call / WhatsApp / email / map / web, notes with voice dictation, follow-up date, save to phone, share.
 - **Accuracy lab:** correct any field, mark a card reviewed, and get per-field accuracy, multi-contact detection rate, latency and token stats.
 - **Photo retention:** keep full photos, thumbnails only, or nothing.
+- **Account (optional, Google sign-in):** a shareable card link, stall lead capture, and opt-in sync across phones.
 
 ## Run
 
@@ -17,6 +18,9 @@ Business-card scanner PWA — multi-contact cards, India-ready, built for exhibi
 npm install
 npm run dev        # https dev server (self-signed cert) so the in-app camera works on a phone over LAN
 npm run build      # production PWA in dist/
+npm test           # unit tests
+npm run test:sync  # two phones syncing through a stand-in server, using the real sync engine
+npm run test:db    # the Supabase migrations against a real Postgres (PGlite)
 ```
 
 Deploying under a sub-path (e.g. GitHub Pages project site): `VITE_BASE=/cardpulse/ npm run build`.
@@ -30,5 +34,5 @@ Two modes:
 
 ## Notes
 
-- Contacts and photos live only in the browser (IndexedDB). In server mode the only network call is to the CardPulse API; in own-key mode it is to Google.
+- Contacts and photos live in the browser (IndexedDB). They go to the cloud only if the user signs in and turns on sync. Database changes are in `supabase/migrations/`, run by hand in the Supabase SQL editor.
 - On the free Gemini tier Google may use submitted images to improve its products. Use sample cards, or a paid tier for real users.

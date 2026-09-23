@@ -68,14 +68,15 @@ against user corrections, light and dark themes, offline app shell, Android back
 
 Constraints:
 
-- **On-device storage only.** No accounts, no sync. Clearing site data loses everything; export is the only
-  backup. Accounts and sync are an accepted future step (Supabase was chosen in principle, not built).
-- **Gemini key lives on the server**, never in the app. Per-IP rate limit is best-effort and in memory.
+- **On-device by default.** Google sign-in (Supabase) is optional; with it, sync across phones is opt-in, behind a
+  consent step. Signed out, clearing site data loses everything and export is the only backup.
+- **Gemini key lives on the server**, never in the app. Signed-in reads have a per-account daily quota; signed-out
+  reads a best-effort, in-memory per-IP limit.
 - **Free Gemini tier** may use submitted images to improve Google's products; a paid tier is required before
   real customers.
 - **No payments, no team features, no CRM integrations** yet.
-- **Undecided:** pricing, whether the wrapper is Capacitor or a React Native rewrite, Indian DPDP compliance
-  work for storing other people's contact data in the cloud.
+- **Undecided:** pricing, whether the wrapper is Capacitor or a React Native rewrite. DPDP groundwork (consent,
+  deletion, retention, privacy page) is built but has not had a legal review.
 
 ## Brand Commitments
 
