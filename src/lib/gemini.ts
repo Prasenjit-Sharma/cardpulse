@@ -1,4 +1,5 @@
 import { buildRequest, GeminiError, parseResponse, type ImageInput, type Layout, type Parsed } from '../../shared/extract-core'
+import { supabase } from './supabase'
 
 export { GeminiError }
 export const DEFAULT_MODEL = 'gemini-2.5-flash'
@@ -51,6 +52,7 @@ async function withRetry(send: (signal: AbortSignal) => Promise<Response>): Prom
     const ms = Math.round(performance.now() - t0)
     if (res.ok) return { res, json, ms }
     lastErr = new GeminiError(json?.error?.message ?? `HTTP ${res.status}`, res.status)
+    if (json?.error?.code === 'daily_limit') throw lastErr            // waiting seconds will not help; it resets tomorrow
     if (res.status === 429 || res.status >= 500) continue
     throw lastErr
   }
@@ -62,8 +64,11 @@ export async function extractCard(blobs: Blob[], opts: ReadOptions, layout: Layo
   const images: ImageInput[] = await Promise.all(blobs.map(async (b) => ({ mime: b.type || 'image/jpeg', data: await toBase64(b) })))
 
   if (serverMode && !opts.useOwnKey) {
+    // Signed in, the read counts against the account's own daily quota rather than a limit shared by everyone on the
+    // same hall Wi-Fi. The token travels in the body so no CORS change was needed on the server.
+    const auth = supabase ? (await supabase.auth.getSession().catch(() => null))?.data.session?.access_token : undefined
     const { json, ms } = await withRetry((signal) =>
-      fetch(`${API_URL}/v1/extract`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ images, layout }), signal }))
+      fetch(`${API_URL}/v1/extract`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ images, layout, ...(auth ? { auth } : {}) }), signal }))
     return { ...(json as Parsed), latencyMs: ms, model: json.model }
   }
 

@@ -9,6 +9,7 @@ export interface ReadFailure {
 export function classifyFailure(e: unknown): ReadFailure {
   const status = (e as { status?: number } | null)?.status
   const text = e instanceof Error ? e.message : String(e)
+  if (/today's limit/i.test(text)) return { message: text, transient: false }
   if (status === 429) return { message: 'The reader is busy. Trying again shortly.', transient: true }
   if (typeof status === 'number' && status >= 500) return { message: 'The reading service had a problem. Trying again shortly.', transient: true }
   if (/taking too long/i.test(text)) return { message: 'The reader is taking too long. Trying again shortly.', transient: true }

@@ -11,6 +11,9 @@ export interface Env {
   ALLOW_LAN?: string
   /** Override the upstream, used by tests. */
   GEMINI_BASE?: string
+  /** With both set, a signed-in user's reads are counted per account (see consume_scan in migration 0002). */
+  SUPABASE_URL?: string
+  SUPABASE_PUBLISHABLE_KEY?: string
 }
 
 const DEFAULT_MODEL = 'gemini-2.5-flash'
@@ -69,6 +72,44 @@ function validImages(v: unknown, layout: Layout): ImageInput[] | null {
   return total <= MAX_BASE64_CHARS[layout] ? out : null
 }
 
+/** The quota check must never hold up a scan for long: past this, fall back to the per-IP limit. */
+const QUOTA_TIMEOUT_MS = 3000
+
+/** The account id inside a token Supabase has just accepted. Only read after Supabase validated the token. */
+function tokenSubject(token: string): string | null {
+  try {
+    const part = token.split('.')[1]!.replace(/-/g, '+').replace(/_/g, '/')
+    const sub = JSON.parse(atob(part.padEnd(part.length + ((4 - (part.length % 4)) % 4), '='))).sub
+    return typeof sub === 'string' ? sub : null
+  } catch { return null }
+}
+
+export type Quota = { kind: 'account'; userId: string } | { kind: 'over'; limit: number } | { kind: 'none' }
+
+/**
+ * Counts one read against the signed-in user's daily quota, using the user's own token (the Worker holds no
+ * Supabase secret). Anything that goes wrong — no token, a bad or expired token, Supabase slow or down, the function
+ * not deployed — is `none`, and the caller falls back to the per-IP limit: a quota outage never stops a scan.
+ */
+export async function checkQuota(token: unknown, env: Env): Promise<Quota> {
+  if (typeof token !== 'string' || !token || token.length > 4096 || !env.SUPABASE_URL || !env.SUPABASE_PUBLISHABLE_KEY) return { kind: 'none' }
+  try {
+    const res = await fetch(`${env.SUPABASE_URL.replace(/\/$/, '')}/rest/v1/rpc/consume_scan`, {
+      method: 'POST',
+      headers: { apikey: env.SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: '{}',
+      signal: AbortSignal.timeout(QUOTA_TIMEOUT_MS),
+    })
+    if (!res.ok) return { kind: 'none' }
+    const body = await res.json() as unknown
+    const row = (Array.isArray(body) ? body[0] : body) as { allowed?: unknown; day_limit?: unknown } | undefined
+    if (!row || typeof row.allowed !== 'boolean') return { kind: 'none' }
+    if (!row.allowed) return { kind: 'over', limit: Number(row.day_limit) || 0 }
+    const userId = tokenSubject(token)
+    return userId ? { kind: 'account', userId } : { kind: 'none' }
+  } catch { return { kind: 'none' } }
+}
+
 /** A read is normally 3 to 10 s. Past this the request is stuck upstream; fail fast so the app can retry. */
 const UPSTREAM_TIMEOUT_MS = 40_000
 
@@ -91,17 +132,19 @@ export default {
     if (!originAllowed(origin, env)) return fail(403, 'forbidden_origin', 'This origin is not allowed.', null)
     if (!env.GEMINI_API_KEY) return fail(500, 'not_configured', 'The reading service is not configured.', origin)
 
-    const ip = req.headers.get('cf-connecting-ip') ?? 'local'
-    const wait = checkRate(ip)
-    if (wait) return fail(429, 'rate_limited', `Too many scans. Try again in ${Math.ceil(wait / 60)} min.`, origin, { 'Retry-After': String(wait) })
-
     if (Number(req.headers.get('content-length') ?? 0) > MAX_BASE64_CHARS.sides + 2048) return fail(413, 'too_large', 'Photo is too large.', origin)
-    let body: { images?: unknown; layout?: unknown }
+    let body: { images?: unknown; layout?: unknown; auth?: unknown }
     try { body = await req.json() } catch { return fail(400, 'bad_request', 'Invalid request.', origin) }
     const layout: Layout | null = body.layout === undefined || body.layout === 'sides' ? 'sides' : body.layout === 'batch' ? 'batch' : null
     if (!layout) return fail(400, 'bad_layout', 'Unknown layout.', origin)
     const images = validImages(body.images, layout)
     if (!images) return fail(400, 'bad_images', layout === 'batch' ? 'Send 1 to 6 JPEG, PNG or WebP photos, under 3 MB in total.' : 'Send 1 or 2 JPEG, PNG or WebP photos, under 6 MB in total.', origin)
+
+    // Signed in: counted per account (so a stall's reps on one hall Wi-Fi don't share one limit). Otherwise per IP.
+    const quota = await checkQuota(body.auth, env)
+    if (quota.kind === 'over') return fail(429, 'daily_limit', `You have reached today's limit of ${quota.limit} scans. It resets at midnight UTC.`, origin)
+    const wait = checkRate(quota.kind === 'account' ? `account:${quota.userId}` : req.headers.get('cf-connecting-ip') ?? 'local')
+    if (wait) return fail(429, 'rate_limited', `Too many scans. Try again in ${Math.ceil(wait / 60)} min.`, origin, { 'Retry-After': String(wait) })
 
     const model = env.GEMINI_MODEL || DEFAULT_MODEL
     let upstream: Response

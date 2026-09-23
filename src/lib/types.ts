@@ -60,12 +60,16 @@ export interface CardRecord {
   opened?: boolean
   /** Exhibition/event this card was captured at. */
   eventId?: string
+  /** Last change on any phone (ms). Sync keeps the newest copy. Absent on cards from before sync: use `createdAt`. */
+  updatedAt?: number
 }
 
 export interface EventRec {
   id: string
   name: string
   createdAt: number
+  /** Last rename (ms), for sync. Absent on events from before sync. */
+  updatedAt?: number
 }
 
 export const emptyContact = (): Contact => ({

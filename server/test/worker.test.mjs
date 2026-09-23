@@ -200,3 +200,86 @@ test('batch: six photos at the size the app sends cost far less than the free pl
   console.log(`  ~${ms.toFixed(1)} ms CPU for a six-photo batch (${(body.length / 1e6).toFixed(1)} MB)`)
   assert.ok(ms < 6, `${ms} ms`)
 })
+
+// ── per-account quota ──
+const SUPA = { SUPABASE_URL: 'https://supa.test', SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_x' }
+const b64url = (o) => Buffer.from(JSON.stringify(o)).toString('base64url')
+const token = (sub) => `${b64url({ alg: 'HS256' })}.${b64url({ sub, role: 'authenticated' })}.sig`
+/** Supabase answers `consume` for the quota call; Gemini answers everything else. */
+function mockBoth(consume) {
+  return mockUpstream((url, init) => (String(url).startsWith('https://supa.test') ? consume(url, init) : new Response(JSON.stringify(geminiOk))))
+}
+
+test('quota: a signed-in read is counted with the user\'s own token, never a secret, and then read normally', async () => {
+  const m = mockBoth(() => new Response(JSON.stringify([{ allowed: true, used: 3, day_limit: 300 }])))
+  try {
+    const res = await worker.fetch(post({ images: [{ mime: 'image/png', data: png }], auth: token('user-1') }), env(SUPA))
+    assert.equal(res.status, 200)
+    const q = m.calls.find((c) => c.url.startsWith('https://supa.test'))
+    assert.equal(q.url, 'https://supa.test/rest/v1/rpc/consume_scan')
+    assert.equal(q.init.headers.Authorization, `Bearer ${token('user-1')}`)
+    assert.equal(q.init.headers.apikey, 'sb_publishable_x')
+    assert.equal(m.calls.length, 2, 'one quota call, one read')
+  } finally { m.restore() }
+})
+
+test('quota: over today\'s limit is a 429 daily_limit with a plain message, and Gemini is never called', async () => {
+  const m = mockBoth(() => new Response(JSON.stringify([{ allowed: false, used: 300, day_limit: 300 }])))
+  try {
+    const res = await worker.fetch(post({ images: [{ mime: 'image/png', data: png }], auth: token('user-2') }), env(SUPA))
+    assert.equal(res.status, 429)
+    const body = await res.json()
+    assert.equal(body.error.code, 'daily_limit')
+    assert.match(body.error.message, /today's limit of 300 scans/)
+    assert.equal(m.calls.filter((c) => !c.url.startsWith('https://supa.test')).length, 0)
+  } finally { m.restore() }
+})
+
+test('quota: a bad token, Supabase down, a missing function or no config all fall back to the per-IP limit and still read', async () => {
+  const cases = [
+    [() => new Response('{"message":"JWT expired"}', { status: 401 }), SUPA],
+    [() => { throw new TypeError('fetch failed') }, SUPA],
+    [() => new Response('{"code":"PGRST202"}', { status: 404 }), SUPA],
+    [() => new Response('not json'), SUPA],
+    [() => { throw new Error('should not be called') }, {}],
+  ]
+  for (const [consume, extra] of cases) {
+    const m = mockBoth(consume)
+    try {
+      const res = await worker.fetch(post({ images: [{ mime: 'image/png', data: png }], auth: token('user-3') }), env(extra))
+      assert.equal(res.status, 200)
+    } finally { m.restore() }
+  }
+})
+
+test('quota: no token means no quota call at all (signed-out use is unchanged)', async () => {
+  const m = mockBoth(() => { throw new Error('should not be called') })
+  try {
+    const res = await worker.fetch(post({ images: [{ mime: 'image/png', data: png }] }), env(SUPA))
+    assert.equal(res.status, 200)
+    assert.equal(m.calls.length, 1)
+  } finally { m.restore() }
+})
+
+test('quota: the burst limit follows the account, not the IP', async () => {
+  const m = mockBoth(() => new Response(JSON.stringify([{ allowed: true, used: 1, day_limit: 300 }])))
+  try {
+    const sub = `burst-${Date.now()}`
+    for (let i = 0; i < 30; i++) {
+      const res = await worker.fetch(post({ images: [{ mime: 'image/png', data: png }], auth: token(sub) }), env(SUPA))
+      assert.equal(res.status, 200, `read ${i + 1}`)
+    }
+    const res = await worker.fetch(post({ images: [{ mime: 'image/png', data: png }], auth: token(sub) }), env(SUPA))
+    assert.equal(res.status, 429, 'the 31st read from the same account is braked, even from a new IP')
+    assert.equal((await res.json()).error.code, 'rate_limited')
+  } finally { m.restore() }
+})
+
+test('quota: invalid images are refused before anything is counted', async () => {
+  const m = mockBoth(() => { throw new Error('should not be called') })
+  try {
+    const res = await worker.fetch(post({ images: [{ mime: 'image/gif', data: png }], auth: token('user-4') }), env(SUPA))
+    assert.equal(res.status, 400)
+    assert.equal(m.calls.length, 0)
+  } finally { m.restore() }
+})

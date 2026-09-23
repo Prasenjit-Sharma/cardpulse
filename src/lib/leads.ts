@@ -43,9 +43,14 @@ export async function pullNewLeads(localEvents: EventRec[]): Promise<PulledLead[
   return (data as Lead[]).map((lead) => ({ leadId: lead.id, ...leadToContact(lead, localEvents) }))
 }
 
+/**
+ * A lead saved on the phone is no longer needed on the server, so it is deleted there. It is marked pulled first, so
+ * that on a server without the delete policy (migration 0002 not yet run) it is still never pulled twice.
+ */
 export async function markLeadsPulled(leadIds: string[]): Promise<void> {
   if (!supabase || !leadIds.length) return
   await supabase.from('leads').update({ pulled_at: new Date().toISOString() }).in('id', leadIds)
+  await supabase.from('leads').delete().in('id', leadIds)
 }
 
 /**

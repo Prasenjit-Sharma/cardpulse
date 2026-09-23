@@ -18,3 +18,7 @@ test('anything unknown is a plain, actionable message and never leaks internals'
   const f = classifyFailure(err('TypeError: cannot read properties of undefined'))
   assert.equal(f.transient, false); assert.ok(!/undefined|TypeError/.test(f.message))
 })
+test('the daily scan limit is shown as the server says it and never retried by itself', () => {
+  const f = classifyFailure(err("You have reached today's limit of 300 scans. It resets at midnight UTC.", 429))
+  assert.equal(f.transient, false); assert.match(f.message, /today's limit of 300 scans/)
+})

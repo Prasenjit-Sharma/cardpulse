@@ -1,13 +1,25 @@
 import { createStore, del, entries, get, set } from 'idb-keyval'
 import { serverMode } from './gemini'
 import { DEFAULT_NAME_FORMAT, type NameFormat } from './naming'
+import { noteChange } from './outbox'
 import type { CardRecord } from './types'
 
 const store = createStore('cardpulse', 'cards')
 
-export const putCard = (c: CardRecord) => set(c.id, c, store)
+/** Every local change is stamped and queued for sync. */
+export async function putCard(c: CardRecord) {
+  const updatedAt = Date.now()
+  await set(c.id, { ...c, updatedAt }, store)
+  noteChange('card', c.id, updatedAt)
+}
 export const getCard = (id: string) => get<CardRecord>(id, store)
-export const deleteCard = (id: string) => del(id, store)
+export async function deleteCard(id: string) {
+  await del(id, store)
+  noteChange('card', id, Date.now(), true)
+}
+/** Writes that come from sync itself: kept as they arrived and not queued to be sent back. */
+export const putCardRaw = (c: CardRecord) => set(c.id, c, store)
+export const deleteCardRaw = (id: string) => del(id, store)
 export async function listCards(): Promise<CardRecord[]> {
   const all = (await entries<string, CardRecord>(store)).map(([, v]) => v)
   return all.sort((a, b) => b.createdAt - a.createdAt)

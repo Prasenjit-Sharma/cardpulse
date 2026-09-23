@@ -1,6 +1,7 @@
-import { createStore, del, entries, set } from 'idb-keyval'
+import { createStore, del, entries, get, set } from 'idb-keyval'
 import { ACCENTS, DEFAULT_ACCENT } from './accents.ts'
 import { graphemes } from './graphemes.ts'
+import { noteChange } from './outbox.ts'
 
 export type TemplateId = 'ledger' | 'header' | 'split' | 'noir' | 'bold'
 export type FontId = 'archivo' | 'inter'
@@ -79,5 +80,16 @@ const store = createStore('cardpulse-mycards', 'cards')
 export async function listMyCards(): Promise<MyCard[]> {
   return (await entries<string, MyCard>(store)).map(([, v]) => v).sort((a, b) => a.createdAt - b.createdAt)
 }
-export const putMyCard = (c: MyCard) => set(c.id, { ...c, updatedAt: Date.now() }, store)
-export const deleteMyCard = (id: string) => del(id, store)
+export async function putMyCard(c: MyCard) {
+  const updatedAt = Date.now()
+  await set(c.id, { ...c, updatedAt }, store)
+  noteChange('mycard', c.id, updatedAt)
+}
+export async function deleteMyCard(id: string) {
+  await del(id, store)
+  noteChange('mycard', id, Date.now(), true)
+}
+export const getMyCard = (id: string) => get<MyCard>(id, store)
+/** Writes that come from sync itself: kept as they arrived and not queued to be sent back. */
+export const putMyCardRaw = (c: MyCard) => set(c.id, c, store)
+export const deleteMyCardRaw = (id: string) => del(id, store)
