@@ -8,6 +8,7 @@
 export interface Accent { id: string; name: string; hex: string; lite: string; suits: string }
 
 export const ACCENTS: Accent[] = [
+  { id: 'blue', name: 'Blue', hex: '#1A58C2', lite: '#8DB0F0', suits: 'Clear, trading desk' },
   { id: 'graphite', name: 'Graphite', hex: '#2A2F36', lite: '#C8CDD3', suits: 'Neutral, premium' },
   { id: 'navy', name: 'Navy', hex: '#1C3F73', lite: '#8AAEEA', suits: 'Trust, banking, legal' },
   { id: 'teal', name: 'Teal', hex: '#0E6F67', lite: '#4FC1B5', suits: 'Modern, fresh' },
@@ -18,7 +19,7 @@ export const ACCENTS: Accent[] = [
   { id: 'plum', name: 'Plum', hex: '#6B2F7A', lite: '#C99AD8', suits: 'Creative, health' },
 ]
 
-export const DEFAULT_ACCENT = 'graphite'
+export const DEFAULT_ACCENT = 'blue'
 
 /** An unknown or missing id falls back to the default, so a bad saved value can never leave the app uncoloured. */
 export const accentById = (id?: string): Accent => ACCENTS.find((a) => a.id === id) ?? ACCENTS[0]!

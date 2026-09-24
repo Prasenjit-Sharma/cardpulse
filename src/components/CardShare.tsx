@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { noteShare } from '../lib/sharelog'
 import { browserEnv, shareVcf } from '../lib/actions'
 import { buildCardVcf } from '../lib/cardvcf'
 import { cardAsText, cardFileName } from '../lib/cardshare'
@@ -36,15 +37,16 @@ export default function CardShare({ card, onClose, onStall }: { card: MyCard; on
 
   const sendFile = guard(async () => {
     const out = await shareVcf(cardFileName(card, 'vcf'), buildCardVcf(card).text, card.name, undefined, browserEnv(), false)
+    if (out.result !== 'cancelled') noteShare(card.id, 'file')
     if (out.result === 'downloaded') say('Saved as a file. Open it to add the contact.')
   })
   const sendImage = guard(async () => {
     const blob = await cardPng(card)
     const file = new File([blob], cardFileName(card, 'png'), { type: 'image/png' })
-    if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], title: card.name }); return }
-    saveFile(blob, file.name); say('Saved as a picture.')
+    if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], title: card.name }); noteShare(card.id, 'picture'); return }
+    saveFile(blob, file.name); noteShare(card.id, 'picture'); say('Saved as a picture.')
   })
-  const copy = guard(async () => { await navigator.clipboard.writeText(cardAsText(card)); say('Copied.') })
+  const copy = guard(async () => { await navigator.clipboard.writeText(cardAsText(card)); noteShare(card.id, 'text'); say('Copied.') })
 
   return (
     <Sheet open onClose={onClose} title={card.name || 'Share card'}>

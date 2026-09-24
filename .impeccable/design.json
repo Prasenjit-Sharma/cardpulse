@@ -1,22 +1,431 @@
 {
-  "version": 1,
-  "source": "src/styles.css",
-  "shadows": {
-    "seat": "0 1px 2px rgba(16,24,40,.05), 0 1px 3px rgba(16,24,40,.07)",
-    "seat-deep": "0 2px 6px rgba(16,24,40,.08), 0 14px 34px rgba(16,24,40,.14)",
-    "sheet": "0 -10px 40px rgba(8,10,14,.18)",
-    "cta": "0 1px 2px rgba(16,24,40,.08), 0 6px 16px color-mix(in srgb, var(--brand) 22%, transparent)"
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-24T14:01:44+00:00",
+  "title": "Design System: CardPulse",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "Ledger Blue",
+        "canonical": "#1A58C2",
+        "runtime": "var(--brand-base), set from Settings via src/lib/accents.ts",
+        "tonalRamp": [
+          "#0A2350",
+          "#10357A",
+          "#1A58C2",
+          "#3E74D2",
+          "#6690E0",
+          "#8DB0F0",
+          "#BBD0F6",
+          "#E6EEFC"
+        ]
+      },
+      "primary-lite": {
+        "role": "primary",
+        "displayName": "Ledger Blue, light twin",
+        "canonical": "#8DB0F0",
+        "runtime": "var(--brand-lite)"
+      },
+      "primary-fill-dark": {
+        "role": "primary",
+        "displayName": "Dark primary fill",
+        "canonical": "color-mix(in srgb, var(--brand-lite) 62%, #fff)"
+      },
+      "card-graphite": {
+        "role": "primary",
+        "displayName": "Card Graphite",
+        "canonical": "#2A2F36",
+        "note": "Starting colour of a new digital card (src/lib/mycards.ts)"
+      },
+      "red": {
+        "role": "secondary",
+        "displayName": "Due Red",
+        "canonical": "#C62F22",
+        "dark": "#F2867C",
+        "tonalRamp": [
+          "#3F0E0A",
+          "#6B1811",
+          "#9A2319",
+          "#C62F22",
+          "#DE5A4E",
+          "#F2867C",
+          "#F8B8B1",
+          "#FDE9E7"
+        ]
+      },
+      "green": {
+        "role": "secondary",
+        "displayName": "Up Green",
+        "canonical": "#13773F",
+        "dark": "#6FCF97",
+        "tonalRamp": [
+          "#062612",
+          "#0B4424",
+          "#13773F",
+          "#1F9553",
+          "#46B476",
+          "#6FCF97",
+          "#A9E4C2",
+          "#E3F6EB"
+        ]
+      },
+      "amber": {
+        "role": "secondary",
+        "displayName": "Check Amber",
+        "canonical": "#9A4A06",
+        "dark": "#E8A25C",
+        "tonalRamp": [
+          "#2E1602",
+          "#5A2B04",
+          "#9A4A06",
+          "#BE6512",
+          "#D8843A",
+          "#E8A25C",
+          "#F3CB9E",
+          "#FCF0E3"
+        ]
+      },
+      "lock": {
+        "role": "tertiary",
+        "displayName": "Lock Teal",
+        "canonical": "#5DD6C8"
+      },
+      "board": {
+        "role": "neutral",
+        "displayName": "Board",
+        "canonical": "#FFFFFF",
+        "dark": "#0E1013"
+      },
+      "band": {
+        "role": "neutral",
+        "displayName": "Band",
+        "canonical": "#F5F6F8",
+        "dark": "#15181C"
+      },
+      "tonal": {
+        "role": "neutral",
+        "displayName": "Tonal",
+        "canonical": "#F0F2F5",
+        "dark": "#1C2026"
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#14171C",
+        "dark": "#EDEFF2",
+        "tonalRamp": [
+          "#14171C",
+          "#2A2F36",
+          "#3D444E",
+          "#626975",
+          "#8A909A",
+          "#B3B8BF",
+          "#D9DDE3",
+          "#F5F6F8"
+        ]
+      },
+      "ink-3": {
+        "role": "neutral",
+        "displayName": "Ink 3 (muted text)",
+        "canonical": "#626975",
+        "contrast": "5.5:1 on white, 5.1:1 on a band"
+      },
+      "rule": {
+        "role": "neutral",
+        "displayName": "Rule",
+        "canonical": "rgba(20,23,28,.11)",
+        "dark": "rgba(237,239,242,.11)"
+      }
+    },
+    "typographyMeta": {
+      "figure-index": {
+        "displayName": "Index figure",
+        "purpose": "Home's three index tiles."
+      },
+      "figure-holding": {
+        "displayName": "Holding figure",
+        "purpose": "My Card's holding band."
+      },
+      "page": {
+        "displayName": "Page",
+        "purpose": "Screen titles and the contact's name."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Sheet titles, bar titles, event figures."
+      },
+      "row-name": {
+        "displayName": "Row name",
+        "purpose": "A person's name on a watchlist row."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "The base size; right-edge figures at 650 tabular."
+      },
+      "caption": {
+        "displayName": "Caption",
+        "purpose": "Second lines and muted text."
+      },
+      "meta": {
+        "displayName": "Meta",
+        "purpose": "Band headings (uppercase) and index tile labels."
+      },
+      "micro": {
+        "displayName": "Micro",
+        "purpose": "Ticker and holding labels, the word under a figure, tab-bar labels."
+      },
+      "input": {
+        "displayName": "Input",
+        "purpose": "Every text field; 16px so iPhone Safari never zooms."
+      },
+      "card-face": {
+        "displayName": "Card face",
+        "purpose": "Digital cards drawn on canvas only."
+      }
+    },
+    "shadows": [
+      {
+        "name": "seat",
+        "value": "0 0 0 1px var(--rule)",
+        "purpose": "Hairline edge for panels, tables, thumbnails and the card photo. Not a shadow."
+      },
+      {
+        "name": "float",
+        "value": "0 2px 6px rgba(16,24,40,.08), 0 14px 34px rgba(16,24,40,.14)",
+        "dark": "0 2px 8px rgba(0,0,0,.5), 0 16px 38px rgba(0,0,0,.45)",
+        "purpose": "Toasts."
+      },
+      {
+        "name": "sheet",
+        "value": "0 -10px 40px rgba(8,10,14,.18)",
+        "purpose": "Bottom sheets, over a rgba(8,10,14,.42) scrim."
+      },
+      {
+        "name": "card-object",
+        "value": "0 0 0 1px var(--rule), 0 10px 28px rgba(16,24,40,.12)",
+        "purpose": "The digital card, the one physical object in the app."
+      }
+    ],
+    "focus": {
+      "global": "outline: 2px solid var(--brand); outline-offset: 2px",
+      "field": "border-color: var(--brand); background: var(--sleeve); box-shadow: 0 0 0 3px var(--brand-wash)"
+    },
+    "motion": [
+      {
+        "name": "ease",
+        "value": "cubic-bezier(.2,.7,.2,1)",
+        "purpose": "Default easing."
+      },
+      {
+        "name": "dur-1",
+        "value": "120ms",
+        "purpose": "Press and colour changes."
+      },
+      {
+        "name": "dur-2",
+        "value": "180ms",
+        "purpose": "Depth drawer reveal, switch, sheet dismissal."
+      },
+      {
+        "name": "dur-3",
+        "value": "280ms",
+        "purpose": "Sheet rise, view fade."
+      },
+      {
+        "name": "press",
+        "value": "transform: scale(.98)",
+        "purpose": "Buttons; rows, tabs and bands tint instead."
+      },
+      {
+        "name": "row-rise",
+        "value": "rise .26s, 18ms stagger, capped at 10 rows",
+        "purpose": "Watchlist and event rows entering."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "all animation and transition durations collapse to .001ms",
+        "purpose": "prefers-reduced-motion: reduce."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "column",
+        "value": "560px",
+        "purpose": "Maximum app column on phones."
+      },
+      {
+        "name": "wide",
+        "value": "900px",
+        "purpose": "Column widens to 880px on the desk colour; gutters become 28px."
+      }
+    ],
+    "accent": {
+      "userSelectable": true,
+      "source": "src/lib/accents.ts",
+      "default": "blue",
+      "digitalCardDefault": "graphite",
+      "variables": [
+        "--brand-base",
+        "--brand-lite"
+      ]
+    }
   },
-  "focus": {
-    "field": "border-color: var(--brand); background: var(--sleeve); box-shadow: 0 0 0 3px var(--brand-wash)",
-    "global": "outline: 2px solid var(--brand); outline-offset: 2px"
-  },
-  "motion": {
-    "ease": "cubic-bezier(.2,.7,.2,1)",
-    "durations": { "fast": "120ms", "base": "200ms", "slow": "320ms" },
-    "press": "transform: scale(.98)",
-    "reducedMotion": "all animation and transition durations collapse to ~0"
-  },
-  "tabBar": { "backdrop": "saturate(1.4) blur(14px)", "background": "color-mix(in srgb, var(--sleeve) 92%, transparent)" },
-  "accent": { "userSelectable": true, "source": "src/lib/accents.ts", "default": "graphite" }
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one accent-filled action on a screen.",
+      "html": "<button class=\"ds-cta\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><circle cx=\"18\" cy=\"5\" r=\"3\"/><circle cx=\"6\" cy=\"12\" r=\"3\"/><circle cx=\"18\" cy=\"19\" r=\"3\"/><path d=\"M8.6 13.5l6.8 4M15.4 6.5l-6.8 4\"/></svg>Share card</button>",
+      "css": ".ds-cta{display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:48px;padding:0 18px;border:0;border-radius:8px;background:var(--primary-fill,var(--brand,#1A58C2));color:var(--brand-ink,#fff);font:650 14px/1 'Inter Variable',Inter,system-ui,sans-serif;cursor:pointer;transition:transform 120ms cubic-bezier(.2,.7,.2,1)}.ds-cta:active{transform:scale(.98)}.ds-cta:focus-visible{outline:2px solid var(--brand,#1A58C2);outline-offset:2px}"
+    },
+    {
+      "name": "Tonal Button",
+      "kind": "button",
+      "refersTo": "button-tonal",
+      "description": "The default button: grey fill, ink text, squared.",
+      "html": "<button class=\"ds-tonal\">Export CSV</button>",
+      "css": ".ds-tonal{min-height:44px;padding:0 18px;border:0;border-radius:8px;background:var(--board-2,#F0F2F5);color:var(--ink,#14171C);font:600 14px/1 'Inter Variable',Inter,system-ui,sans-serif;cursor:pointer}.ds-tonal:active{transform:scale(.98);background:var(--well,#E4E7EB)}.ds-tonal:focus-visible{outline:2px solid var(--brand,#1A58C2);outline-offset:2px}"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Filled 48px field; focus turns white with an accent border and halo.",
+      "html": "<input class=\"ds-input\" placeholder=\"Search name, company, phone\">",
+      "css": ".ds-input{width:100%;min-height:48px;padding:0 14px;font:400 16px 'Inter Variable',Inter,system-ui,sans-serif;color:var(--ink,#14171C);background:var(--field,#F3F4F6);border:1px solid transparent;border-radius:8px;outline:none;transition:border-color 120ms linear,background 120ms linear,box-shadow 120ms}.ds-input::placeholder{color:var(--ink-3,#626975)}.ds-input:focus{border-color:var(--brand,#1A58C2);background:var(--sleeve,#fff);box-shadow:0 0 0 3px var(--brand-wash,rgba(26,88,194,.09))}"
+    },
+    {
+      "name": "Watchlist Row",
+      "kind": "custom",
+      "refersTo": "watch-row",
+      "description": "A person as a trading row: name left, one tabular figure at the right edge in its law colour.",
+      "html": "<div class=\"ds-wl\"><button class=\"ds-wrow\"><span class=\"ds-thumb\"></span><span class=\"ds-grow\"><strong>Asha Rao</strong><span>Vivacity Woven Sack · Director</span></span><span class=\"ds-fig due\"><b>2d late</b><small>Follow-up</small></span></button><button class=\"ds-wrow\"><span class=\"ds-thumb\"></span><span class=\"ds-grow\"><strong>Priya Nair</strong><span>Kerala Coir Exports · Sales Manager</span></span><span class=\"ds-fig\"><b>in 3d</b><small>Follow-up</small></span></button></div>",
+      "css": ".ds-wl{background:var(--board,#fff);font-family:'Inter Variable',Inter,system-ui,sans-serif}.ds-wrow{position:relative;display:flex;align-items:center;gap:12px;width:100%;min-height:60px;padding:8px 16px;border:0;background:none;text-align:left;color:var(--ink,#14171C);cursor:pointer;transition:background 120ms linear}.ds-wrow+.ds-wrow::before{content:'';position:absolute;top:0;left:16px;right:0;height:1px;background:var(--rule-soft,rgba(20,23,28,.08))}.ds-wrow:hover,.ds-wrow:active{background:var(--band,#F5F6F8)}.ds-wrow:focus-visible{outline:2px solid var(--brand,#1A58C2);outline-offset:-2px}.ds-thumb{width:52px;height:30px;flex:none;border-radius:4px;background:var(--board-2,#F0F2F5);box-shadow:0 0 0 1px var(--rule,rgba(20,23,28,.11))}.ds-grow{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}.ds-grow strong{font-size:15px;font-weight:600;letter-spacing:-.005em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ds-grow span{font-size:13px;color:var(--ink-3,#626975);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ds-fig{display:flex;flex-direction:column;align-items:flex-end;flex:none}.ds-fig b{font-size:14px;font-weight:650;font-variant-numeric:tabular-nums}.ds-fig small{font-size:11px;color:var(--ink-3,#626975)}.ds-fig.due b{color:var(--red,#C62F22)}"
+    },
+    {
+      "name": "Index Tiles",
+      "kind": "custom",
+      "refersTo": "index-tile",
+      "description": "Home's three figures for the day, ruled apart.",
+      "html": "<div class=\"ds-idx\"><button class=\"due\"><span>Due</span><b>2</b><small>1 overdue</small></button><button><span>This week</span><b>5</b><small class=\"up\">+3 today</small></button><button><span>Contacts</span><b>8</b><small>2 events</small></button></div>",
+      "css": ".ds-idx{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-bottom:1px solid var(--rule,rgba(20,23,28,.11));font-family:'Inter Variable',Inter,system-ui,sans-serif}.ds-idx button{display:flex;flex-direction:column;align-items:flex-start;padding:12px 16px 13px;border:0;background:none;color:var(--ink,#14171C);text-align:left;cursor:pointer}.ds-idx button+button{box-shadow:inset 1px 0 0 var(--rule-soft,rgba(20,23,28,.08))}.ds-idx button:hover,.ds-idx button:active{background:var(--band,#F5F6F8)}.ds-idx span,.ds-idx small{font-size:12px;color:var(--ink-3,#626975)}.ds-idx b{font-size:28px;font-weight:700;line-height:1.2;letter-spacing:-.02em;font-variant-numeric:tabular-nums}.ds-idx .due b{color:var(--red,#C62F22)}.ds-idx small.up{color:var(--green,#13773F);font-weight:600}"
+    },
+    {
+      "name": "Watchlist Tabs",
+      "kind": "nav",
+      "refersTo": "watchlist-tab",
+      "description": "Underline tabs over a rule; never pills.",
+      "html": "<div class=\"ds-tabs\" role=\"tablist\"><button class=\"on\">Due<em class=\"due\">2</em></button><button>Upcoming<em>2</em></button><button>Recent</button><button>Starred<em>2</em></button></div>",
+      "css": ".ds-tabs{display:flex;padding:0 6px;border-bottom:1px solid var(--rule,rgba(20,23,28,.11));font-family:'Inter Variable',Inter,system-ui,sans-serif}.ds-tabs button{position:relative;display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 10px;border:0;background:none;color:var(--ink-3,#626975);font-size:14px;font-weight:600;cursor:pointer}.ds-tabs button:hover{color:var(--ink,#14171C)}.ds-tabs button.on{color:var(--ink,#14171C)}.ds-tabs button.on::after{content:'';position:absolute;left:10px;right:10px;bottom:-1px;height:2px;background:var(--brand,#1A58C2)}.ds-tabs button:focus-visible{outline:2px solid var(--brand,#1A58C2);outline-offset:-2px}.ds-tabs em{font-style:normal;font-size:11px;font-weight:650;min-width:20px;padding:1px 6px;border-radius:4px;background:var(--board-2,#F0F2F5);color:var(--ink-2,#3D444E);line-height:16px;text-align:center;font-variant-numeric:tabular-nums}.ds-tabs em.due{background:var(--red-wash,rgba(198,47,34,.09));color:var(--red,#C62F22)}"
+    },
+    {
+      "name": "Band Heading",
+      "kind": "custom",
+      "refersTo": "band-heading",
+      "description": "A full-bleed grey band that heads a list, with one link at the right.",
+      "html": "<h3 class=\"ds-band\">Events<a href=\"#\">All events</a></h3>",
+      "css": ".ds-band{display:flex;align-items:center;min-height:32px;margin:0;padding:0 16px;background:var(--band,#F5F6F8);border-block:1px solid var(--rule-soft,rgba(20,23,28,.08));font:600 12px 'Inter Variable',Inter,system-ui,sans-serif;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3,#626975)}.ds-band a{margin-left:auto;font-size:12px;letter-spacing:0;text-transform:none;color:var(--brand,#1A58C2);text-decoration:none}.ds-band a:hover{text-decoration:underline}.ds-band a:focus-visible{outline:2px solid var(--brand,#1A58C2);outline-offset:2px}"
+    },
+    {
+      "name": "Holding Band",
+      "kind": "custom",
+      "refersTo": "holding-cell",
+      "description": "My Card's figures in one ruled band.",
+      "html": "<div class=\"ds-hold\"><div><span>Shared</span><b>12</b></div><div><span>QR shown</span><b>4</b></div><div><span>Views</span><b>31</b></div><div><span>Leads</span><b class=\"up\">3</b></div></div>",
+      "css": ".ds-hold{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));background:var(--band,#F5F6F8);border-block:1px solid var(--rule-soft,rgba(20,23,28,.08));font-family:'Inter Variable',Inter,system-ui,sans-serif}.ds-hold>div{display:flex;flex-direction:column;gap:1px;padding:10px 12px 12px;min-width:0}.ds-hold>div+div{box-shadow:inset 1px 0 0 var(--rule-soft,rgba(20,23,28,.08))}.ds-hold span{font-size:11px;font-weight:600;letter-spacing:.03em;text-transform:uppercase;color:var(--ink-3,#626975);white-space:nowrap}.ds-hold b{font-size:24px;font-weight:700;letter-spacing:-.02em;line-height:1.2;color:var(--ink,#14171C);font-variant-numeric:tabular-nums}.ds-hold b.up{color:var(--green,#13773F)}"
+    },
+    {
+      "name": "Tab Bar with Scan Key",
+      "kind": "nav",
+      "refersTo": "tab-bar",
+      "description": "Five slots; the active one accent with a top rule; Scan filled in ink in the centre.",
+      "html": "<nav class=\"ds-nav\"><button class=\"on\"><i></i>Home</button><button><i></i>Contacts</button><button class=\"scan\"><i><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linejoin=\"round\"><path d=\"M3 8a2 2 0 0 1 2-2h2l2-2h6l2 2h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\"/><circle cx=\"12\" cy=\"13\" r=\"3.5\"/></svg></i>Scan</button><button><i></i>Events</button><button><i></i>My Card</button></nav>",
+      "css": ".ds-nav{display:flex;background:var(--sleeve,#fff);border-top:1px solid var(--rule,rgba(20,23,28,.11));padding:0 4px;font-family:'Inter Variable',Inter,system-ui,sans-serif}.ds-nav button{position:relative;flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:60px;padding:6px 0 7px;border:0;background:none;color:var(--ink-3,#626975);font-size:11px;font-weight:600;cursor:pointer}.ds-nav i{display:inline-flex;align-items:center;justify-content:center;width:44px;height:26px}.ds-nav button:not(.scan) i::before{content:'';width:18px;height:18px;border:2px solid currentColor;border-radius:4px}.ds-nav button:hover{color:var(--ink,#14171C)}.ds-nav button.on{color:var(--brand,#1A58C2)}.ds-nav button.on::before{content:'';position:absolute;top:-1px;left:22%;right:22%;height:2px;background:var(--brand,#1A58C2)}.ds-nav button.scan{color:var(--ink,#14171C)}.ds-nav button.scan i{width:48px;height:32px;margin-top:-3px;border-radius:8px;background:var(--ink,#14171C);color:var(--board,#fff)}.ds-nav button.scan:active i{transform:scale(.94)}.ds-nav button:focus-visible{outline:2px solid var(--brand,#1A58C2);outline-offset:-2px}"
+    },
+    {
+      "name": "Chip",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Squared 6px filter chip; chosen fills with ink.",
+      "html": "<div style=\"display:flex;gap:8px\"><button class=\"ds-chip on\">All</button><button class=\"ds-chip\">Starred</button><button class=\"ds-chip\">Has follow-up</button></div>",
+      "css": ".ds-chip{min-height:34px;padding:0 12px;border:0;border-radius:6px;background:var(--sleeve,#fff);box-shadow:inset 0 0 0 1px var(--board-edge,#D9DDE3);color:var(--ink-2,#3D444E);font:600 13px 'Inter Variable',Inter,system-ui,sans-serif;white-space:nowrap;cursor:pointer}.ds-chip:hover{background:var(--band,#F5F6F8)}.ds-chip.on{background:var(--ink,#14171C);color:var(--board,#fff);box-shadow:none}.ds-chip:focus-visible{outline:2px solid var(--brand,#1A58C2);outline-offset:2px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Trading Desk",
+    "overview": "CardPulse reads like the trading apps Indian professionals check every hour. Contacts are a watchlist: dense rows on a flat white ground, who on the left, one figure on the right in tabular numerals, the state of each person carried by that figure's colour and a word under it. Home opens on a ticker of standing figures and three index tiles for the day, then underline watchlist tabs over the rows. The user's own card is treated as a holding, with its shares, QR showings, views and leads counted in one ruled band.\n\nThe world is flat and measured. Nothing floats on the page: surfaces are marked by hairlines, sections are separated by full-bleed grey bands, and depth appears only for things that genuinely sit above the page (sheets, toasts, the digital card object). Density is the point; the one failure this world is built against is a sparse screen. Controls are squared keys at 8px, never pills, and colour carries meaning under a strict law rather than decoration.\n\nIt replaced the Covve/HiHello arrangement (grey ground, white rounded cards, 28px titles, pill buttons, a floating Scan pill over the list), and before that the rejected \"Card Album\" skeuomorphic world.",
+    "keyCharacteristics": [
+      "Flat white ground, hairline rules, full-bleed grey bands as section headings.",
+      "Inter at a compact scale; every figure in tabular numerals.",
+      "Squared 8px keys; round only for switches, dots and the camera's own controls.",
+      "Palette law: accent is tappable or live; red is due; green is done or up; amber is check this.",
+      "One accent-filled action per screen; Scan is filled in ink, not accent.",
+      "Rows act in place: a tapped watchlist row opens its depth drawer."
+    ],
+    "rules": [
+      {
+        "name": "The Palette Law",
+        "body": "The accent means tappable or live. Red means due or overdue. Green means done or up. Amber means check this. A colour that means something is never used for decoration. The build also uses red for destructive actions inside sheets and confirm dialogs and for error lines; red is never used on a list for anything but due.",
+        "section": "colors"
+      },
+      {
+        "name": "The Named-State Rule",
+        "body": "A state never rests on colour alone: every figure carries a word (\"Follow-up\", \"late\", \"today\", the phase New / Contacted / Follow-up), and the Live tag is a word.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Accent Object Rule",
+        "body": "Each screen has at most one accent-filled action: Share card on My Card, Call (or Email) on the contact's trade bar, the empty-state action. Everything else is tonal, ink or a link.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tabular Rule",
+        "body": "Every number that can change (counts, dates, days, percentages, phone numbers) is set in tabular numerals (`font-variant-numeric: tabular-nums`, the `.num` class) so columns hold still.",
+        "section": "typography"
+      },
+      {
+        "name": "The Compact Scale Rule",
+        "body": "Text sizes come from 12 / 13 / 14 / 16 / 22 (`--t-xs` to `--t-xl`). The only other sizes are the figure register (24, 28), the 15px row name, the 11px micro label and the 16px input size.",
+        "section": "typography"
+      },
+      {
+        "name": "The Sentence Case Rule",
+        "body": "Buttons, tabs, chips and sheet items are sentence case. Uppercase appears only in band headings, ticker and holding labels, and event names (shown in capitals like an exhibition badge, stored as typed).",
+        "section": "typography"
+      },
+      {
+        "name": "The Hairline Rule",
+        "body": "If it is on the page, it is marked by a hairline or a band, never a drop shadow. Only sheets, toasts and the digital card float.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Band Rule",
+        "body": "A section heading over a list is a full-bleed grey band (32px, band fill, rule-soft top and bottom, 12px uppercase meta in ink-3), with its one link right-aligned in the accent.",
+        "section": "elevation"
+      },
+      {
+        "name": "The No-Pill Rule",
+        "body": "Nothing on the page is a pill. `--r-pill` is 8px by definition; a control that looks like a capsule is wrong.",
+        "section": "shapes"
+      }
+    ],
+    "dos": [
+      "**Do** put a person's state in one right-edge figure with a word under it, tabular, coloured by the Palette Law.",
+      "**Do** separate sections with full-bleed grey bands (32px) and rows with rule-soft hairlines inset 16px.",
+      "**Do** keep one accent-filled action per screen; Scan stays ink.",
+      "**Do** invert a selected row, chip or day to ink with board-coloured type.",
+      "**Do** use the app's own Picker, DateChip, Check, Dialog and SettingRow instead of browser controls.",
+      "**Do** keep text on 12 / 13 / 14 / 16 / 22, figures on 24 / 28, inputs at 16px.",
+      "**Do** honour reduced motion: the drawer reveal, row rise and scan breathing collapse to nothing."
+    ],
+    "donts": [
+      "**Don't** use pills, rounded white cards on a grey ground, or 28px page titles: the replaced Covve/HiHello arrangement.",
+      "**Don't** float a Scan button over a list; Scan lives in the tab bar.",
+      "**Don't** put drop shadows on page surfaces; only sheets, toasts and the digital card float.",
+      "**Don't** use red on a list for anything but due or overdue, or amber and green as decoration.",
+      "**Don't** introduce a second accent; the user's chosen accent is the only brand colour.",
+      "**Don't** bring back skeuomorphic or novelty detail (spines, punched holes, album stamps)."
+    ]
+  }
 }

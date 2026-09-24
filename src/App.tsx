@@ -439,7 +439,8 @@ export default function App() {
     return `Restored ${n(plan.add.length, 'card', 'cards')}${mine.add.length ? ` and ${n(mine.add.length, 'digital card', 'digital cards')}` : ''}${skipped ? `. ${skipped} ${skipped === 1 ? 'was' : 'were'} already here` : ''}.`
   }
   const retryFailed = () => enqueue(cards.filter((c) => c.status === 'error').map((c) => c.id))
-  const navActive: Tab = tab === 'accuracy' || tab === 'insights' ? 'settings' : tab === 'companies' ? 'home' : tab
+  // Settings, Accuracy, Insights and Companies open from Home, so Home stays lit under them.
+  const navActive: Tab = tab === 'accuracy' || tab === 'insights' || tab === 'settings' || tab === 'companies' ? 'home' : tab
 
   return (
     <div className="app">
@@ -473,10 +474,11 @@ export default function App() {
             onMoveEvent={(eventId) => void moveToEvent([openCard.id], eventId)}
           />
         ) : tab === 'home' ? (
-          <Home cards={cards} dupes={dupes} ready={readerReady(settings)} needsKey={!serverMode || !!settings.useOwnKey} install={install} backupNudge={nudgeBackup}
+          <Home cards={cards} events={events} dupes={dupes} ready={readerReady(settings)} needsKey={!serverMode || !!settings.useOwnKey} install={install} backupNudge={nudgeBackup}
             onBackup={() => void backupNow().then((m) => setBanner(m), () => setBanner('The backup could not be saved. Try again.'))} onSnoozeBackup={() => { snoozeBackupNudge(); setBackupTick((n) => n + 1) }}
-            onOpenContact={(id, idx) => setOpen({ id, idx })} onContacts={() => openContacts()} onCompanies={() => goto('companies')} onStarred={() => openContacts('priority')}
-            onAttention={() => openContacts('attention')} onInsights={() => goto('insights', 'home')} onAccuracy={() => goto('accuracy', 'home')} onSetup={() => goto('settings', 'home')} />
+            onOpenContact={(id, idx) => setOpen({ id, idx })} onTogglePriority={(id, idx) => void togglePriority(id, idx)} onContacts={() => openContacts()} onCompanies={() => goto('companies')} onStarred={() => openContacts('priority')}
+            onAttention={() => openContacts('attention')} onInsights={() => goto('insights', 'home')} onAccuracy={() => goto('accuracy', 'home')} onSetup={() => goto('settings', 'home')} onSettings={() => goto('settings', 'home')}
+            onViewEvent={(id) => { setContactsFilter(undefined); setContactsCompany(''); setActiveEvent(id); goto('contacts') }} onEvents={() => gotoTab('exhibition')} />
         ) : tab === 'mycard' ? (
           <MyCards cards={myCards} stats={cardStats} onAdd={() => myCards.length < MAX_CARDS && setEditingCard('new')} onEdit={setEditingCard} onShare={setSharingCard} onStall={setStallCard} />
         ) : tab === 'companies' ? (
@@ -486,7 +488,8 @@ export default function App() {
             onOpen={(id, idx) => setOpen({ id, idx })} onRetryFailed={retryFailed} onUpload={(f) => void addFiles(f)} onMoveToEvent={moveToEvent} onDeleteContacts={deleteContacts} />
         ) : tab === 'exhibition' ? (
           <Exhibition cards={cards} events={events} activeEvent={activeEvent} onNew={newEventPrompt} onRename={renameEvent} onDelete={removeEvent}
-            onScanHere={scanHere} onView={(id) => { setActiveEvent(id); goto('contacts') }} />
+            onScanHere={scanHere} onView={(id) => { setActiveEvent(id); goto('contacts') }}
+            onOpenContact={(id, idx) => setOpen({ id, idx })} onTogglePriority={(id, idx) => void togglePriority(id, idx)} />
         ) : tab === 'insights' ? (
           <Insights cards={cards} onBack={() => setTab(backTab)} onContacts={() => goto('contacts')} onAccuracy={() => goto('accuracy', 'insights')} onOpen={(id, idx) => setOpen({ id, idx })} />
         ) : tab === 'accuracy' ? (
@@ -527,23 +530,20 @@ export default function App() {
       <input ref={fallbackInput} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { if (e.target.files) void addFiles(e.target.files); e.target.value = '' }} />
       <Toast toast={toast} onDone={() => setToast(null)} />
       <DialogHost />
-      {!openCard && !editorCard && (tab === 'home' || tab === 'contacts') && (
-        <button className="fab-scan" onClick={scan} aria-label="Scan a card"><Icon name="camera" size={22} />Scan</button>
-      )}
       {!openCard && !editorCard && (
         <nav>
           <NavBtn id="home" label="Home" icon="home" active={navActive} go={gotoTab} />
           <NavBtn id="contacts" label="Contacts" icon="users" active={navActive} go={gotoTab} />
-          <NavBtn id="mycard" label="My Card" icon="card" active={navActive} go={gotoTab} />
+          <button className="scan-key" onClick={scan} aria-label="Scan a card"><span className="ind"><Icon name="camera" size={20} /></span><span>Scan</span></button>
           <NavBtn id="exhibition" label="Events" icon="booth" active={navActive} go={gotoTab} />
-          <NavBtn id="settings" label="Settings" icon="sliders" active={navActive} go={gotoTab} />
+          <NavBtn id="mycard" label="My Card" icon="card" active={navActive} go={gotoTab} />
         </nav>
       )}
     </div>
   )
 }
 
-function NavBtn({ id, label, icon, active, go }: { id: Tab; label: string; icon: 'home' | 'users' | 'card' | 'booth' | 'sliders'; active: Tab; go: (t: Tab) => void }) {
+function NavBtn({ id, label, icon, active, go }: { id: Tab; label: string; icon: 'home' | 'users' | 'card' | 'booth'; active: Tab; go: (t: Tab) => void }) {
   return (
     <button className={active === id ? 'on' : ''} onClick={() => go(id)} aria-current={active === id ? 'page' : undefined}>
       <span className="ind"><Icon name={icon} size={22} /></span>

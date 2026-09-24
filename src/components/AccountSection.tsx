@@ -15,7 +15,7 @@ function statusLine(s: SyncStatus, enabled: boolean, now = Date.now()): string {
   if (s.kind === 'error') return s.message
   if (s.kind === 'idle' && s.at) {
     const min = Math.round((now - s.at) / 60_000)
-    return min < 1 ? 'Synced just now' : min < 60 ? `Synced ${min} min ago` : `Synced at ${new Date(s.at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`
+    return min < 1 ? 'Synced just now' : min < 60 ? `Synced ${min} min ago` : `Synced at ${new Date(s.at).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })}`
   }
   return 'On'
 }

@@ -75,7 +75,7 @@ export default function SettingsPage({ cards, settings, install, sync, onChange,
     if (ok) onWipe()
   }
   const accent = accentById(settings.accent)
-  const lastLabel = last ? `Last backup ${new Date(last).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}` : 'No backup yet'
+  const lastLabel = last ? `Last backup ${new Date(last).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}` : 'No backup yet'
 
   return (
     <>

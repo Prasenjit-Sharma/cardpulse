@@ -7,8 +7,11 @@ import EmptyState from './EmptyState'
 import Icon from './Icon'
 import Sheet, { SheetItem } from './Sheet'
 import { showEvent } from '../lib/eventname'
+import { rowFigure, shortDate } from '../lib/watch'
+import { localISO } from '../lib/followups'
+import WatchRow from './WatchRow'
 
-export default function Exhibition({ cards, events, activeEvent, onNew, onRename, onDelete, onScanHere, onView }: {
+export default function Exhibition({ cards, events, activeEvent, onNew, onRename, onDelete, onScanHere, onView, onOpenContact, onTogglePriority }: {
   cards: CardRecord[]
   events: EventRec[]
   activeEvent: string
@@ -17,14 +20,22 @@ export default function Exhibition({ cards, events, activeEvent, onNew, onRename
   onDelete: (id: string) => void
   onScanHere: (id: string) => void
   onView: (id: string) => void
+  onOpenContact: (id: string, idx: number) => void
+  onTogglePriority: (id: string, idx: number) => void
 }) {
   const [menu, setMenu] = useState('')
+  const [openKey, setOpenKey] = useState('')
+  // the live event's latest people (or the newest event's), so the tab shows the haul, not just totals
+  const focus = events.find((e) => e.id === activeEvent) ?? [...events].sort((a, b) => b.createdAt - a.createdAt)[0]
+  const latest = focus ? cards.filter((c) => c.eventId === focus.id && c.status === 'done').sort((a, b) => b.createdAt - a.createdAt)
+    .flatMap((c) => (c.corrected ?? []).map((p, i) => ({ card: c, p, i, key: `${c.id}:${i}` }))).slice(0, 6) : []
+  const today = localISO()
   const eventName = (id?: string) => events.find((e) => e.id === id)?.name ?? ''
   return (
     <>
       <header className="page-head">
-        <h1>Events</h1>
-        <button className="icon-btn" onClick={onNew} aria-label="New event"><Icon name="plus" size={20} /></button>
+        <h1>Events {events.length > 0 && <span className="count num">{events.length}</span>}</h1>
+        <button className="icon-btn ghost" onClick={onNew} aria-label="New event"><Icon name="plus" size={20} /></button>
       </header>
 
       {events.length === 0 && (
@@ -32,23 +43,28 @@ export default function Exhibition({ cards, events, activeEvent, onNew, onRename
           action={<button className="cta small" onClick={onNew}><Icon name="plus" size={18} /> New event</button>} />
       )}
 
-      {events.map((e, i) => {
-        const mine = cards.filter((c) => c.eventId === e.id)
-        const done = mine.filter((c) => c.status === 'done')
-        const people = done.flatMap((c) => c.corrected ?? [])
-        const companies = new Set(people.map((p) => p.company.trim().toLowerCase()).filter(Boolean)).size
-        const priority = people.filter((p) => p.priority).length
-        const busy = mine.filter((c) => c.status === 'pending' || c.status === 'running').length
-        const live = activeEvent === e.id
-        return (
-          <section key={e.id} className={`event-card${live ? ' live' : ''}`} style={{ ['--i' as string]: i }}>
-            {live && <span className="event-tab">Scanning here</span>}
-            <div className="event-head" onClick={() => onView(e.id)}>
-              <div className="grow">
-                <strong>{showEvent(e.name)}</strong>
-                <span className="muted">{new Date(e.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-              </div>
-              <button className="icon-btn ghost" onClick={(ev) => { ev.stopPropagation(); setMenu(e.id) }} aria-label="Event options"><Icon name="more" /></button>
+      {events.length > 0 && <h3 className="group band">Newest first<span className="num band-count">Cards</span></h3>}
+      <div className="plain-list">
+        {[...events].sort((a, b) => b.createdAt - a.createdAt).map((e, i) => {
+          const mine = cards.filter((c) => c.eventId === e.id)
+          const done = mine.filter((c) => c.status === 'done')
+          const people = done.flatMap((c) => c.corrected ?? [])
+          const companies = new Set(people.map((p) => p.company.trim().toLowerCase()).filter(Boolean)).size
+          const starred = people.filter((p) => p.priority).length
+          const busy = mine.filter((c) => c.status === 'pending' || c.status === 'running').length
+          const live = activeEvent === e.id
+          const facts = [`${people.length} ${people.length === 1 ? 'person' : 'people'}`, `${companies} ${companies === 1 ? 'co.' : 'cos.'}`, starred ? `${starred} starred` : '', busy ? `reading ${busy}` : ''].filter(Boolean).join(' · ')
+          return (
+            <div key={e.id} className={`event-row${live ? ' live' : ''}`} style={{ ['--i' as string]: i }}>
+              <button className="event-main" onClick={() => onView(e.id)}>
+                <span className="grow">
+                  <strong>{live && <em className="live-tag">Live</em>}{showEvent(e.name)}</strong>
+                  <span className="muted">{facts}</span>
+                </span>
+                <span className="fig"><b className="num">{mine.length}</b><small>since {shortDate(e.createdAt)}</small></span>
+              </button>
+              <button className="icon-btn" onClick={() => onScanHere(e.id)} aria-label={`Scan into ${showEvent(e.name)}`} title="Scan into this event"><Icon name="camera" size={18} /></button>
+              <button className="icon-btn ghost" onClick={() => setMenu(e.id)} aria-label="Event options"><Icon name="more" /></button>
               <Sheet open={menu === e.id} onClose={() => setMenu('')} title={showEvent(e.name)}>
                 <SheetItem icon="file" label="Export CSV" disabled={!done.length} onClick={() => { setMenu(''); download(`${fileSafe(e.name)}.csv`, buildCsv(done, eventName), 'text/csv') }} />
                 <SheetItem icon="download" label="Export vCard" disabled={!done.length} onClick={() => { setMenu(''); download(`${fileSafe(e.name)}.vcf`, buildVcf(done, eventName, currentNameFormat()), 'text/vcard') }} />
@@ -56,17 +72,22 @@ export default function Exhibition({ cards, events, activeEvent, onNew, onRename
                 <SheetItem icon="trash" danger label="Delete event" onClick={() => { setMenu(''); onDelete(e.id) }} />
               </Sheet>
             </div>
-            <div className="event-stats">
-              <span><b className="num">{mine.length}</b> cards</span>
-              <span><b className="num">{people.length}</b> people</span>
-              <span><b className="num">{companies}</b> {companies === 1 ? 'company' : 'companies'}</span>
-              {priority > 0 && <span className="warm"><b className="num">{priority}</b> priority</span>}
-            </div>
-            {busy > 0 && <p className="muted" style={{ margin: '0 0 8px' }}>Reading {busy} card{busy > 1 ? 's' : ''}…</p>}
-            <button className="cta small" onClick={() => onScanHere(e.id)}><Icon name="camera" size={18} /> Scan next card</button>
-          </section>
-        )
-      })}
+          )
+        })}
+      </div>
+
+      {focus && latest.length > 0 && (
+        <>
+          <h3 className="group band">Latest from {showEvent(focus.name)} <button className="link" onClick={() => onView(focus.id)}>All</button></h3>
+          <div className="plain-list">
+            {latest.map((x, n) => (
+              <WatchRow key={x.key} card={x.card} p={x.p} i={n} figure={rowFigure(x.p, x.card.createdAt, today)}
+                open={openKey === x.key} onToggle={() => setOpenKey(openKey === x.key ? '' : x.key)}
+                onOpen={() => onOpenContact(x.card.id, x.i)} onStar={() => onTogglePriority(x.card.id, x.i)} />
+            ))}
+          </div>
+        </>
+      )}
     </>
   )
 }

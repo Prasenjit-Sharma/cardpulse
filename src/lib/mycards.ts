@@ -1,5 +1,8 @@
 import { createStore, del, entries, get, set } from 'idb-keyval'
-import { ACCENTS, DEFAULT_ACCENT } from './accents.ts'
+import { ACCENTS } from './accents.ts'
+
+/** A digital card's own colour starts at Graphite whatever accent the app wears: the card is the user's identity, not app chrome. */
+const CARD_ACCENT = 'graphite'
 import { graphemes } from './graphemes.ts'
 import { noteChange } from './outbox.ts'
 
@@ -22,7 +25,7 @@ export interface MyCard {
   template: TemplateId; accent: string; font: FontId
 }
 
-export const emptyCard = (accent: string = DEFAULT_ACCENT, now = Date.now()): MyCard => ({
+export const emptyCard = (accent: string = CARD_ACCENT, now = Date.now()): MyCard => ({
   id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : String(now),
   createdAt: now, updatedAt: now, label: '', name: '', title: '', company: '', phones: [], emails: [], website: '', address: '', social: [],
   template: 'ledger', accent, font: 'archivo',
@@ -39,7 +42,7 @@ export function sanitizeCard(c: MyCard): MyCard {
     phones: list(c.phones), emails: list(c.emails), social: list(c.social),
     template: TEMPLATES.includes(c.template) ? c.template : 'ledger',
     font: FONTS.includes(c.font) ? c.font : 'archivo',
-    accent: ACCENTS.some((a) => a.id === c.accent) ? c.accent : DEFAULT_ACCENT,
+    accent: ACCENTS.some((a) => a.id === c.accent) ? c.accent : CARD_ACCENT,
   }
 }
 
