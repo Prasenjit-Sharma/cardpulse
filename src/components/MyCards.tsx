@@ -36,11 +36,6 @@ export default function MyCards({ cards, stats, onAdd, onEdit, onShare, onStall 
   const log = readShareLog()
   const tally = current ? tallyShares(log, current.id) : { shared: 0, qr: 0, exchanged: 0 }
   const recent = current ? log.filter((e) => e.card === current.id).slice(0, 5) : []
-  const fields: [string, string][] = current ? [
-    ['Name', current.name], ['Title', current.title], ['Company', current.company],
-    ...current.phones.map((v): [string, string] => ['Phone', v]), ...current.emails.map((v): [string, string] => ['Email', v]),
-    ['Web', current.website], ['Address', current.address],
-  ].filter(([, v]) => v) as [string, string][] : []
   const icon: Record<ShareKind, 'qr' | 'file' | 'image' | 'note' | 'refresh'> = { qr: 'qr', file: 'file', picture: 'image', text: 'note', exchange: 'refresh' }
 
   return (
@@ -110,10 +105,6 @@ export default function MyCards({ cards, stats, onAdd, onEdit, onShare, onStall 
                 ))}
               </div>
 
-              <h3 className="group band">On this card <button className="link" onClick={() => onEdit(current.id)}>Edit</button></h3>
-              <dl className="field-table">
-                {fields.map(([k, v], n) => <div key={n}><dt>{k}</dt><dd>{v}</dd></div>)}
-              </dl>
             </>
           )}
         </>

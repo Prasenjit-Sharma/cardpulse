@@ -7,9 +7,11 @@ import EmptyState from './EmptyState'
 import Icon from './Icon'
 import Sheet, { SheetItem } from './Sheet'
 import { showEvent } from '../lib/eventname'
-import { shortDate } from '../lib/watch'
+import { rowFigure, shortDate } from '../lib/watch'
+import { localISO } from '../lib/followups'
+import WatchRow from './WatchRow'
 
-export default function Exhibition({ cards, events, activeEvent, onNew, onRename, onDelete, onScanHere, onView }: {
+export default function Exhibition({ cards, events, activeEvent, onNew, onRename, onDelete, onScanHere, onView, onOpenContact, onTogglePriority }: {
   cards: CardRecord[]
   events: EventRec[]
   activeEvent: string
@@ -18,8 +20,16 @@ export default function Exhibition({ cards, events, activeEvent, onNew, onRename
   onDelete: (id: string) => void
   onScanHere: (id: string) => void
   onView: (id: string) => void
+  onOpenContact: (id: string, idx: number) => void
+  onTogglePriority: (id: string, idx: number) => void
 }) {
   const [menu, setMenu] = useState('')
+  const [openKey, setOpenKey] = useState('')
+  // the live event's latest people (or the newest event's), so the tab shows the haul, not just totals
+  const focus = events.find((e) => e.id === activeEvent) ?? [...events].sort((a, b) => b.createdAt - a.createdAt)[0]
+  const latest = focus ? cards.filter((c) => c.eventId === focus.id && c.status === 'done').sort((a, b) => b.createdAt - a.createdAt)
+    .flatMap((c) => (c.corrected ?? []).map((p, i) => ({ card: c, p, i, key: `${c.id}:${i}` }))).slice(0, 6) : []
+  const today = localISO()
   const eventName = (id?: string) => events.find((e) => e.id === id)?.name ?? ''
   return (
     <>
@@ -43,15 +53,15 @@ export default function Exhibition({ cards, events, activeEvent, onNew, onRename
           const starred = people.filter((p) => p.priority).length
           const busy = mine.filter((c) => c.status === 'pending' || c.status === 'running').length
           const live = activeEvent === e.id
-          const facts = [`${people.length} ${people.length === 1 ? 'person' : 'people'}`, `${companies} ${companies === 1 ? 'company' : 'companies'}`, starred ? `${starred} starred` : '', busy ? `reading ${busy}` : ''].filter(Boolean).join(' · ')
+          const facts = [`${people.length} ${people.length === 1 ? 'person' : 'people'}`, `${companies} ${companies === 1 ? 'co.' : 'cos.'}`, starred ? `${starred} starred` : '', busy ? `reading ${busy}` : ''].filter(Boolean).join(' · ')
           return (
             <div key={e.id} className={`event-row${live ? ' live' : ''}`} style={{ ['--i' as string]: i }}>
               <button className="event-main" onClick={() => onView(e.id)}>
                 <span className="grow">
                   <strong>{live && <em className="live-tag">Live</em>}{showEvent(e.name)}</strong>
-                  <span className="muted">Since {shortDate(e.createdAt)} · {facts}</span>
+                  <span className="muted">{facts}</span>
                 </span>
-                <span className="fig"><b className="num">{mine.length}</b><small>{mine.length === 1 ? 'card' : 'cards'}</small></span>
+                <span className="fig"><b className="num">{mine.length}</b><small>since {shortDate(e.createdAt)}</small></span>
               </button>
               <button className="icon-btn" onClick={() => onScanHere(e.id)} aria-label={`Scan into ${showEvent(e.name)}`} title="Scan into this event"><Icon name="camera" size={18} /></button>
               <button className="icon-btn ghost" onClick={() => setMenu(e.id)} aria-label="Event options"><Icon name="more" /></button>
@@ -65,6 +75,19 @@ export default function Exhibition({ cards, events, activeEvent, onNew, onRename
           )
         })}
       </div>
+
+      {focus && latest.length > 0 && (
+        <>
+          <h3 className="group band">Latest from {showEvent(focus.name)} <button className="link" onClick={() => onView(focus.id)}>All</button></h3>
+          <div className="plain-list">
+            {latest.map((x, n) => (
+              <WatchRow key={x.key} card={x.card} p={x.p} i={n} figure={rowFigure(x.p, x.card.createdAt, today)}
+                open={openKey === x.key} onToggle={() => setOpenKey(openKey === x.key ? '' : x.key)}
+                onOpen={() => onOpenContact(x.card.id, x.i)} onStar={() => onTogglePriority(x.card.id, x.i)} />
+            ))}
+          </div>
+        </>
+      )}
     </>
   )
 }

@@ -488,7 +488,8 @@ export default function App() {
             onOpen={(id, idx) => setOpen({ id, idx })} onRetryFailed={retryFailed} onUpload={(f) => void addFiles(f)} onMoveToEvent={moveToEvent} onDeleteContacts={deleteContacts} />
         ) : tab === 'exhibition' ? (
           <Exhibition cards={cards} events={events} activeEvent={activeEvent} onNew={newEventPrompt} onRename={renameEvent} onDelete={removeEvent}
-            onScanHere={scanHere} onView={(id) => { setActiveEvent(id); goto('contacts') }} />
+            onScanHere={scanHere} onView={(id) => { setActiveEvent(id); goto('contacts') }}
+            onOpenContact={(id, idx) => setOpen({ id, idx })} onTogglePriority={(id, idx) => void togglePriority(id, idx)} />
         ) : tab === 'insights' ? (
           <Insights cards={cards} onBack={() => setTab(backTab)} onContacts={() => goto('contacts')} onAccuracy={() => goto('accuracy', 'insights')} onOpen={(id, idx) => setOpen({ id, idx })} />
         ) : tab === 'accuracy' ? (

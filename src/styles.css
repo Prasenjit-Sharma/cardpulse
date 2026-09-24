@@ -520,12 +520,12 @@ small.up, .indices small.up { color: var(--green); font-weight: 600 }
 .link.with-icon, button.add.with-icon { display: inline-flex; align-items: center; gap: 4px }
 button.add { min-height: 36px; padding: 0 2px; font-size: var(--t-s); background: none; color: var(--brand) }
 /* tags, notes, follow-up */
-.adders { display: flex; flex-wrap: nowrap; gap: 0; margin: 0 -16px 10px; padding: 0 6px; border-bottom: 1px solid var(--rule) }
-.adder { flex: none; position: relative; min-height: 44px; padding: 0 10px; gap: 6px; background: none; border-radius: 0; font-size: var(--t-m); font-weight: 600; color: var(--ink-3) }
+.adders { display: flex; flex-wrap: nowrap; gap: 6px; margin: 4px 0 10px }
+.adder { flex: none; position: relative; min-height: 40px; padding: 0 12px; gap: 6px; background: var(--board-2); border-radius: 8px; font-size: var(--t-s); font-weight: 600; color: var(--ink-2) }
 .adder svg { color: var(--ink-3) }
 .adder:active:not(:disabled) { background: var(--board-2); transform: none }
 .adder.on { color: var(--ink) } .adder.on svg { color: var(--ink) }
-.adder[aria-pressed='true']::after { content: ''; position: absolute; left: 10px; right: 10px; bottom: -1px; height: 2px; background: var(--brand) }
+.adder[aria-pressed='true'] { background: var(--ink); color: var(--board) } .adder[aria-pressed='true'] svg { color: var(--board) }
 .adder b { font-size: var(--t-xs); background: var(--brand); color: var(--brand-ink); border-radius: var(--r-pill); padding: 0 6px; min-width: 18px; text-align: center }
 .chipline { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px }
 .tagchip { min-height: 32px; padding: 0 10px 0 12px; gap: 6px; background: var(--sleeve); box-shadow: inset 0 0 0 1px var(--board-edge); color: var(--ink); font-size: var(--t-s); font-weight: 600 }
@@ -903,7 +903,7 @@ a.public-btn { display: inline-flex; align-items: center; justify-content: cente
   nav, .toast, .selbar { max-width: 880px }
   .fab-menu { right: calc(50% - 440px + 20px) }
   main { padding-left: 28px; padding-right: 28px }
-  .plain-list, .group.band, .full-bleed, .indices, .infos, .activity, .adders, .editor-box, .field-table, .field-box.pickbox { margin-left: -28px; margin-right: -28px } .group.band, .infos, .activity, .field-table { padding-left: 28px; padding-right: 28px }
+  .plain-list, .group.band, .full-bleed, .indices, .infos, .activity, .editor-box, .field-table, .field-box.pickbox { margin-left: -28px; margin-right: -28px } .group.band, .infos, .activity, .field-table { padding-left: 28px; padding-right: 28px }
   .banner-row, .log-add { margin-left: -28px; margin-right: -28px; width: calc(100% + 56px); padding-left: 28px }
   .filters, .tab-strip { margin-left: -28px; margin-right: -28px; padding-left: 28px; padding-right: 28px }
 }
