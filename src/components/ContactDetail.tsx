@@ -17,6 +17,7 @@ import Picker from './Picker'
 import { confirmAsk } from './Dialog'
 import DateChip from './DateChip'
 import { showEvent } from '../lib/eventname'
+import { dueFigure, phase } from '../lib/watch'
 
 const SUGGESTED_TAGS = ['Customer', 'Supplier', 'Partner', 'Investor', 'Hot lead']
 const withProtocol = (w: string) => (/^https?:\/\//i.test(w) ? w : `https://${w}`)
@@ -112,10 +113,8 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
   const noteRef = useRef<HTMLDivElement>(null)
   const noteInput = useRef<HTMLTextAreaElement>(null)
   const followRef = useRef<HTMLDivElement>(null)
-  const [fab, setFab] = useState(false)
   const [flash, setFlash] = useState('')
   const stopRef = useRef<(() => void) | null>(null)
-  useBackClose(fab, () => setFab(false))
   useBackClose(!!light, () => setLight(''))
   const canRead = !!card.image && !card.thumbOnly
   const busy = card.status === 'pending' || card.status === 'running'
@@ -175,7 +174,6 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
   // Both actions must start inside the tap (Android needs the user gesture to open Contacts or the share sheet).
   const run = async (kind: 'save' | 'share') => {
     if (!c) return
-    setFab(false)
     const env = browserEnv((m) => log(m))
     const fmt = currentNameFormat()
     const out = kind === 'save' ? await saveToPhone(c, noteFor(), env, fmt) : await shareContact(c, noteFor(), env, fmt)
@@ -238,11 +236,17 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
 
       {card.status === 'done' && c && !editing && (
         <>
-          <div className="namecard">
+          <div className="quote">
+            <div className="quote-id">
+              <h1>{c.name || '(no name)'}</h1>
+              {(c.title || c.company) && <span className="co">{[c.title, c.company].filter(Boolean).join(' · ')}</span>}
+              <span className="quote-line">
+                <em className="phase">{phase(c)}</em>
+                {(() => { const f = dueFigure(c.followUp, today); return f && <b className={`num ${f.tone}`}>{f.text}</b> })()}
+                {eventName && <span>{showEvent(eventName)}</span>}
+              </span>
+            </div>
             {url && <button className="namecard-photo" onClick={() => setLight(url)} aria-label="View the card photo"><img src={url} alt="" /></button>}
-            <h1>{c.name || '(no name)'}</h1>
-            {c.title && <strong>{c.title}</strong>}
-            {c.company && <span className="co">{c.company}</span>}
           </div>
 
           {flagged && (
@@ -319,7 +323,7 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
             </div>
           )}
 
-          <h3 className="group">Activity</h3>
+          <h3 className="group band">Activity</h3>
           <button className="log-add" onClick={() => setLogOpen(true)}><Icon name="plus" size={18} /> {(c.log?.length ?? 0) ? 'Log another call, meeting or message' : 'Log a call, meeting or message'}</button>
           {(c.log?.length ?? 0) > 0 && (
             <div className="activity" role="list" aria-label="Calls and notes with this contact">
@@ -327,7 +331,7 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
             </div>
           )}
 
-          <h3 className="group">Connection</h3>
+          <h3 className="group band">Connection</h3>
           <div className="infos">
             <div className="line"><Icon name="clock" size={18} /><span>Added on {when(card.createdAt)}</span></div>
             <div className="line"><Icon name="camera" size={18} /><span>{eventName ? `Scanned at ${showEvent(eventName)}` : 'Scanned contact'}</span></div>
@@ -340,7 +344,7 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
 
           {slides.length > 0 && (
             <>
-              <h3 className="group">Scanned card {canRead && <button className="link" onClick={() => setAdjusting(slide === 1 && card.back ? 'back' : 'image')}>Adjust</button>}</h3>
+              <h3 className="group band">Scanned card {canRead && <button className="link" onClick={() => setAdjusting(slide === 1 && card.back ? 'back' : 'image')}>Adjust</button>}</h3>
               <div className="carousel" onScroll={(e) => setSlide(Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth))}>
                 {slides.map((s, i) => <img key={i} src={s} alt={i ? 'Back of card' : 'Front of card'} onClick={() => setLight(s)} onLoad={fitImage} />)}
               </div>
@@ -375,15 +379,14 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
       {flash && <div className="flash" role="status">{flash}</div>}
       {card.status === 'done' && c && !editing && (
         <>
-          {fab && <div className="scrim" onClick={() => setFab(false)} />}
-          <div className="fab-menu">
-            {fab && (
-              <>
-                <button className="fab-item" onClick={() => void run('save')}><span>Save to phone</span><i><Icon name="download" size={22} /></i></button>
-                <button className="fab-item" onClick={() => void run('share')}><span>Share contact</span><i><Icon name="share" size={22} /></i></button>
-              </>
-            )}
-            <button className={`fab-main${fab ? ' open' : ''}`} onClick={() => setFab(!fab)} aria-label={fab ? 'Close actions' : 'More actions'} aria-expanded={fab}><Icon name={fab ? 'x' : 'more'} size={26} /></button>
+          {/* the trade bar: the next action is always one tap, never behind a menu */}
+          <div className="trade-bar" role="group" aria-label="Contact actions">
+            {c.phones[0]
+              ? <a className="trade primary" href={telHref(c.phones[0])}><Icon name="phone" size={18} />Call</a>
+              : c.emails[0] ? <a className="trade primary" href={`mailto:${c.emails[0]}`}><Icon name="mail" size={18} />Email</a> : null}
+            {c.phones[0] && <a className="trade" href={`https://wa.me/${waNumber(c.phones[0])}`} target="_blank" rel="noreferrer"><Icon name="chat" size={18} />WhatsApp</a>}
+            <button className="trade sq" onClick={() => void run('save')} aria-label="Save to phone" title="Save to phone"><Icon name="download" size={19} /></button>
+            <button className="trade sq" onClick={() => void run('share')} aria-label="Share contact" title="Share contact"><Icon name="share" size={19} /></button>
           </div>
         </>
       )}
