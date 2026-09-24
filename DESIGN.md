@@ -423,6 +423,35 @@ While selecting contacts, a flat ink bar (no radius) docks directly above the ta
 ### Chips, pickers and fields
 Chips are 34px, 6px, a board fill with an edge ring, ink-2 text; chosen chips fill with ink. Pickers are the app's own (`Picker`), never native `<select>`; dates open the app's own calendar (`DateChip`). Fields are 48px, field fill, 8px, 16px text; focus turns the field board-white with an accent border and a 3px accent-wash halo.
 
+### Edit forms (card editor, contact edit)
+Editing never wraps fields in panels. A form is a flat label | value table on rule-soft hairlines, the same shape as the
+read views it edits (a contact's details, My Card's rows): a 92px label column in 12px 600 uppercase ink-3, values as
+flat 44px inputs with no fill. Focus gives the value the field fill and a 2px accent underline. A field corrected after a
+misread shows an amber wash (it counts against accuracy). Multi-value fields (phones, emails, social) stack their inputs
+with a small x to remove and an accent "+ Add" link. Groups sit under band headings.
+
+**The card editor.** The card being made stays pinned at the top, seated on a band (card at min(82%, 380px), 58% on
+short screens), while its fields scroll under it. Bands: Who, How to reach you, Photo or logo, Design. The photo row is a
+48px thumbnail well, a two-line status ("On the card" / "None yet", with a hint) and one tonal Add or Change key, with a
+Remove link when a picture is set. Design choices are rows in the same table: Template and Font as 36px, 6px squared keys
+(the chosen one fills with ink); Colour as 28px squares with 7px corners, the chosen one ringed board then ink, its name
+underneath. Every choice group is a radiogroup with `aria-checked`. Delete card is a quiet full-width red row at the end
+(trash icon, "Delete card", a one-line consequence), never a large red button; it confirms in a dialog. Save is the
+screen's one accent action, in the header.
+
+### Settings
+A back key and a 22px title, then an at-a-glance holding band of what this phone holds: Contacts (a count), Backed up
+(the date, or "Never" in amber, because an un-backed-up phone is something to check) and Sync (On or Off), with 20px
+figures. Every group is a band heading over flat rows: 52px, a 20px ink-2 icon, a 14px 500 label with an optional 12px
+ink-3 hint, and on the right a 13px 600 ink-2 value plus a chevron when the row opens something. Row hairlines are inset
+to start under the text (50px), not under the icon. A switch row is tappable across its whole width. Group footers are
+12px ink-3 under a hairline. The accent picker shows all nine colours on one row as 32px squared keys, indented to the
+text column. Destructive rows (Delete all data, Delete cloud data, Delete account) are red text with a red icon, the
+dialog-level exception to the Palette Law, and always confirm. The version and logo close the page on a hairline.
+
+**The Flat Form Rule.** Editing and settings screens use the same flat, hairline, full-bleed rows as the reading screens.
+If a form or a settings group is sitting in a rounded, bordered box, it has slipped back into the replaced world.
+
 ### Sheets, dialogs and toasts
 Sheets rise from the bottom (280ms), board fill, 14px top corners, a 36 by 5 grey handle, a 16px 650 title, 50px rows with a leading ink-2 icon; destructive rows are red, a checked row is accent. Confirm and prompt are sheets too (`Dialog`), Cancel beside the action; a destructive confirm is solid red. Toasts are ink with board text, 10px, above the tab bar, with a green check.
 

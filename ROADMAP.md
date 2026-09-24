@@ -177,8 +177,9 @@ A separate app for operators, not users.
 
 **Decided 2026-09-24 (user):** Capacitor with the web files **bundled inside the app**, not a shell around the live site.
 Design in `docs/superpowers/specs/2026-09-24-android-app-design.md`, awaiting the user's review; no code yet. First
-milestone: a debug APK built on GitHub Actions and installed from a GitHub Release on the user's Android phone. Needs from
-the user: the Supabase redirect URL for the app, and approval to redeploy the Worker with the app's origin.
+milestone: a debug APK built **on the Mac** (user's choice; Java and the Android SDK to be installed here) and installed
+on the user's Android phone over USB. Needs from the user: approval for the tool install, the Supabase redirect URL for
+the app, USB debugging on the phone, and approval to redeploy the Worker with the app's origin.
 
 - Capacitor wrapper around the current codebase; check share sheet, contacts save and camera one by one.
 - A React Native rewrite only if Capacitor's camera or performance disappoints.
