@@ -572,24 +572,30 @@ button.add { min-height: 36px; padding: 0 2px; font-size: var(--t-s); background
 .live-tag { font-style: normal; font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 1px 5px; border-radius: 4px; background: var(--brand); color: var(--brand-ink); flex: none }
 
 /* ---------- settings ---------- */
-.setting-group { margin-bottom: 4px }
+.setting-group { margin: 0 -16px }
+.settings-head h1 { font-size: var(--t-xl) }
+.settings-glance { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 2px }
+.settings-glance b { font-size: 20px } .settings-glance b.check { color: var(--amber) }
+.dev-panel { padding: 12px 0 4px }
 .setting-row {
-  width: 100%; min-height: 56px; padding: 10px 16px; margin: 0; background: none; border-radius: 0;
+  width: 100%; min-height: 52px; padding: 8px 16px; margin: 0; background: none; border-radius: 0; position: relative;
   display: flex; align-items: center; justify-content: flex-start; gap: 14px; text-align: left; color: var(--ink);
   font-weight: 400; font-size: var(--t-m); text-decoration: none; cursor: default;
 }
 button.setting-row, a.setting-row, label.setting-row { cursor: pointer }
-.setting-row + .setting-row { border-top: 1px solid var(--rule-soft) }
+.setting-row + .setting-row::before { content: ''; position: absolute; top: 0; left: 50px; right: 0; height: 1px; background: var(--rule-soft) }
 .setting-row > svg:first-child { color: var(--ink-2); flex: none }
 .setting-row > svg:last-child:not(:first-child) { color: var(--ink-3); flex: none }
 .setting-row .grow { display: flex; flex-direction: column; gap: 1px; min-width: 0 }
-.setting-row strong { font-weight: 500; overflow-wrap: anywhere } .setting-row small { color: var(--ink-3); font-size: var(--t-s) }
-.setting-row:active:not(:disabled) { transform: none; background: var(--board-2) }
+.setting-row strong { font-weight: 500; font-size: var(--t-m); overflow-wrap: anywhere } .setting-row small { color: var(--ink-3); font-size: var(--t-xs) }
+.setting-row:active:not(:disabled) { transform: none; background: var(--band) }
 .setting-row.danger { background: none } .setting-row.danger, .setting-row.danger > svg:first-child { color: var(--red) }
-.setting-value { color: var(--ink-3); font-size: var(--t-m); white-space: nowrap; flex: none; max-width: 45%; overflow: hidden; text-overflow: ellipsis }
-.setting-foot { margin: 8px 4px 0 } .setting-msg { margin: 8px 4px 0 }
+.setting-value { color: var(--ink-2); font-size: var(--t-s); font-weight: 600; white-space: nowrap; flex: none; max-width: 45%; overflow: hidden; text-overflow: ellipsis }
+.setting-foot { margin: 0 -16px; padding: 8px 16px 4px; font-size: var(--t-xs); border-top: 1px solid var(--rule-soft) } .setting-msg { margin: 8px 0 0 }
 .accent-row-wrap { flex-wrap: wrap; row-gap: 2px; padding-bottom: 6px }
-.accent-row-wrap .accent-row { flex-basis: 100%; margin-left: 30px }
+.accent-row-wrap .accent-row { flex-basis: 100%; margin-left: 34px }
+.accent-row-wrap .accent-row { gap: 2px } .accent-row-wrap .accent-sw { width: 32px }
+.settings-glance + .group.band { margin-top: 10px }
 .accent-dot { width: 20px; height: 20px; border-radius: 50%; background: var(--brand); flex: none }
 label.setting-row > span:not(.sr), label.datechip > span:not(.sr) { font-size: inherit; font-weight: inherit; color: inherit; margin: 0 }
 label.setting-row > span.grow:not(.sr) { display: flex } label.datechip > span:not(.sr) { display: inline }
@@ -599,7 +605,7 @@ label.setting-row > span.grow:not(.sr) { display: flex } label.datechip > span:n
 .menu-item > svg:first-child { color: var(--ink-2); flex: none } .menu-item > svg:last-child:not(:first-child) { transform: rotate(180deg); color: var(--ink-3) }
 .menu-item:active:not(:disabled) { transform: none; background: var(--board-2) }
 .menu-row { width: 100%; margin-top: 16px; justify-content: flex-start; gap: 14px; text-align: left; min-height: 58px; background: var(--sleeve); border-radius: var(--r-sleeve); box-shadow: var(--seat); font-weight: 400 } .menu-row .grow { display: flex; flex-direction: column } .menu-row strong { font-weight: 500 } .menu-row small { color: var(--ink-3) } .menu-row svg:last-child { transform: rotate(180deg); color: var(--ink-3) } .menu-row > svg:first-child { color: var(--ink-2) }
-.about { display: flex; align-items: center; justify-content: center; gap: 9px; margin-top: 28px; color: var(--ink-3); font-size: var(--t-s) }
+.about { display: flex; align-items: center; justify-content: center; gap: 9px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--rule-soft); color: var(--ink-3); font-size: var(--t-s) }
 .radio-list { display: flex; flex-direction: column; margin: 10px 0 }
 .radio { width: 100%; justify-content: flex-start; text-align: left; gap: 14px; min-height: 56px; padding: 8px 2px; background: none; border-radius: 12px; font-weight: 400 }
 .radio .grow { display: flex; flex-direction: column } .radio strong { font-weight: 600 } .radio small { color: var(--ink-3) }
@@ -893,7 +899,7 @@ a.public-btn { display: inline-flex; align-items: center; justify-content: cente
   .app { max-width: 880px; box-shadow: 0 0 0 1px var(--rule-soft), 0 18px 60px rgba(16,24,40,.12) }
   nav, .toast, .selbar { max-width: 880px }
   main { padding-left: 28px; padding-right: 28px }
-  .plain-list, .group.band, .full-bleed, .indices, .infos, .activity, .editor-box, .panel, .editor-preview, .photo-row, .field-table, .field-box.pickbox { margin-left: -28px; margin-right: -28px } .group.band, .infos, .activity, .field-table, .panel, .editor-preview, .photo-row { padding-left: 28px; padding-right: 28px }
+  .plain-list, .group.band, .full-bleed, .indices, .infos, .activity, .editor-box, .panel, .editor-preview, .photo-row, .setting-group, .setting-foot, .field-table, .field-box.pickbox { margin-left: -28px; margin-right: -28px } .group.band, .infos, .activity, .field-table, .panel, .editor-preview, .photo-row { padding-left: 28px; padding-right: 28px }
   .banner-row, .log-add { margin-left: -28px; margin-right: -28px; width: calc(100% + 56px); padding-left: 28px }
   .filters { margin-left: -28px; margin-right: -28px; padding-left: 28px; padding-right: 28px }
 }

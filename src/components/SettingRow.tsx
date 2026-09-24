@@ -3,12 +3,12 @@ import Icon from './Icon'
 
 type IconName = Parameters<typeof Icon>[0]['name']
 
-/** A titled block of rows, the way phone settings are laid out: a small caps heading, one sleeve, rows ruled apart. */
+/** A titled block of rows: a grey band heading, then flat rows ruled apart by hairlines. */
 export function SettingGroup({ title, footer, children }: { title: string; footer?: ReactNode; children: ReactNode }) {
   return (
     <>
-      <h3 className="group">{title}</h3>
-      <section className="card flush setting-group">{children}</section>
+      <h3 className="group band">{title}</h3>
+      <section className="setting-group">{children}</section>
       {footer && <p className="hint setting-foot">{footer}</p>}
     </>
   )

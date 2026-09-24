@@ -41,7 +41,7 @@ function PickRow<T extends string>({ icon, label, value, options, onChange }: { 
   )
 }
 
-export default function SettingsPage({ cards, settings, install, sync, onChange, onWipe, onBackup, onRestore }: {
+export default function SettingsPage({ cards, settings, install, sync, onChange, onWipe, onBackup, onRestore, onBack }: {
   cards: CardRecord[]
   sync: SyncControl
   settings: Settings
@@ -76,10 +76,21 @@ export default function SettingsPage({ cards, settings, install, sync, onChange,
   }
   const accent = accentById(settings.accent)
   const lastLabel = last ? `Last backup ${new Date(last).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}` : 'No backup yet'
+  const people = cards.filter((c) => c.status === 'done').reduce((n, c) => n + (c.corrected?.length ?? 0), 0)
 
   return (
     <>
-      <header className="page-head"><h1>Settings</h1></header>
+      <header className="bar-top settings-head">
+        <button className="icon-btn" onClick={onBack} aria-label="Back"><Icon name="back" /></button>
+        <h1 className="grow">Settings</h1>
+      </header>
+
+      {/* where this phone stands, at a glance: what it holds, when it was last backed up, whether it syncs */}
+      <div className="holding full-bleed settings-glance" role="group" aria-label="This phone">
+        <div><span>Contacts</span><b className="num">{people}</b></div>
+        <div><span>Backed up</span><b className={`num${last ? '' : ' check'}`}>{last ? new Date(last).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'Never'}</b></div>
+        <div><span>Sync</span><b>{sync.enabled ? 'On' : 'Off'}</b></div>
+      </div>
 
       <AccountSection sync={sync} />
 
@@ -197,8 +208,8 @@ function DeveloperKey({ settings, onChange }: { settings: Settings; onChange: (s
   }
   return (
     <>
-      <h3 className="group">Developer</h3>
-      <section className="card">
+      <h3 className="group band">Developer</h3>
+      <section className="dev-panel">
         <p className="hint" style={{ marginTop: 0 }}>This build has no reading service, so cards are read with your own Gemini key. It stays on this device and is sent only to Google.</p>
         <input type="password" aria-label="Gemini API key" autoComplete="off" placeholder="Gemini key (starts with AIza)" value={key} onChange={(e) => setKey(e.target.value)} />
         <button className="cta wide" onClick={() => void connect()} disabled={!key.trim() || busy}>{busy ? 'Checking…' : 'Save and connect'}</button>
