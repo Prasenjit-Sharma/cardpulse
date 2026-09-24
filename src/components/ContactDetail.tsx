@@ -21,11 +21,11 @@ import { dueFigure, phase } from '../lib/watch'
 
 const SUGGESTED_TAGS = ['Customer', 'Supplier', 'Partner', 'Investor', 'Hot lead']
 const withProtocol = (w: string) => (/^https?:\/\//i.test(w) ? w : `https://${w}`)
-const when = (t: number) => new Date(t).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
+const when = (t: number) => new Date(t).toLocaleString('en-IN', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
 
 const KIND_LABEL = { call: 'Call', meeting: 'Meeting', message: 'Message' } as const
 const OUTCOME_LABEL = { connected: 'Connected', 'no-answer': 'No answer', 'call-back': 'Call back' } as const
-const shortDate = (iso: string) => new Date(`${iso}T00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+const shortDate = (iso: string) => new Date(`${iso}T00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
 
 /** One line of the timeline: what, how it went, what was said, and the next date. */
 function ActivityRow({ e, onRemove }: { e: Interaction; onRemove: () => void }) {
@@ -34,7 +34,7 @@ function ActivityRow({ e, onRemove }: { e: Interaction; onRemove: () => void }) 
       <div className="act-head">
         <b>{KIND_LABEL[e.kind]}</b>
         {e.outcome && <span className="act-pill">{OUTCOME_LABEL[e.outcome]}</span>}
-        <time dateTime={new Date(e.at).toISOString()}>{new Date(e.at).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</time>
+        <time dateTime={new Date(e.at).toISOString()}>{new Date(e.at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</time>
         <button className="x-btn" onClick={onRemove} aria-label={`Remove ${KIND_LABEL[e.kind].toLowerCase()} entry`}><Icon name="x" size={14} /></button>
       </div>
       {(e.note || e.next) && <p>{e.note}{e.next && <span className="act-next">{e.note ? ' · ' : ''}Next {shortDate(e.next)}</span>}</p>}
@@ -277,11 +277,11 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
             <button data-adder className={`adder${tagsOpen || (c.tags ?? []).length ? ' on' : ''}`} aria-pressed={tagsOpen} onClick={() => setTagsOpen(!tagsOpen)}>
               <Icon name="tag" size={13} /> Tags{(c.tags ?? []).length > 0 && <b>{(c.tags ?? []).length}</b>}
             </button>
-            <button data-adder className={`adder${noteOpen || c.note ? ' on' : ''}`} aria-pressed={noteOpen || !!c.note}
+            <button data-adder className={`adder${noteOpen || c.note ? ' on' : ''}`} aria-pressed={noteOpen}
               onClick={() => (c.note ? noteInput.current?.focus() : setNoteOpen(!noteOpen))}>
               <Icon name="note" size={13} /> Notes
             </button>
-            <button data-adder className={`adder${followOpen || c.followUp ? ' on' : ''}`} aria-pressed={followOpen || !!c.followUp}
+            <button data-adder className={`adder${followOpen || c.followUp ? ' on' : ''}`} aria-pressed={followOpen}
               onClick={() => (c.followUp ? followRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }) : setFollowOpen(!followOpen))}>
               <Icon name="calendar" size={13} /> Follow-up
             </button>

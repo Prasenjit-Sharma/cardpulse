@@ -4,7 +4,7 @@ import { localISO } from '../lib/followups'
 import Icon from './Icon'
 import Sheet from './Sheet'
 
-const dayLabel = (iso: string) => new Date(`${iso}T00:00`).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })
+const dayLabel = (iso: string) => new Date(`${iso}T00:00`).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })
 
 /** The app's own calendar, in a sheet: never the phone's date picker, which looks different on every browser. */
 export function CalendarSheet({ open, value, min, title, onPick, onClose }: { open: boolean; value: string; min?: string; title: string; onPick: (iso: string) => void; onClose: () => void }) {
@@ -12,7 +12,7 @@ export function CalendarSheet({ open, value, min, title, onPick, onClose }: { op
   const [[y, m], setMonth] = useState<[number, number]>([start.getFullYear(), start.getMonth()])
   useEffect(() => { if (open) setMonth([start.getFullYear(), start.getMonth()]) }, [open])   // eslint-disable-line react-hooks/exhaustive-deps
   const today = localISO()
-  const label = new Date(y, m, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
+  const label = new Date(y, m, 1).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })
   return (
     <Sheet open={open} onClose={onClose} title={title}>
       <div className="cal">

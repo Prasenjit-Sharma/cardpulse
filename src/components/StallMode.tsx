@@ -8,6 +8,7 @@ import { qrMatrix } from '../lib/qr'
 import { defaultCaption } from '../lib/stallcaption'
 import { useBackClose } from '../lib/useBackClose'
 import { cloudEnabled } from '../lib/supabase'
+import { noteShare } from '../lib/sharelog'
 import type { EventRec } from '../lib/types'
 import { useOnline } from '../lib/useOnline'
 import { useWakeLock } from '../lib/wakelock'
@@ -29,6 +30,7 @@ export default function StallMode({ card, events, initialEventId, onClose }: { c
   const canvas = useRef<HTMLCanvasElement>(null)
   const [step, setStep] = useState<Step>('setup')
   useBackClose(step === 'show', () => { setStep('setup'); return false })
+  useEffect(() => { if (step === 'show') noteShare(card.id, 'qr') }, [step, card.id])
   const { supported } = useWakeLock(step === 'show')
   const session = useSession()
   const online = useOnline()

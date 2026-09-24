@@ -19,7 +19,7 @@ type Sort = 'recent' | 'name' | 'company'
 export type Flt = 'all' | 'priority' | 'attention' | 'followup'
 interface Row { card: CardRecord; p: Contact; i: number; key: string }
 
-const monthLabel = (t: number) => new Date(t).toLocaleDateString(undefined, { month: 'short', year: 'numeric' }).toUpperCase()
+const monthLabel = (t: number) => new Date(t).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }).toUpperCase()
 
 export default function Contacts({ onScan, cards: allCards, events, activeEvent, onSelectEvent, dupes, initialFilter, initialCompany, onOpen, onRetryFailed, onUpload, onMoveToEvent, onDeleteContacts, onTogglePriority }: {
   onScan: () => void

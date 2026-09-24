@@ -4,6 +4,8 @@ import { MAX_CARDS, type MyCard } from '../lib/mycards'
 import CardCanvas from './CardCanvas'
 import CardStack from './CardStack'
 import Icon from './Icon'
+import { readShareLog, SHARE_LABEL, tallyShares, type ShareKind } from '../lib/sharelog'
+import { shortDate } from '../lib/watch'
 
 const LONG_PRESS_MS = 600
 
@@ -30,7 +32,16 @@ export default function MyCards({ cards, stats, onAdd, onEdit, onShare, onStall 
   const endPress = () => clearTimeout(press.current)
 
   const stat = current ? stats?.get(current.id) : undefined
-  const conv = stat && stat.views > 0 ? `${((stat.leads / stat.views) * 100).toFixed(stat.leads / stat.views < 0.1 ? 1 : 0)}%` : '–'
+  // figures this phone records itself, so the holding is never empty when signed out; views and leads come from the server
+  const log = readShareLog()
+  const tally = current ? tallyShares(log, current.id) : { shared: 0, qr: 0, exchanged: 0 }
+  const recent = current ? log.filter((e) => e.card === current.id).slice(0, 5) : []
+  const fields: [string, string][] = current ? [
+    ['Name', current.name], ['Title', current.title], ['Company', current.company],
+    ...current.phones.map((v): [string, string] => ['Phone', v]), ...current.emails.map((v): [string, string] => ['Email', v]),
+    ['Web', current.website], ['Address', current.address],
+  ].filter(([, v]) => v) as [string, string][] : []
+  const icon: Record<ShareKind, 'qr' | 'file' | 'image' | 'note' | 'refresh'> = { qr: 'qr', file: 'file', picture: 'image', text: 'note', exchange: 'refresh' }
 
   return (
     <>
@@ -71,12 +82,13 @@ export default function MyCards({ cards, stats, onAdd, onEdit, onShare, onStall 
           </section>
           {current && (
             <>
-              <div className="holding full-bleed" role="group" aria-label="Your card link">
+              <div className="holding full-bleed" role="group" aria-label="This card's figures">
+                <div><span>Shared</span><b className="num">{tally.shared + tally.exchanged}</b></div>
+                <div><span>QR shown</span><b className="num">{tally.qr}</b></div>
                 <div><span>Views</span><b className="num">{stat ? stat.views : '–'}</b></div>
                 <div><span>Leads</span><b className={`num${stat?.leads ? ' up' : ''}`}>{stat ? stat.leads : '–'}</b></div>
-                <div><span>Conversion</span><b className="num">{conv}</b></div>
               </div>
-              {!stat && <p className="holding-note">Views and leads show here when you are signed in and online, and your card has a link.</p>}
+              {!stat && <p className="holding-note">Views and leads count when you are signed in.</p>}
               <div className="mycards-actions">
                 <button className="cta" onClick={() => onShare(current.id)}><Icon name="share" size={19} /> Share card</button>
                 <button className="trade sq" onClick={() => onStall(current.id)} aria-label="Show QR full screen" title="Show QR"><Icon name="qr" size={20} /></button>
@@ -85,6 +97,23 @@ export default function MyCards({ cards, stats, onAdd, onEdit, onShare, onStall 
                 <span className="grow"><strong>At a stall</strong><span className="muted">Show your QR full screen. Or press and hold the card.</span></span>
                 <Icon name="chevron" size={18} />
               </button>
+
+              <h3 className="group band">Recent sharing</h3>
+              <div className="plain-list">
+                {recent.length === 0 && <p className="wl-empty">Nothing shared from this phone yet. Share card sends a link, a picture or a contact file.</p>}
+                {recent.map((e) => (
+                  <div key={e.at} className="index-row static">
+                    <span className="lead-ico"><Icon name={icon[e.kind]} size={16} /></span>
+                    <span className="grow"><strong>{SHARE_LABEL[e.kind]}</strong></span>
+                    <span className="fig"><b className="num">{shortDate(e.at)}</b><small>{new Date(e.at).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })}</small></span>
+                  </div>
+                ))}
+              </div>
+
+              <h3 className="group band">On this card <button className="link" onClick={() => onEdit(current.id)}>Edit</button></h3>
+              <dl className="field-table">
+                {fields.map(([k, v], n) => <div key={n}><dt>{k}</dt><dd>{v}</dd></div>)}
+              </dl>
             </>
           )}
         </>

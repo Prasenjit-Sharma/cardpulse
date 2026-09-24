@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { fetchPublicCard } from '../lib/cloudcards'
 import { submitLead } from '../lib/leads'
+import { noteShare } from '../lib/sharelog'
 import type { MyCard } from '../lib/mycards'
 import { parseQr } from '../lib/qrcontact'
 import { cloudEnabled } from '../lib/supabase'
@@ -63,6 +64,7 @@ export default function QrResult({ raw, myCard, onSave, onShowMyQr, onAgain, onC
         try {
           await submitLead(state.cardId, state.eventId ?? null, state.eventName ?? null, { name: myCard.name, phone: myCard.phones[0] ?? '', email: myCard.emails[0] ?? '', company: myCard.company })
           sentBack = true
+          noteShare(myCard.id, 'exchange')
         } catch { /* their card is saved either way; sending ours back is a bonus */ }
       }
       setState({ step: 'saved', name: state.contact.name || state.contact.company || 'Contact', sentBack })

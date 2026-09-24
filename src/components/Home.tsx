@@ -83,6 +83,17 @@ export default function Home({ cards, events, dupes, ready, needsKey, install, b
     { id: 'starred', label: 'Starred', items: starred, more: onStarred, empty: 'Star the people who matter most and they wait here.' },
   ]
   const shown = lists.find((l) => l.id === list)!
+  // a short watchlist never leaves the desk half empty: the next phase carries on under its own band
+  const NEXT: Record<List, List[]> = { due: ['upcoming', 'recent'], upcoming: ['recent'], recent: [], starred: ['recent'] }
+  const room = ROWS - Math.min(shown.items.length, ROWS)
+  const seen = new Set(shown.items.slice(0, ROWS).map((x) => x.key))
+  const then = room >= 2 ? NEXT[list].map((id) => lists.find((l) => l.id === id)!).map((l) => ({ ...l, items: l.items.filter((x) => !seen.has(x.key)) })).find((l) => l.items.length) : undefined
+  const row = (x: Person, n: number, recentFig: boolean) => (
+    <WatchRow key={x.key} card={x.card} p={x.p} i={n}
+      figure={recentFig ? { text: shortDate(x.card.createdAt, now), sub: isToday(x.card.createdAt, today) ? 'Today' : 'Scanned', tone: 'muted' } : (dueFigure(x.p.followUp, today) ?? rowFigure(x.p, x.card.createdAt, today, now))}
+      open={openKey === x.key} onToggle={() => setOpenKey(openKey === x.key ? '' : x.key)}
+      onOpen={() => onOpenContact(x.card.id, x.i)} onStar={() => onTogglePriority(x.card.id, x.i)} />
+  )
 
   // events as indices: newest first, each with its card count and today's additions
   const eventRows = [...events].sort((a, b) => b.createdAt - a.createdAt).slice(0, 3).map((e) => {
@@ -99,10 +110,10 @@ export default function Home({ cards, events, dupes, ready, needsKey, install, b
       </header>
 
       {needsKey && !ready && (
-        <button className="banner-row" onClick={onSetup}><Icon name="spark" size={18} /><span className="grow"><strong>Add your Gemini key</strong><small>Needed to read cards</small></span><Icon name="chevron" size={18} /></button>
+        <button className="banner-row check" onClick={onSetup}><Icon name="spark" size={18} /><span className="grow"><strong>Add your Gemini key</strong><small>Needed to read cards</small></span><Icon name="chevron" size={18} /></button>
       )}
       {backupNudge && (
-        <div className="banner-row static">
+        <div className="banner-row static check">
           <Icon name="download" size={18} />
           <span className="grow"><strong>Back up your contacts</strong><small>They are stored only on this phone</small></span>
           <button className="link" onClick={onBackup}>Back up</button>
@@ -160,16 +171,17 @@ export default function Home({ cards, events, dupes, ready, needsKey, install, b
           </div>
           <div className="plain-list" role="tabpanel">
             {shown.items.length === 0 && <p className="wl-empty">{shown.empty}</p>}
-            {shown.items.slice(0, ROWS).map((x, n) => (
-              <WatchRow key={x.key} card={x.card} p={x.p} i={n}
-                figure={list === 'recent' ? { text: shortDate(x.card.createdAt, now), sub: isToday(x.card.createdAt, today) ? 'Today' : 'Scanned', tone: 'muted' } : (dueFigure(x.p.followUp, today) ?? rowFigure(x.p, x.card.createdAt, today, now))}
-                open={openKey === x.key} onToggle={() => setOpenKey(openKey === x.key ? '' : x.key)}
-                onOpen={() => onOpenContact(x.card.id, x.i)} onStar={() => onTogglePriority(x.card.id, x.i)} />
-            ))}
+            {shown.items.slice(0, ROWS).map((x, n) => row(x, n, list === 'recent'))}
             {shown.items.length > ROWS && (
               <button className="wl-more" onClick={shown.more}>See all {shown.items.length}<Icon name="chevron" size={16} /></button>
             )}
           </div>
+          {then && (
+            <>
+              <h3 className="group band">Then: {then.label} <button className="link" onClick={() => { setList(then.id); setOpenKey('') }}>Show</button></h3>
+              <div className="plain-list">{then.items.slice(0, room).map((x, n) => row(x, n, then.id === 'recent'))}</div>
+            </>
+          )}
 
           {eventRows.length > 0 && (
             <>
