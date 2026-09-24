@@ -9,9 +9,11 @@ import CardThumb from './CardThumb'
 import EmptyState from './EmptyState'
 import Icon from './Icon'
 import Picker from './Picker'
-import StarButton from './StarButton'
+import WatchRow from './WatchRow'
 import { confirmAsk } from './Dialog'
 import { showEvent } from '../lib/eventname'
+import { localISO } from '../lib/followups'
+import { rowFigure } from '../lib/watch'
 
 type Sort = 'recent' | 'name' | 'company'
 export type Flt = 'all' | 'priority' | 'attention' | 'followup'
@@ -41,6 +43,8 @@ export default function Contacts({ onScan, cards: allCards, events, activeEvent,
   const [tag, setTag] = useState('')
   const [company, setCompany] = useState(initialCompany ?? '')
   const [sel, setSel] = useState<Set<string> | null>(null)
+  const [openKey, setOpenKey] = useState('')
+  const today = localISO()
 
   const eventName = (id?: string) => events.find((e) => e.id === id)?.name ?? ''
   const inEvent = activeEvent ? allCards.filter((c) => c.eventId === activeEvent) : allCards
@@ -75,9 +79,18 @@ export default function Contacts({ onScan, cards: allCards, events, activeEvent,
   return (
     <div>
       <header className="page-head">
-        <h1>Contacts</h1>
-        {rows.length > 0 && (sel ? <button className="link" onClick={exit}>Cancel</button> : <button className="link" onClick={() => setSel(new Set())}>Select</button>)}
+        <h1>Contacts <span className="count num">{rows.length}</span></h1>
+        {rows.length > 0 && (sel ? <button className="link" onClick={exit}>Cancel</button> : <button className="link" onClick={() => { setOpenKey(''); setSel(new Set()) }}>Select</button>)}
       </header>
+
+      {events.length > 0 && (
+        <div className="wl-tabs full-bleed ev-tabs" role="tablist" aria-label="Events">
+          <button role="tab" aria-selected={activeEvent === ''} className={activeEvent === '' ? 'on' : ''} onClick={() => onSelectEvent('')}>All</button>
+          {events.map((e) => (
+            <button key={e.id} role="tab" aria-selected={activeEvent === e.id} className={activeEvent === e.id ? 'on' : ''} onClick={() => onSelectEvent(e.id)} title={e.name}>{showEvent(e.name)}</button>
+          ))}
+        </div>
+      )}
 
       <div className="searchbox">
         <Icon name="search" size={18} />
@@ -87,7 +100,6 @@ export default function Contacts({ onScan, cards: allCards, events, activeEvent,
         </label>
       </div>
 
-      <p className="filters-label">Filters</p>
       <div className="filters">
         <span className={`filter-ico${flt !== 'all' || tag || company || activeEvent ? ' on' : ''}`}><Icon name="filter" size={16} /></span>
         {allTags.length > 0 && (
@@ -106,23 +118,11 @@ export default function Contacts({ onScan, cards: allCards, events, activeEvent,
         </div>
       )}
 
-      {events.length > 0 && (
-        <>
-          <div className="tab-strip" role="group" aria-label="Event dividers">
-            <button className={activeEvent === '' ? 'on' : ''} onClick={() => onSelectEvent('')} aria-current={activeEvent === '' ? 'true' : undefined}>All</button>
-            {events.map((e) => (
-              <button key={e.id} className={activeEvent === e.id ? 'on' : ''} onClick={() => onSelectEvent(e.id)} aria-current={activeEvent === e.id ? 'true' : undefined} title={e.name}>{showEvent(e.name)}</button>
-            ))}
-          </div>
-          <div className="tab-sheet" />
-        </>
-      )}
-
       {failed.length > 0 && <div className="note">{failed.length} card{failed.length > 1 ? 's' : ''} failed. <button className="link" onClick={onRetryFailed}>Retry all</button></div>}
 
       {reading.length > 0 && (
         <section>
-          <h3 className="group">Reading {reading.length} {reading.length === 1 ? 'card' : 'cards'}</h3>
+          <h3 className="group band">Reading {reading.length} {reading.length === 1 ? 'card' : 'cards'}</h3>
           <div className="plain-list">
             {reading.map((c, i) => (
               <div key={c.id} className="contact-row reading" style={{ ['--i' as string]: i }}>
@@ -146,19 +146,14 @@ export default function Contacts({ onScan, cards: allCards, events, activeEvent,
 
       {groups.filter((g) => g.items.length).map((g) => (
         <section key={g.label}>
-          <h3 className="group">{g.label}</h3>
+          <h3 className="group band">{g.label}<span className="num band-count">{g.items.length}</span></h3>
           <div className="plain-list">
             {g.items.map((r, i) => (
-              <div key={r.key} className="contact-row" style={{ ['--i' as string]: i }} onClick={() => (sel ? toggle(r.key) : onOpen(r.card.id, r.i))}>
-                {sel && <span className={`check-dot${sel.has(r.key) ? ' on' : ''}`}>{sel.has(r.key) && <Icon name="check" size={14} />}</span>}
-                <CardThumb blob={r.card.image} name={r.p.name} />
-                <div className="grow">
-                  <strong>{r.p.name || '(no name)'}</strong>
-                  <span className="muted">{[r.p.company, r.p.title].filter(Boolean).join(' · ') || r.p.phones[0] || r.p.emails[0] || ''}</span>
-                  {needsAttention(r.card, dupes.has(r.card.id)) && <span className="dup-note">{attentionReasons(r.card, dupes.has(r.card.id))[0]}</span>}
-                </div>
-                {!sel && <StarButton on={!!r.p.priority} onToggle={() => onTogglePriority(r.card.id, r.i)} />}
-              </div>
+              <WatchRow key={r.key} card={r.card} p={r.p} i={i} figure={rowFigure(r.p, r.card.createdAt, today)}
+                note={needsAttention(r.card, dupes.has(r.card.id)) ? attentionReasons(r.card, dupes.has(r.card.id))[0] : undefined}
+                selecting={!!sel} selected={!!sel?.has(r.key)}
+                open={openKey === r.key} onToggle={() => (sel ? toggle(r.key) : setOpenKey(openKey === r.key ? '' : r.key))}
+                onOpen={() => onOpen(r.card.id, r.i)} onStar={() => onTogglePriority(r.card.id, r.i)} />
             ))}
           </div>
         </section>

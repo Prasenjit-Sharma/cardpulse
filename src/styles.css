@@ -250,8 +250,8 @@ input[inputmode='tel'], .num input { font-variant-numeric: tabular-nums }
 
 /* the app's option picker (replaces every native <select>) */
 .pick, .event-pick {
-  flex: none; min-height: 36px; padding: 0 12px 0 14px; gap: 6px; background: var(--sleeve); box-shadow: inset 0 0 0 1px var(--board-edge);
-  border-radius: var(--r-pill); font-size: var(--t-s); font-weight: 600; color: var(--ink); max-width: 100%;
+  flex: none; min-height: 34px; padding: 0 8px 0 11px; gap: 4px; background: var(--sleeve); box-shadow: inset 0 0 0 1px var(--board-edge);
+  border-radius: 6px; font-size: var(--t-s); font-weight: 600; color: var(--ink); max-width: 100%;
 }
 .pick svg:last-child, .event-pick svg:last-child { color: var(--ink-3); transform: rotate(90deg) }
 .pick .pick-label, .event-pick .pick-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 46vw }
@@ -418,21 +418,26 @@ small.up, .indices small.up { color: var(--green); font-weight: 600 }
 .empty-art { width: 64px; height: 64px; border-radius: 20px; background: var(--brand-wash); color: var(--brand); display: inline-flex; align-items: center; justify-content: center }
 
 /* ---------- contacts: search, filters, event tabs ---------- */
-.searchbox { display: flex; align-items: center; gap: 10px; background: var(--sleeve); border-radius: var(--r-pill); padding: 0 8px 0 16px; color: var(--ink-3); box-shadow: var(--seat) }
-.searchbox input { border: 0; background: none; min-height: 48px; padding: 0; box-shadow: none }
+.searchbox { display: flex; align-items: center; gap: 10px; background: var(--field); border-radius: var(--r-field); padding: 0 4px 0 12px; color: var(--ink-3) }
+.searchbox input { border: 0; background: none; min-height: 42px; padding: 0; box-shadow: none }
 .searchbox input:focus { background: none; box-shadow: none; border: 0 }
-.searchbox:focus-within { box-shadow: var(--seat), 0 0 0 2px var(--brand-edge) }
-.searchbox + .filters, .searchbox + .event-pick { margin-top: 10px }
+.searchbox:focus-within { box-shadow: 0 0 0 1.5px var(--brand) }
+.page-head h1 { font-size: var(--t-xl) }
+.page-head h1 .count { margin-left: 6px; font-size: var(--t-l); font-weight: 600; color: var(--ink-3); letter-spacing: 0 }
+.ev-tabs { margin-top: -4px; margin-bottom: 10px }
+.ev-tabs button { max-width: 60vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; line-height: 44px }
+.band-count { margin-left: auto; font-size: var(--t-xs); letter-spacing: 0; color: var(--ink-3) }
+.searchbox + .filters, .searchbox + .event-pick { margin-top: 8px }
 .upload-inline { margin: 0; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; color: var(--ink-2) }
-.filters { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 2px 16px 6px; align-items: center }
+.filters { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 2px 16px 4px; align-items: center }
 .filters::-webkit-scrollbar { display: none }
-.filter-ico { width: 36px; height: 36px; border-radius: 50%; background: var(--sleeve); box-shadow: inset 0 0 0 1px var(--board-edge); display: inline-flex; align-items: center; justify-content: center; flex: none; color: var(--ink-2) }
+.filter-ico { width: 34px; height: 34px; border-radius: 6px; background: var(--sleeve); box-shadow: inset 0 0 0 1px var(--board-edge); display: inline-flex; align-items: center; justify-content: center; flex: none; color: var(--ink-2) }
 .filter-ico.on { background: var(--ink); color: var(--board); box-shadow: none }
 .pill-select { flex: none; width: auto; min-height: 36px; padding: 0 12px; border-radius: var(--r-pill); background: var(--sleeve); border: 1px solid var(--board-edge); font-size: var(--t-s); font-weight: 600; color: var(--ink) }
 .countbar { display: flex; justify-content: space-between; align-items: center; margin: 14px 4px 6px; min-height: 34px; color: var(--ink-3); font-size: var(--t-s) }
 .chips { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap }
 .chips.scroll { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-right: -16px; padding-right: 16px } .chips.scroll::-webkit-scrollbar { display: none }
-.chip { flex: none; width: auto; min-height: 36px; padding: 0 14px; font-size: var(--t-s); white-space: nowrap; font-weight: 600; color: var(--ink-2); background: var(--sleeve); box-shadow: inset 0 0 0 1px var(--board-edge) }
+.chip { flex: none; width: auto; min-height: 34px; padding: 0 12px; border-radius: 6px; font-size: var(--t-s); white-space: nowrap; font-weight: 600; color: var(--ink-2); background: var(--sleeve); box-shadow: inset 0 0 0 1px var(--board-edge) }
 .chip.on { background: var(--ink); color: var(--board); box-shadow: none }
 /* event tabs: a scrolling row of pills */
 .tab-strip { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; align-items: center; margin: 14px -16px 0; padding: 2px 16px 4px }
