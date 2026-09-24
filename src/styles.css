@@ -279,10 +279,10 @@ input[inputmode='tel'], .num input { font-variant-numeric: tabular-nums }
 .chip-pill { display: inline-flex; align-items: center; gap: 7px; background: var(--sleeve); border-radius: var(--r-pill); padding: 8px 14px; font-size: var(--t-s); font-weight: 600; color: var(--ink-2); box-shadow: var(--seat) }
 .brand { display: flex; align-items: center; gap: 9px; font-weight: 600 }
 
-/* home masthead */
-.album-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 4px 0 16px; min-height: 44px }
-.album-head .wordmark { font-size: var(--t-xl); font-weight: 700; letter-spacing: -.025em; color: var(--ink); line-height: 1; display: inline-flex; align-items: center; gap: 10px }
-.album-head .tally { font-size: var(--t-s); color: var(--ink-3) }
+/* home masthead: a compact desk header */
+.desk-head { display: flex; align-items: center; gap: 2px; min-height: 48px; margin: 0 -6px 6px 0 }
+.desk-head .wordmark { flex: 1; font-size: 20px; font-weight: 750; letter-spacing: -.025em; color: var(--ink); line-height: 1 }
+.full-bleed { margin-left: -16px; margin-right: -16px }
 
 /* ---------- lists of people ---------- */
 /* people are one grouped white card per section, rows ruled apart by an inset hairline (as Covve lists them) */
@@ -323,26 +323,77 @@ input[inputmode='tel'], .num input { font-variant-numeric: tabular-nums }
 .dots { display: flex; gap: 4px; margin-top: 4px } .dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--brand); opacity: .3; animation: ink 1.1s cubic-bezier(.4,0,.2,1) infinite } .dots i:nth-child(2) { animation-delay: .15s } .dots i:nth-child(3) { animation-delay: .3s }
 .dup-note { font-size: var(--t-xs); font-weight: 600; color: var(--amber); line-height: 1.3 }
 
-/* ---------- home ---------- */
-.ledger { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px }
-.ledger button {
-  display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-height: 84px; padding: 14px; text-align: left;
-  background: var(--sleeve); border-radius: var(--r-sleeve); box-shadow: var(--seat); color: var(--ink); font-weight: 400;
+/* ---------- home: the day's desk ---------- */
+/* the ticker: standing figures in one band, ruled apart like a market strip */
+.ticker { display: flex; overflow-x: auto; scrollbar-width: none; background: var(--band); border-block: 1px solid var(--rule-soft) }
+.ticker::-webkit-scrollbar { display: none }
+.ticker button { flex: 1 0 auto; min-height: 40px; padding: 0 14px; gap: 7px; background: none; border-radius: 0; color: var(--ink); font-weight: 400 }
+.ticker button + button { box-shadow: inset 1px 0 0 var(--rule-soft) }
+.ticker button:active:not(:disabled) { transform: none; background: var(--board-2) }
+.ticker span { font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-3) }
+.ticker b { font-size: var(--t-s); font-weight: 650; font-variant-numeric: tabular-nums }
+.ticker .check b { color: var(--amber) }
+/* index tiles: today's three figures */
+.indices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 12px 0 14px }
+.indices button {
+  display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 0; min-height: 0; padding: 10px 12px 11px; text-align: left;
+  background: var(--board); border-radius: var(--r-sleeve); box-shadow: inset 0 0 0 1px var(--rule); color: var(--ink); font-weight: 400
 }
-.ledger button:active:not(:disabled) { transform: scale(.98) }
-.ledger b { font-size: 26px; font-weight: 700; line-height: 1.1; letter-spacing: -.02em; font-variant-numeric: tabular-nums }
-.ledger span { font-size: var(--t-s); color: var(--ink-3); font-weight: 500 }
-.stats2.home-stats { display: flex; flex-direction: column; margin: 12px 0 4px; background: var(--sleeve); border-radius: var(--r-sleeve); box-shadow: var(--seat); overflow: hidden }
-.home-stats button {
-  display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; text-align: left; min-height: 54px;
-  background: none; border-radius: 0; padding: 0 16px; color: var(--ink); font-weight: 400;
-}
-.home-stats button + button { border-top: 1px solid var(--rule-soft) }
-.home-stats button:active:not(:disabled) { transform: none; background: var(--board-2) }
-.home-stats button span { font-size: var(--t-m); color: var(--ink); font-weight: 500 }
-.home-stats button b { font-size: var(--t-m); font-weight: 600; font-variant-numeric: tabular-nums; color: var(--ink-2) }
-.home-stats button b small { font-size: var(--t-s); font-weight: 500; color: var(--ink-3) }
-.home-stats button.warm b { color: var(--amber) }
+.indices button:active:not(:disabled) { transform: none; background: var(--band) }
+.indices span { font-size: var(--t-xs); font-weight: 500; color: var(--ink-3) }
+.indices b { font-size: 26px; font-weight: 700; line-height: 1.2; letter-spacing: -.02em; font-variant-numeric: tabular-nums }
+.indices small { font-size: var(--t-xs); color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100% }
+.indices .due b { color: var(--red) }
+small.up, .indices small.up { color: var(--green); font-weight: 600 }
+/* watchlist tabs: underlined, never pills */
+.wl-tabs { display: flex; padding: 0 6px; border-bottom: 1px solid var(--rule); overflow-x: auto; scrollbar-width: none }
+.wl-tabs::-webkit-scrollbar { display: none }
+.wl-tabs button { flex: none; position: relative; min-height: 44px; padding: 0 10px; gap: 6px; background: none; border-radius: 0; color: var(--ink-3); font-size: var(--t-m); font-weight: 600 }
+.wl-tabs button:active:not(:disabled) { transform: none }
+.wl-tabs button.on { color: var(--ink) }
+.wl-tabs button.on::after { content: ''; position: absolute; left: 10px; right: 10px; bottom: -1px; height: 2px; background: var(--brand) }
+.wl-tabs em { font-style: normal; font-size: 11px; font-weight: 650; min-width: 20px; padding: 1px 6px; border-radius: 4px; background: var(--board-2); color: var(--ink-2); line-height: 16px; text-align: center }
+.wl-tabs em.due { background: var(--red-wash); color: var(--red) }
+.wl-empty { margin: 0; padding: 18px 16px; color: var(--ink-3); font-size: var(--t-s) }
+.wl-more { width: 100%; min-height: 44px; gap: 2px; background: none; border-radius: 0; border-top: 1px solid var(--rule-soft); color: var(--brand); font-size: var(--t-s); font-weight: 600 }
+.wl-more:active:not(:disabled) { transform: none; background: var(--band) }
+/* an event as an index: name left, its count right */
+.index-row { width: 100%; justify-content: flex-start; gap: 12px; min-height: 56px; padding: 8px 16px; background: none; border-radius: 0; text-align: left; color: var(--ink); font-weight: 400; position: relative }
+.index-row + .index-row::before { content: ''; position: absolute; top: 0; left: 16px; right: 0; height: 1px; background: var(--rule-soft) }
+.index-row:active:not(:disabled) { transform: none; background: var(--band) }
+.index-row .grow { display: flex; flex-direction: column; gap: 1px; min-width: 0 }
+.index-row strong { font-size: var(--t-m); font-weight: 650; letter-spacing: .01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.index-row .muted { font-size: var(--t-xs) }
+.group.band .link { margin-left: auto; font-size: var(--t-xs); letter-spacing: 0; text-transform: none }
+
+/* ---------- the watchlist row and its depth drawer ---------- */
+.watch-row { position: relative; animation: rise .26s var(--ease) both; animation-delay: calc(min(var(--i, 0), 10) * 18ms) }
+.watch-row + .watch-row::before { content: ''; position: absolute; top: 0; left: 16px; right: 0; height: 1px; background: var(--rule-soft); z-index: 1 }
+.watch-main { width: 100%; justify-content: flex-start; gap: 12px; min-height: 60px; padding: 8px 16px; background: none; border-radius: 0; text-align: left; color: var(--ink); font-weight: 400; transition: background var(--dur-1) linear }
+.watch-main:active:not(:disabled) { transform: none; background: var(--band) }
+.watch-row.open .watch-main { background: var(--band) }
+.watch-main .grow { display: flex; flex-direction: column; gap: 1px; min-width: 0 }
+.watch-main strong { display: flex; align-items: center; gap: 4px; font-size: 15px; font-weight: 600; line-height: 1.3; letter-spacing: -.005em; overflow: hidden; white-space: nowrap; text-overflow: ellipsis }
+.watch-main .muted { font-size: var(--t-s); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.watch-main .dup-note { font-size: var(--t-xs) }
+.star-mark { display: inline-flex; color: #D99A06; flex: none } .star-mark svg { fill: currentColor }
+.fig { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; flex: none; text-align: right }
+.fig b { font-size: var(--t-m); font-weight: 650; color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap }
+.fig small { font-size: 11px; color: var(--ink-3); white-space: nowrap }
+.fig.due b { color: var(--red) } .fig.done b { color: var(--green) } .fig.check b { color: var(--amber) }
+.depth { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 2px; padding: 2px 8px 8px; background: var(--band); animation: depth-in var(--dur-2) var(--ease) both }
+.depth-act { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-height: 52px; padding: 6px 0; border-radius: 8px; background: none; color: var(--brand); font-size: var(--t-xs); font-weight: 600; text-decoration: none }
+.depth-act:active:not(:disabled) { transform: none; background: var(--board-2) }
+.depth-act.off { color: var(--ink-3); opacity: .45 }
+.depth-act.go { color: var(--ink) }
+.depth-act.starred { color: #B07A00 } .depth-act.starred svg { fill: currentColor }
+@keyframes depth-in { from { opacity: 0; transform: translateY(-4px) } }
+/* selecting: a chosen row inverts */
+.watch-row.sel .watch-main { background: var(--ink); color: var(--board) }
+.watch-row.sel .watch-main .muted, .watch-row.sel .fig small { color: color-mix(in srgb, var(--board) 72%, transparent) }
+.watch-row.sel .fig b { color: var(--board) }
+.watch-row .check-dot { margin-right: -2px }
+
 .banner-row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px; margin-bottom: 10px; text-align: left; font-weight: 400; min-height: 0; border-radius: var(--r-sleeve); color: var(--ink) }
 .banner-row .grow { display: flex; flex-direction: column } .banner-row small { color: var(--ink-3) } .banner-row > svg:first-child { color: var(--brand); flex: none }
 .banner-row.static { cursor: default } .banner-row:active:not(:disabled) { transform: none }
