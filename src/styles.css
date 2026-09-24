@@ -148,7 +148,7 @@ a { color: var(--brand); text-underline-offset: 3px; text-decoration-thickness: 
 .section { margin: 26px 0 10px; font-size: var(--t-l); font-weight: 650; display: flex; align-items: center; gap: 8px }
 h3.section .link { position: relative } h3.section .link::after { content: ''; position: absolute; inset: -14px -10px }
 
-/* ---------- buttons: pills. Filled accent, tonal, outline, text ---------- */
+/* ---------- buttons: 8px keys. Filled accent, tonal, outline, text ---------- */
 button {
   font: inherit; font-weight: 600; font-size: var(--t-m); min-height: 44px; padding: 0 18px;
   border-radius: var(--r-pill); border: 0; background: var(--board-2); color: var(--ink);
@@ -167,8 +167,8 @@ button.cta:disabled { opacity: 1; background: var(--board-2); color: var(--ink-3
 /* dark: the accent's light twin, lifted further towards white so the one primary reads as the strongest thing on the screen; no coloured glow */
 :root[data-theme='dark'] { --primary-fill: color-mix(in srgb, var(--brand-lite) 62%, #fff) }
 @media (prefers-color-scheme: dark) { :root:not([data-theme='light']) { --primary-fill: color-mix(in srgb, var(--brand-lite) 62%, #fff) } }
-:root[data-theme='dark'] :is(button.cta:not(:disabled), .fab-main) { box-shadow: none }
-@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) :is(button.cta:not(:disabled), .fab-main) { box-shadow: none } }
+:root[data-theme='dark'] button.cta:not(:disabled) { box-shadow: none }
+@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) button.cta:not(:disabled) { box-shadow: none } }
 button.primary { background: var(--brand); color: var(--brand-ink) }
 button.outline { background: transparent; box-shadow: inset 0 0 0 1px var(--board-edge); width: 100% }
 button.outline.center { width: auto; margin: 14px auto 0; padding: 0 22px }
@@ -225,7 +225,7 @@ input[inputmode='tel'], .num input { font-variant-numeric: tabular-nums }
 .field-box textarea { font-weight: 400; font-size: var(--t-m); padding: 3px 0 }
 .field-box .due { position: absolute; right: 14px; top: 12px; color: var(--red); font-weight: 600; font-size: var(--t-xs) }
 .mic { width: 32px; height: 32px; min-height: 32px; padding: 0; border-radius: 50%; border: 0; background: var(--brand-wash); color: var(--brand) }
-.mic.on { background: var(--red); color: #fff; animation: pulse 1.2s ease-in-out infinite }
+.mic.on { background: var(--brand); color: var(--brand-ink); animation: pulse 1.2s ease-in-out infinite }
 
 /* the app's checkbox and switch */
 .check-dot { width: 22px; height: 22px; border-radius: 7px; box-shadow: inset 0 0 0 1.5px var(--board-edge); background: var(--sleeve); flex: none; display: inline-flex; align-items: center; justify-content: center; color: var(--brand-ink); transition: background var(--dur-1) var(--ease) }
@@ -285,7 +285,7 @@ input[inputmode='tel'], .num input { font-variant-numeric: tabular-nums }
 .full-bleed { margin-left: -16px; margin-right: -16px }
 
 /* ---------- lists of people ---------- */
-/* people are one grouped white card per section, rows ruled apart by an inset hairline (as Covve lists them) */
+/* people are a flat, full-bleed watchlist: rows ruled apart by an inset hairline */
 .plain-list { display: flex; flex-direction: column; margin: 0 -16px; background: var(--board) }
 .scan-row, .contact-row {
   display: flex; align-items: center; gap: 12px; padding: 8px 16px; min-height: 58px;
@@ -442,15 +442,6 @@ small.up, .indices small.up { color: var(--green); font-weight: 600 }
 .chips.scroll { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-right: -16px; padding-right: 16px } .chips.scroll::-webkit-scrollbar { display: none }
 .chip { flex: none; width: auto; min-height: 34px; padding: 0 12px; border-radius: 6px; font-size: var(--t-s); white-space: nowrap; font-weight: 600; color: var(--ink-2); background: var(--sleeve); box-shadow: inset 0 0 0 1px var(--board-edge) }
 .chip.on { background: var(--ink); color: var(--board); box-shadow: none }
-/* event tabs: a scrolling row of pills */
-.tab-strip { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; align-items: center; margin: 14px -16px 0; padding: 2px 16px 4px }
-.tab-strip::-webkit-scrollbar { display: none }
-.tab-strip button {
-  flex: none; min-height: 36px; padding: 0 16px; background: var(--sleeve); color: var(--ink-2); box-shadow: inset 0 0 0 1px var(--board-edge);
-  font-size: var(--t-s); font-weight: 600; white-space: nowrap; max-width: 60vw; overflow: hidden; text-overflow: ellipsis;
-}
-.tab-strip button.on { background: var(--ink); color: var(--board); box-shadow: none }
-.tab-sheet { padding-top: 4px }
 .selbar {
   position: fixed; left: 0; right: 0; bottom: calc(var(--rail-h) + env(safe-area-inset-bottom)); max-width: 560px; margin: auto; z-index: 6;
   display: flex; align-items: center; gap: 8px; padding: 8px 12px 8px 16px; background: var(--ink); color: var(--board); border-radius: 0
@@ -467,7 +458,6 @@ small.up, .indices small.up { color: var(--green); font-weight: 600 }
 .carousel img[data-fit='cover'] { object-fit: cover; padding: 0 }
 .dots-row { display: flex; justify-content: center; gap: 6px; margin: 10px 0 } .dots-row i { width: 6px; height: 6px; border-radius: 50%; background: var(--board-edge) } .dots-row i.on { background: var(--brand); width: 16px; border-radius: 3px }
 .lightbox { position: fixed; inset: 0; z-index: 20; background: rgba(6,8,9,.94); display: flex; align-items: center; justify-content: center; animation: fade-in var(--dur-2) var(--ease) both } .lightbox img { max-width: 100%; max-height: 100% }
-.namecard { padding: 4px 0 4px; margin: 10px 0 14px; display: flex; flex-direction: column; gap: 2px }
 .namecard-photo { flex: none; align-self: flex-start; width: 104px; min-height: 0; aspect-ratio: 1.75; padding: 0; margin: 4px 0 0; border-radius: 6px; overflow: hidden; background: var(--sleeve); box-shadow: 0 0 0 1px var(--rule) }
 /* the contact's quote header: who, then one status line of phase, follow-up and event */
 .quote { display: flex; align-items: flex-start; gap: 14px; margin: 2px 0 14px }
@@ -491,9 +481,6 @@ small.up, .indices small.up { color: var(--green); font-weight: 600 }
 .log-add { width: calc(100% + 32px); justify-content: flex-start; gap: 10px; min-height: 48px; margin: 0 -16px; padding: 0 16px; border-radius: 0; background: none; border-bottom: 1px solid var(--rule-soft); color: var(--brand); font-weight: 600 }
 .log-add svg { color: var(--brand) }
 .log-add:active:not(:disabled) { transform: none; background: var(--board-2) }
-.namecard h1 { display: flex; align-items: center; gap: 9px; font-size: 26px }
-.namecard strong { font-size: var(--t-m); font-weight: 500; color: var(--ink-2) }
-.namecard .co { color: var(--ink-3); font-size: var(--t-m) }
 .star-btn { width: 44px; height: 44px; min-height: 44px; flex: none; padding: 0; background: none; color: var(--ink-3) }
 .star-btn svg { fill: none; transition: fill var(--dur-1) var(--ease), color var(--dur-1) var(--ease) }
 .star-btn.on { color: #E3A008 } .star-btn.on svg { fill: currentColor }
@@ -559,13 +546,6 @@ button.add { min-height: 36px; padding: 0 2px; font-size: var(--t-s); background
 .act-row p { margin: 2px 0 0; font-size: var(--t-s); color: var(--ink-2); line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere }
 .act-next { color: var(--ink-3); white-space: nowrap }
 .act-row .x-btn { margin: -4px -6px -4px 0 }
-/* the actions button on the contact page */
-.fab-menu { position: fixed; right: max(16px, calc(50% - 280px + 16px)); bottom: calc(18px + env(safe-area-inset-bottom)); z-index: 9; display: flex; flex-direction: column; align-items: flex-end; gap: 14px }
-.fab-main { width: 56px; height: 56px; min-height: 56px; padding: 0; border-radius: 50%; background: var(--primary-fill, var(--brand)); color: var(--brand-ink); box-shadow: 0 2px 6px color-mix(in srgb, var(--brand) 30%, transparent), 0 12px 28px color-mix(in srgb, var(--brand) 26%, transparent); transition: transform var(--dur-2) var(--ease) }
-.fab-main.open { transform: rotate(90deg) } .fab-main.open svg { transform: rotate(-90deg) }
-.fab-item { background: none; min-height: 0; padding: 0; gap: 14px; color: #fff; font-weight: 600; font-size: var(--t-l); animation: rise .22s var(--ease) both }
-.fab-item:nth-of-type(2) { animation-delay: 45ms }
-.fab-item i { width: 50px; height: 50px; border-radius: 50%; background: var(--sleeve); color: var(--brand); display: inline-flex; align-items: center; justify-content: center; box-shadow: var(--seat-deep) }
 
 /* ---------- review ---------- */
 .photo-frame { display: flex; justify-content: center; background: var(--sleeve); border-radius: var(--r-sleeve); padding: 14px; margin: 16px 0 10px; box-shadow: var(--seat) }
@@ -901,11 +881,10 @@ a.public-btn { display: inline-flex; align-items: center; justify-content: cente
   body { background: var(--desk) }
   .app { max-width: 880px; box-shadow: 0 0 0 1px var(--rule-soft), 0 18px 60px rgba(16,24,40,.12) }
   nav, .toast, .selbar { max-width: 880px }
-  .fab-menu { right: calc(50% - 440px + 20px) }
   main { padding-left: 28px; padding-right: 28px }
   .plain-list, .group.band, .full-bleed, .indices, .infos, .activity, .editor-box, .field-table, .field-box.pickbox { margin-left: -28px; margin-right: -28px } .group.band, .infos, .activity, .field-table { padding-left: 28px; padding-right: 28px }
   .banner-row, .log-add { margin-left: -28px; margin-right: -28px; width: calc(100% + 56px); padding-left: 28px }
-  .filters, .tab-strip { margin-left: -28px; margin-right: -28px; padding-left: 28px; padding-right: 28px }
+  .filters { margin-left: -28px; margin-right: -28px; padding-left: 28px; padding-right: 28px }
 }
 
 @keyframes view-in { from { opacity: 0 } to { opacity: 1 } }

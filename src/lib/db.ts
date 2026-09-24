@@ -28,7 +28,7 @@ export async function listCards(): Promise<CardRecord[]> {
 const KEY = 'cardpulse.settings'
 export type KeepPhotos = 'full' | 'thumb' | 'none'
 export type Theme = 'system' | 'light' | 'dark'
-export interface Settings { apiKey: string; model: string; keepPhotos: KeepPhotos; theme?: Theme; /** The app's accent colour, by id (src/lib/accents.ts). Graphite when unset. */ accent?: string; /** How contacts are named when saved to the phone (so the company shows on incoming calls). */ nameFormat?: NameFormat; /** Developer option: bypass the CardPulse server and call Gemini directly. */ useOwnKey?: boolean }
+export interface Settings { apiKey: string; model: string; keepPhotos: KeepPhotos; theme?: Theme; /** The app's accent colour, by id (src/lib/accents.ts). Blue when unset. */ accent?: string; /** How contacts are named when saved to the phone (so the company shows on incoming calls). */ nameFormat?: NameFormat; /** Developer option: bypass the CardPulse server and call Gemini directly. */ useOwnKey?: boolean }
 
 /** Can cards be read right now? Server mode needs nothing from the user; direct mode needs a key and a model. */
 export const readerReady = (s: Settings) => (serverMode && !s.useOwnKey) || (!!s.apiKey && !!s.model)
