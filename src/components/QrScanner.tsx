@@ -2,9 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { decodeQr, decodeQrFile } from '../lib/qrdecode'
 import { useBackClose } from '../lib/useBackClose'
 import Icon from './Icon'
-
-type PhotoMode = 'single' | 'sided' | 'many'
-const PHOTO_MODES: { id: PhotoMode; label: string }[] = [{ id: 'single', label: 'Card' }, { id: 'sided', label: 'Front + back' }, { id: 'many', label: 'Many' }]
+import ModeRail, { type PhotoMode } from './ModeRail'
 const EVERY_MS = 180
 
 /**
@@ -66,21 +64,21 @@ export default function QrScanner({ paused, eventLabel, onFound, onPhotoMode, on
       <div className="cam-top">
         <button className="round dark" onClick={onClose} aria-label="Close"><Icon name="x" size={22} /></button>
         <div className="cam-mid">
-          <div className="seg" role="group" aria-label="What to scan">
-            {PHOTO_MODES.map((m) => <button key={m.id} onClick={() => onPhotoMode(m.id)}>{m.label}</button>)}
-            <button className="on" aria-pressed="true">QR</button>
-          </div>
+          <span className={`pillbar${miss ? ' notice' : ''}`} role="status" aria-live="polite">{miss || 'Point at a QR code'}</span>
           {eventLabel && <span className="pillbar sub">{eventLabel}</span>}
         </div>
-        <span style={{ width: 44 }} />
       </div>
       <div className="cam-bottom qr-bottom">
-        <p className="pillbar">{miss || 'Point at a QR code on a card, or at another CardPulse user’s card'}</p>
-        <label className="toggle">
-          <span className="round dark"><Icon name="image" size={20} /></span>
-          <span>Photo of a QR</span>
-          <input type="file" accept="image/*" hidden onChange={(e) => { void fromPhoto(e.target.files?.[0]); e.target.value = '' }} />
-        </label>
+        <ModeRail mode="qr" onPick={(m) => { if (m !== 'qr') onPhotoMode(m) }} />
+        <div className="shutter-row">
+          <div className="thumb-slot">
+            <label className="round dark gallery" aria-label="Read a QR from a photo" title="Photo of a QR"><Icon name="image" size={20} />
+              <input type="file" accept="image/*" hidden onChange={(e) => { void fromPhoto(e.target.files?.[0]); e.target.value = '' }} />
+            </label>
+          </div>
+          <span className="shutter ring-scan" aria-hidden="true"><Icon name="qr" size={26} /></span>
+          <div className="thumb-slot right" />
+        </div>
       </div>
     </div>
   )

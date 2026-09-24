@@ -127,6 +127,8 @@ Inter Variable for the whole interface, sentence case everywhere. Five sizes: 28
 
 A single 560px column centred on phones and small tablets, 16px side gutters, 8px between list rows, 26px above a section heading and 8px below it. Wide screens (900px+) widen the column to 880px on a quiet desk colour and put list rows in two columns. The bottom tab bar is fixed and translucent; the pill Scan button floats above it at the bottom right.
 
+The camera keeps its top edge for three round icons only: Close on the left, Auto detect and Flash on the right, with the status line centred below them. The scan modes (Card, 2-sided, Group, QR) sit in a rail just above the shutter, within thumb reach; only the chosen mode shows its word, the rest are icons. The shutter's ring shows the mode: whole for Card, cut in halves for 2-sided (the first half turns white once the front is taken), quarters for Group, and on the QR screen a hollow ring that breathes while it looks for a code.
+
 ## Elevation & Depth
 
 Lifted, not layered: white surfaces on the grey ground carry one faint two-part shadow (`--seat`); floating things (the Scan button, the contact actions button, toasts, sheets) carry a deeper one (`--seat-deep`, sheets a soft upward shadow). Borders are used only for outline buttons, chips and pickers on white, as a 1px inset ring.

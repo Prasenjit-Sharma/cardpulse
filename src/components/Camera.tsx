@@ -7,17 +7,13 @@ import { useBackClose } from '../lib/useBackClose'
 import { growQuad, quadSize, warpQuad, type Pt, type Quad } from '../lib/warp'
 import { useObjectUrl } from '../lib/useObjectUrl'
 import Icon from './Icon'
+import ModeRail, { PHOTO_MODES, type PhotoMode } from './ModeRail'
 import { confirmAsk } from './Dialog'
 import { showEvent } from '../lib/eventname'
 
 const MODE_KEY = 'cardpulse.captureMode'
 const AUTO_KEY = 'cardpulse.autoDetect'
-type Mode = 'single' | 'sided' | 'many'
-const MODES: { id: Mode; label: string }[] = [
-  { id: 'single', label: 'Card' },
-  { id: 'sided', label: 'Front + back' },
-  { id: 'many', label: 'Many' },
-]
+type Mode = PhotoMode
 const MAX_CARDS = 6         // photos held in the tray before they must be read
 const HOLD_MS = 300         // how long the card must hold still before Auto Detect captures
 const ANALYSE_WIDTH = 160
@@ -62,7 +58,7 @@ export default function Camera({ onCard, onSubmit, onClose, onGallery, onQr, eve
   const noticeTimer = useRef(0)
   const full = !single && tray.length >= MAX_CARDS
   const [mode, setMode] = useState<Mode>(() => {
-    try { const m = localStorage.getItem(MODE_KEY) as Mode; return MODES.some((x) => x.id === m) ? m : 'single' } catch { return 'single' }
+    try { const m = localStorage.getItem(MODE_KEY) as Mode; return PHOTO_MODES.includes(m) ? m : 'single' } catch { return 'single' }
   })
   const [auto, setAuto] = useState(() => { try { return localStorage.getItem(AUTO_KEY) !== '0' } catch { return true } })
   const [torchOk, setTorchOk] = useState(false)
@@ -260,7 +256,7 @@ export default function Camera({ onCard, onSubmit, onClose, onGallery, onQr, eve
   shootRef.current = shoot
 
   const pickMode = (m: Mode) => { flushFront(); setMode(m); try { localStorage.setItem(MODE_KEY, m) } catch { /* ignore */ } }
-  const toggleAuto = () => { const n = !auto; setAuto(n); try { localStorage.setItem(AUTO_KEY, n ? '1' : '0') } catch { /* ignore */ } }
+  const toggleAuto = () => { const n = !auto; setAuto(n); say(n ? 'Auto detect on' : 'Auto detect off'); try { localStorage.setItem(AUTO_KEY, n ? '1' : '0') } catch { /* ignore */ } }
   const toggleTorch = async () => {
     const n = !torch
     try { await track.current?.applyConstraints({ advanced: [{ torch: n } as MediaTrackConstraintSet] }); setTorch(n) } catch { /* torch not available */ }
@@ -306,17 +302,18 @@ export default function Camera({ onCard, onSubmit, onClose, onGallery, onQr, eve
 
         <div className="cam-top">
           <button className="round dark" onClick={requestClose} aria-label="Close"><Icon name="x" size={22} /></button>
-          <div className="cam-mid">
-            {!sidedOnly && !single && (
-              <div className="seg" role="tablist">
-                {MODES.map((m) => <button key={m.id} className={mode === m.id ? 'on' : ''} onClick={() => pickMode(m.id)}>{m.label}</button>)}
-                {onQr && <button onClick={() => { if (requestClose()) onQr() }}>QR</button>}
-              </div>
+          <div className="cam-tools">
+            {mode !== 'many' && (
+              <button className={`round dark${auto ? ' on' : ''}`} onClick={toggleAuto} aria-pressed={auto} aria-label="Auto detect" title="Auto detect"><Icon name="frame" size={20} /></button>
             )}
+            {torchOk && (
+              <button className={`round dark${torch ? ' on' : ''}`} onClick={() => void toggleTorch()} aria-pressed={torch} aria-label="Flash" title="Flash"><Icon name={torch ? 'bolt' : 'boltoff'} size={20} /></button>
+            )}
+          </div>
+          <div className="cam-mid">
             <span className={`pillbar${notice ? ' notice' : ''}`} role="status" aria-live="polite">{status}</span>
             {eventLabel && <span className="pillbar sub">{showEvent(eventLabel)}</span>}
           </div>
-          <span className="round ghost" />
         </div>
 
         {hasFront && <button className="skip" onClick={flushFront}>Skip back</button>}
@@ -325,14 +322,6 @@ export default function Camera({ onCard, onSubmit, onClose, onGallery, onQr, eve
           {struggling && auto && mode !== 'many' && tray.length === 0 && (
             <button className="tips" onClick={() => setStruggling(false)}>Trouble? Use a plain background, or turn off Auto detect</button>
           )}
-          <div className="toggles">
-            {torchOk && (
-              <label className="toggle"><button className={`round dark${torch ? ' on' : ''}`} onClick={() => void toggleTorch()} aria-pressed={torch} aria-label="Flash"><Icon name={torch ? 'bolt' : 'boltoff'} size={20} /></button><span>Flash</span></label>
-            )}
-            {mode !== 'many' && (
-              <label className="toggle"><button className={`round dark${auto ? ' on' : ''}`} onClick={toggleAuto} aria-pressed={auto} aria-label="Auto detect"><Icon name="frame" size={20} /></button><span>Auto detect</span></label>
-            )}
-          </div>
 
           {!single && (
             <div className="tray-wrap">
@@ -358,10 +347,14 @@ export default function Camera({ onCard, onSubmit, onClose, onGallery, onQr, eve
             </div>
           )}
 
+          {!sidedOnly && !single && (
+            <ModeRail mode={mode} qr={!!onQr} onPick={(m) => { if (m !== 'qr') pickMode(m); else if (requestClose()) onQr?.() }} />
+          )}
+
           <div className="shutter-row">
             <div className="thumb-slot">
               {onGallery && !single && (
-                <label className="toggle gallery"><span className="round dark"><Icon name="image" size={20} /></span><span>Gallery</span>
+                <label className="round dark gallery" aria-label="Pick photos from the gallery" title="Gallery"><Icon name="image" size={20} />
                   <input type="file" accept="image/*" multiple hidden onChange={(e) => {
                     const files = e.target.files
                     if (files && files.length) {
@@ -376,7 +369,7 @@ export default function Camera({ onCard, onSubmit, onClose, onGallery, onQr, eve
                 </label>
               )}
             </div>
-            <button className="shutter" onClick={() => shoot()} disabled={!!error || full} aria-label="Take photo" />
+            <button className={`shutter ${sided ? `ring-2${hasFront ? ' half' : ''}` : mode === 'many' && !single ? 'ring-4' : ''}`} onClick={() => shoot()} disabled={!!error || full} aria-label="Take photo" />
             <div className="thumb-slot right">
               {!single && n > 0 && (
                 <button className="readbtn" onClick={submit}>Read {n} {n === 1 ? 'card' : 'cards'}<Icon name="chevron" size={16} /></button>
