@@ -71,7 +71,10 @@ export default function Home({ cards, events, dupes, ready, needsKey, install, b
   const toCheck = cards.filter((c) => needsAttention(c, dupes.has(c.id))).length
   const acc = overall(sumTallies(cards.filter((c) => c.opened).map(scoreCard).filter((x): x is NonNullable<typeof x> => !!x)))
 
-  const [list, setList] = useState<List>(() => (due.length ? 'due' : upcoming.length ? 'upcoming' : 'recent'))
+  // Until the user picks a watchlist, show the one that matters: due, else upcoming, else recent. Chosen at render time,
+  // because contacts load after the first render.
+  const [picked, setList] = useState<List | null>(null)
+  const list: List = picked ?? (due.length ? 'due' : upcoming.length ? 'upcoming' : 'recent')
   const [openKey, setOpenKey] = useState('')
   const lists: { id: List; label: string; items: Person[]; more: () => void; empty: string }[] = [
     { id: 'due', label: 'Due', items: due, more: onInsights, empty: 'Nobody is due. Set a follow-up date on a contact and it lands here on the day.' },
@@ -132,7 +135,7 @@ export default function Home({ cards, events, dupes, ready, needsKey, install, b
 
           <div className="indices" role="group" aria-label="Today">
             <button className={due.length ? 'due' : ''} onClick={() => setList('due')}>
-              <span>Due today</span>
+              <span>Due</span>
               <b className="num">{due.length}</b>
               <small>{overdue ? `${overdue} overdue` : due.length ? 'none overdue' : 'all clear'}</small>
             </button>

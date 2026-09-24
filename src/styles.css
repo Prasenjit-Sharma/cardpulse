@@ -259,7 +259,7 @@ input[inputmode='tel'], .num input { font-variant-numeric: tabular-nums }
 .pick.flat { background: none; box-shadow: none; padding: 0; min-height: 30px; width: 100%; justify-content: space-between; font-size: var(--t-l); border-radius: 0 }
 /* a picker that stands in for a field: the field's own shape */
 .pick.wide { width: 100%; justify-content: space-between; min-height: 48px; padding: 0 14px; border-radius: var(--r-field); background: var(--field); box-shadow: none; font-size: 16px; font-weight: 500 }
-.pick.onbar { background: rgba(255,255,255,.12); box-shadow: none; color: #fff }
+.pick.onbar { background: color-mix(in srgb, var(--board) 14%, transparent); box-shadow: none; color: var(--board) }
 .field-box.pickbox { padding: 8px 12px; margin: 10px 0 }
 
 /* ---------- page chrome ---------- */
@@ -327,10 +327,10 @@ input[inputmode='tel'], .num input { font-variant-numeric: tabular-nums }
 /* the ticker: standing figures in one band, ruled apart like a market strip */
 .ticker { display: flex; overflow-x: auto; scrollbar-width: none; background: var(--band); border-block: 1px solid var(--rule-soft) }
 .ticker::-webkit-scrollbar { display: none }
-.ticker button { flex: 1 0 auto; min-height: 40px; padding: 0 14px; gap: 7px; background: none; border-radius: 0; color: var(--ink); font-weight: 400 }
+.ticker button { flex: 1 0 auto; min-height: 40px; padding: 0 8px; gap: 4px; background: none; border-radius: 0; color: var(--ink); font-weight: 400 }
 .ticker button + button { box-shadow: inset 1px 0 0 var(--rule-soft) }
 .ticker button:active:not(:disabled) { transform: none; background: var(--board-2) }
-.ticker span { font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-3) }
+.ticker span { font-size: 11px; font-weight: 600; letter-spacing: .02em; text-transform: uppercase; color: var(--ink-3) }
 .ticker b { font-size: var(--t-s); font-weight: 650; font-variant-numeric: tabular-nums }
 .ticker .check b { color: var(--amber) }
 /* index tiles: today's three figures */
@@ -381,6 +381,7 @@ small.up, .indices small.up { color: var(--green); font-weight: 600 }
 .fig b { font-size: var(--t-m); font-weight: 650; color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap }
 .fig small { font-size: 11px; color: var(--ink-3); white-space: nowrap }
 .fig.due b { color: var(--red) } .fig.done b { color: var(--green) } .fig.check b { color: var(--amber) }
+.fig small.up { color: var(--green); font-weight: 600 }
 .depth { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 2px; padding: 2px 8px 8px; background: var(--band); animation: depth-in var(--dur-2) var(--ease) both }
 .depth-act { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-height: 52px; padding: 6px 0; border-radius: 8px; background: none; color: var(--brand); font-size: var(--t-xs); font-weight: 600; text-decoration: none }
 .depth-act:active:not(:disabled) { transform: none; background: var(--board-2) }
@@ -452,8 +453,8 @@ small.up, .indices small.up { color: var(--green); font-weight: 600 }
   position: fixed; left: 12px; right: 12px; bottom: calc(var(--rail-h) + 12px + env(safe-area-inset-bottom)); max-width: 536px; margin: auto; z-index: 6;
   display: flex; align-items: center; gap: 8px; padding: 8px 10px 8px 16px; background: var(--ink); color: var(--board); border-radius: var(--r-pill); box-shadow: var(--seat-deep)
 }
-.selbar span { flex: 1; font-weight: 600; font-size: var(--t-s) }
-.selbar button { min-height: 36px; padding: 0 14px; background: rgba(255,255,255,.12); color: var(--board) }
+.selbar span { flex: 1; font-weight: 600; font-size: var(--t-s); white-space: nowrap }
+.selbar button { min-height: 36px; padding: 0 14px; background: color-mix(in srgb, var(--board) 14%, transparent); color: var(--board) }
 .selbar button.bad { background: var(--red); color: #fff }
 .selbar button.link { color: var(--board); text-decoration: underline; background: none }
 .selbar select { width: auto; max-width: 112px; min-height: 36px; padding: 0 8px; font-size: var(--t-s); background: rgba(255,255,255,.12); color: var(--board); border-color: transparent }
@@ -538,7 +539,7 @@ button.add { min-height: 36px; padding: 0 2px; font-size: var(--t-s); background
 .x-btn:active:not(:disabled) { background: var(--board-2) }
 .followbox { display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 8px; min-height: 48px }
 .followbox .lbl { font-size: var(--t-s); color: var(--ink-3); flex: none }
-.followbox .due { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--amber); font-weight: 600; font-size: var(--t-s) }
+.followbox .due { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--red); font-weight: 600; font-size: var(--t-s) }
 .followbox .due.soon { color: var(--ink-3); font-weight: 500 }
 .followbox .x-btn.cal { flex: none }
 .datechip { position: relative; display: inline-flex; align-items: center; gap: 6px; flex: none; min-height: 36px; padding: 0 14px; border-radius: var(--r-pill); background: var(--board-2); font-size: var(--t-s); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--ink); margin: 0 }
