@@ -498,12 +498,19 @@ small.up, .indices small.up { color: var(--green); font-weight: 600 }
 .acts { display: flex; gap: 8px; flex: none }
 .act { width: 40px; height: 40px; min-height: 40px; padding: 0; border-radius: 8px; background: var(--brand-wash); display: inline-flex; align-items: center; justify-content: center; color: var(--brand); text-decoration: none }
 .line { display: flex; align-items: center; gap: 12px; color: var(--ink-2); padding: 8px 0; font-size: var(--t-s) } .line svg { color: var(--ink-3); flex: none }
-.panel { padding: 8px 16px; margin: 10px 0 }
-.frow { display: flex; flex-direction: column; gap: 6px; padding: 8px 0 }
-.frow > span { color: var(--ink-2); font-size: var(--t-s); font-weight: 500 } .frow > div { min-width: 0; display: flex; flex-direction: column; gap: 8px }
+/* edit forms: a flat label | value table on hairlines, the same form as a contact's details */
+.panel { margin: 0 -16px; padding: 0 16px; background: none; border-radius: 0; box-shadow: none }
+.frow { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 12px; align-items: start; padding: 4px 0; border-bottom: 1px solid var(--rule-soft) }
+.frow > span { padding-top: 15px; color: var(--ink-3); font-size: var(--t-xs); font-weight: 600; letter-spacing: .03em; text-transform: uppercase }
+.frow > div { min-width: 0; display: flex; flex-direction: column; gap: 2px }
+.frow input, .frow textarea { min-height: 44px; padding: 0 10px; margin-left: -10px; width: calc(100% + 10px); background: none; border: 0; border-radius: 6px }
+.frow textarea { padding: 11px 10px; resize: none }
+.frow input:focus, .frow textarea:focus { background: var(--field); box-shadow: inset 0 -2px 0 var(--brand); border: 0 }
 .frow.edited input, .frow.edited textarea { background: var(--amber-wash) }
-.frow.edited input:focus, .frow.edited textarea:focus { background: var(--sleeve) }
-.lrow { display: flex; align-items: center; gap: 6px } .lrow input { flex: 1; min-width: 0 } .lrow .x { background: none; min-height: 44px; min-width: 40px; padding: 0; color: var(--ink-3); flex: none }
+.frow.edited input:focus, .frow.edited textarea:focus { background: var(--field) }
+.frow .add { align-self: flex-start; min-height: 36px; margin-bottom: 4px }
+.frow .choice-row, .frow .accent-row { padding: 8px 0 }
+.lrow { display: flex; align-items: center; gap: 2px } .lrow input { flex: 1; min-width: 0 } .lrow .x { background: none; min-height: 44px; min-width: 40px; padding: 0; color: var(--ink-3); flex: none }
 .link.with-icon, button.add.with-icon { display: inline-flex; align-items: center; gap: 4px }
 button.add { min-height: 36px; padding: 0 2px; font-size: var(--t-s); background: none; color: var(--brand) }
 /* tags, notes, follow-up */
@@ -599,11 +606,9 @@ label.setting-row > span.grow:not(.sr) { display: flex } label.datechip > span:n
 .radio .dot { width: 20px; height: 20px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--board-edge); flex: none; position: relative }
 .radio .dot::after { content: ''; position: absolute; inset: 5px; border-radius: 50%; background: var(--brand); transform: scale(0); transition: transform var(--dur-2) var(--ease) }
 .radio.on .dot { box-shadow: inset 0 0 0 1.5px var(--brand) } .radio.on .dot::after { transform: scale(1) }
-.accent-pick { margin-top: 14px }
-.accent-label { display: block; margin-bottom: 8px; font-size: var(--t-s); color: var(--ink-3) } .accent-label b { color: var(--ink); font-weight: 600; margin-left: 6px }
-.accent-row { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 0; max-width: 360px }
-.accent-sw { width: 100%; height: 44px; min-height: 44px; padding: 0; background: none; border-radius: 0 }
-.accent-sw::before { content: ''; width: 28px; height: 28px; border-radius: 50%; background: var(--sw); box-shadow: 0 0 0 1px var(--rule); transition: box-shadow var(--dur-1) var(--ease), transform var(--dur-1) var(--ease) }
+.accent-row { display: flex; flex-wrap: wrap; gap: 4px }
+.accent-sw { width: 36px; height: 44px; min-height: 44px; padding: 0; background: none; border-radius: 0; flex: none }
+.accent-sw::before { content: ''; width: 28px; height: 28px; border-radius: 7px; background: var(--sw); box-shadow: 0 0 0 1px var(--rule); transition: box-shadow var(--dur-1) var(--ease), transform var(--dur-1) var(--ease) }
 .accent-sw[aria-checked='true']::before { box-shadow: 0 0 0 2px var(--sleeve), 0 0 0 4px var(--ink) }
 .accent-sw:active:not(:disabled) { transform: none } .accent-sw:active:not(:disabled)::before { transform: scale(.9) }
 @media (prefers-color-scheme: dark) { :root:not([data-theme='light']) .accent-sw::before { background: var(--sw-l) } }
@@ -741,15 +746,21 @@ nav button.scan-key:active:not(:disabled) .ind { transform: scale(.94) }
 @media (prefers-reduced-motion: reduce) { .mycards-track { scroll-behavior: auto } }
 @media (min-width: 900px) { .mycards-hero .mycards-item { flex-basis: min(100%, 520px) } .mycards-track { margin-left: -28px; margin-right: -28px; padding-left: 28px; padding-right: 28px } .stall-row { margin-left: -28px; margin-right: -28px; width: calc(100% + 56px) } }
 /* card editor */
-.editor-preview { position: sticky; top: 0; z-index: 3; padding: 8px 0 12px; background: var(--board) }
-.photo-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px } .photo-row .hint { flex-basis: 100%; margin: 0 }
-.design-panel { display: flex; flex-direction: column; gap: 10px }
-.design-panel .accent-label { margin: 6px 0 0 }
-.choice-row { display: flex; flex-wrap: wrap; gap: 8px }
-.choice { min-height: 40px; padding: 0 16px; background: var(--sleeve); box-shadow: inset 0 0 0 1px var(--board-edge); color: var(--ink); font-weight: 600 }
+/* the card being made stays in view, seated on a band, while its fields scroll under it */
+.editor-preview { position: sticky; top: 0; z-index: 3; margin: 0 -16px; padding: 12px 16px 14px; background: var(--band); border-bottom: 1px solid var(--rule) }
+.editor-preview .card-canvas { width: min(82%, 380px); margin-inline: auto }
+.photo-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 0 -16px; padding: 10px 16px; border-bottom: 1px solid var(--rule-soft) } .photo-row .hint { flex-basis: 100%; margin: 0 }
+.photo-row .grow { display: flex; flex-direction: column } .photo-row small { color: var(--ink-3); font-size: var(--t-xs) }
+.photo-well { width: 48px; height: 48px; flex: none; border-radius: 8px; overflow: hidden; background: var(--board-2); color: var(--ink-3); display: inline-flex; align-items: center; justify-content: center; box-shadow: inset 0 0 0 1px var(--rule) }
+.photo-well img { width: 100%; height: 100%; object-fit: cover; display: block }
+.tonal-key { min-height: 40px; padding: 0 16px; background: var(--board-2); color: var(--ink); font-size: var(--t-s) }
+.choice-name { color: var(--ink-3); font-size: var(--t-xs); margin: -4px 0 6px }
+.delete-row { margin: 22px -16px 0; width: calc(100% + 32px); border-block: 1px solid var(--rule-soft) }
+.choice-row { display: flex; flex-wrap: wrap; gap: 6px }
+.choice { min-height: 36px; padding: 0 12px; border-radius: 6px; background: var(--sleeve); box-shadow: inset 0 0 0 1px var(--board-edge); color: var(--ink); font-size: var(--t-s); font-weight: 600 }
 .choice[aria-checked='true'] { background: var(--ink); color: var(--board); box-shadow: none }
 .choice:active:not(:disabled) { transform: none }
-@media (max-height: 700px) { .editor-preview .card-canvas { width: 60%; margin-inline: auto } }
+@media (max-height: 700px) { .editor-preview .card-canvas { width: 58% } }
 
 /* ---------- stall mode: the QR and nothing else ---------- */
 .stall { position: fixed; inset: 0; z-index: 40; overflow-y: auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: calc(24px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom)); background: #FFFFFF; color: #111418; text-align: center }
@@ -882,7 +893,7 @@ a.public-btn { display: inline-flex; align-items: center; justify-content: cente
   .app { max-width: 880px; box-shadow: 0 0 0 1px var(--rule-soft), 0 18px 60px rgba(16,24,40,.12) }
   nav, .toast, .selbar { max-width: 880px }
   main { padding-left: 28px; padding-right: 28px }
-  .plain-list, .group.band, .full-bleed, .indices, .infos, .activity, .editor-box, .field-table, .field-box.pickbox { margin-left: -28px; margin-right: -28px } .group.band, .infos, .activity, .field-table { padding-left: 28px; padding-right: 28px }
+  .plain-list, .group.band, .full-bleed, .indices, .infos, .activity, .editor-box, .panel, .editor-preview, .photo-row, .field-table, .field-box.pickbox { margin-left: -28px; margin-right: -28px } .group.band, .infos, .activity, .field-table, .panel, .editor-preview, .photo-row { padding-left: 28px; padding-right: 28px }
   .banner-row, .log-add { margin-left: -28px; margin-right: -28px; width: calc(100% + 56px); padding-left: 28px }
   .filters { margin-left: -28px; margin-right: -28px; padding-left: 28px; padding-right: 28px }
 }
