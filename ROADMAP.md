@@ -149,6 +149,15 @@ Still open here:
 - Test on real handsets: a printed card with a vCard QR, an iPhone and an Android scanning each other's My Card QR in
   both "Just share" and "Collect leads" modes, and a QR photo from the gallery.
 
+### Trading Desk redesign (built and deployed 2026-09-24)
+
+A new visual world replaced the Covve/HiHello look after a concept round (the user chose "Trading Desk" over the rolled
+"Proof Sheet"): contacts as a watchlist with right-aligned figures, a ticker and index figures on Home, a depth drawer on
+each row (Call, WhatsApp, Email, Star, Open), Scan as a fixed centre key on the tab bar, a trade bar on the contact page,
+My Card as a holding with on-device share figures, Events as index rows, and the card editor and Settings on flat
+hairline forms. Scan modes moved to a thumb rail (Card, 2-sided, Group, QR). DESIGN.md records the system. Each part is
+its own commit on `main`; tag `pre-redesign` marks the app before it. Awaiting the real-phone check.
+
 ### Phase 4: Packs and payments (about 2 weeks)
 
 - Define the packs (see section 5), price them from measured cost, and test them with a few real users first.
@@ -165,6 +174,11 @@ A separate app for operators, not users.
 - Pack and pricing management.
 
 ### Phase 6: Store apps (about 2 to 3 weeks)
+
+**Decided 2026-09-24 (user):** Capacitor with the web files **bundled inside the app**, not a shell around the live site.
+Design in `docs/superpowers/specs/2026-09-24-android-app-design.md`, awaiting the user's review; no code yet. First
+milestone: a debug APK built on GitHub Actions and installed from a GitHub Release on the user's Android phone. Needs from
+the user: the Supabase redirect URL for the app, and approval to redeploy the Worker with the app's origin.
 
 - Capacitor wrapper around the current codebase; check share sheet, contacts save and camera one by one.
 - A React Native rewrite only if Capacitor's camera or performance disappoints.
@@ -204,7 +218,7 @@ on digital services applies. Check both before fixing prices.
 
 Still open:
 
-1. **Wrapper:** Capacitor first (recommended, see chat notes) or React Native.
+1. **Wrapper:** decided 2026-09-24: Capacitor, bundled (see Phase 6).
 2. **Sequencing:** the order above puts the work-in-the-hall phase and digital cards before accounts and payments. Swap
    Phases 2 and 3 if you want paying users sooner.
 
