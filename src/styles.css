@@ -720,35 +720,34 @@ nav button.scan-key:active:not(:disabled) .ind { transform: scale(.94) }
 .log-note .mic { position: absolute; right: 8px; bottom: 8px }
 .log-field .datechip { align-self: flex-start; min-height: 40px; margin: 4px 0 0 }
 
-/* ---------- my card: the card on its own stage ---------- */
-.card-canvas { width: 100%; aspect-ratio: 1.75; display: block; border-radius: 14px; box-shadow: 0 2px 6px rgba(16,24,40,.08), 0 18px 40px rgba(16,24,40,.16); touch-action: pan-x }
-/* a full-bleed band in the card's own colour; the card sits over its lower edge */
-.mycards-hero { position: relative; margin: calc(-12px - env(safe-area-inset-top)) -16px 0; padding: calc(18px + env(safe-area-inset-top)) 16px 0; isolation: isolate }
-.mycards-hero::before {
-  content: ''; position: absolute; inset: 0 0 86px; z-index: -1; border-radius: 0 0 32px 32px;
-  /* a deeper shade of the card's colour, so a card whose own panel is that colour still stands off it */
-  background: color-mix(in srgb, var(--hero) 72%, #05070A);
-  transition: background var(--dur-3) var(--ease);
-}
-.mycards-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; margin: 0 0 18px }
-.mycards-head h1 { color: #fff; font-size: 32px; letter-spacing: -.03em }
-.mycards-label { display: inline-flex; align-items: center; min-height: 28px; padding: 0 12px; border-radius: var(--r-pill); background: rgba(255,255,255,.16); color: #fff; font-size: var(--t-s); font-weight: 600; max-width: 50%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
-.mycards-track { display: flex; gap: 16px; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scroll-padding: 0 16px; scrollbar-width: none; padding: 0 16px 40px; margin: 0 -16px -18px; -webkit-overflow-scrolling: touch }
+/* ---------- my card: the card as a holding ---------- */
+.card-canvas { width: 100%; aspect-ratio: 1.75; display: block; border-radius: 12px; box-shadow: 0 0 0 1px var(--rule), 0 10px 28px rgba(16,24,40,.12); touch-action: pan-x }
+.mycards-hero { position: relative }
+.mycards-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; margin: 0 -6px 8px 0 }
+.mycards-head h1 { display: flex; align-items: center; gap: 10px; min-width: 0 }
+.mycards-label { display: inline-flex; align-items: center; min-height: 22px; padding: 0 8px; border-radius: 4px; background: var(--board-2); color: var(--ink-2); font-size: var(--t-xs); font-weight: 650; letter-spacing: 0; max-width: 40vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.mycards-track { display: flex; gap: 16px; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scroll-padding: 0 16px; scrollbar-width: none; padding: 4px 16px 26px; margin: 0 -16px; -webkit-overflow-scrolling: touch }
 .mycards-track::-webkit-scrollbar { display: none }
-.mycards-track .card-canvas { animation: seat-card .56s var(--ease) both; box-shadow: 0 0 0 1px rgba(255,255,255,.14), 0 4px 10px rgba(8,10,14,.14), 0 18px 32px rgba(8,10,14,.20) }
+.mycards-track .card-canvas { animation: seat-card .56s var(--ease) both }
 .mycards-item { flex: 0 0 100%; scroll-snap-align: center; position: relative; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none }
-.mycards-add { width: 100%; aspect-ratio: 1.75; display: flex; align-items: center; justify-content: center; gap: 10px; border: 1.5px dashed rgba(255,255,255,.5); border-radius: 14px; background: rgba(255,255,255,.08); color: #fff; font-weight: 600; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px) }
-.mycards-add:active:not(:disabled) { transform: none; background: rgba(255,255,255,.14) }
-.mycards-dots { margin: 0 0 12px }
-.mycards-actions { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; margin-top: 6px }
-.mycards-actions .cta { min-height: 52px; font-size: var(--t-l) }
-.icon-btn.big { width: 52px; height: 52px; min-height: 52px; background: var(--sleeve); box-shadow: var(--seat) }
-.mycards-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 14px 0 0 }
-.mycards-stats > div { display: flex; align-items: baseline; gap: 6px; padding: 14px 16px; background: var(--sleeve); border-radius: var(--r-sleeve); box-shadow: var(--seat) }
-.mycards-stats b { font-size: 24px; font-weight: 700; letter-spacing: -.02em } .mycards-stats span { color: var(--ink-3); font-size: var(--t-s) }
-.mycards-tip { text-align: center; margin-top: 16px }
+.mycards-add { width: 100%; aspect-ratio: 1.75; display: flex; align-items: center; justify-content: center; gap: 10px; border: 1.5px dashed var(--board-edge); border-radius: 12px; background: var(--band); color: var(--ink-2); font-weight: 600 }
+.mycards-add:active:not(:disabled) { transform: none; background: var(--board-2) }
+.mycards-dots { margin: -14px 0 12px }
+/* the holding: the card link's figures in one band, ruled apart */
+.holding { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); background: var(--band); border-block: 1px solid var(--rule-soft) }
+.holding > div { display: flex; flex-direction: column; gap: 1px; padding: 10px 16px 12px }
+.holding > div + div { box-shadow: inset 1px 0 0 var(--rule-soft) }
+.holding span { font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-3) }
+.holding b { font-size: 24px; font-weight: 700; letter-spacing: -.02em; line-height: 1.2; font-variant-numeric: tabular-nums }
+.holding b.up { color: var(--green) }
+.holding-note { margin: 8px 0 0; font-size: var(--t-xs); color: var(--ink-3) }
+.mycards-actions { display: flex; gap: 8px; margin-top: 14px }
+.mycards-actions .cta { flex: 1; min-height: 48px; font-size: var(--t-l) }
+.mycards-actions .trade.sq { width: 48px; min-height: 48px }
+.stall-row { margin: 14px -16px 0; width: calc(100% + 32px); border-block: 1px solid var(--rule-soft) }
+.stall-row > svg { color: var(--ink-3); flex: none }
 @media (prefers-reduced-motion: reduce) { .mycards-track { scroll-behavior: auto } }
-@media (min-width: 900px) { .mycards-hero { margin-left: -28px; margin-right: -28px; padding-left: 28px; padding-right: 28px } .mycards-hero .mycards-item { flex-basis: min(100%, 520px) } .mycards-track { margin-left: -28px; margin-right: -28px; padding-left: 28px; padding-right: 28px } }
+@media (min-width: 900px) { .mycards-hero .mycards-item { flex-basis: min(100%, 520px) } .mycards-track { margin-left: -28px; margin-right: -28px; padding-left: 28px; padding-right: 28px } .stall-row { margin-left: -28px; margin-right: -28px; width: calc(100% + 56px) } }
 /* card editor */
 .editor-preview { position: sticky; top: 0; z-index: 3; padding: 8px 0 12px; background: var(--board) }
 .photo-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px } .photo-row .hint { flex-basis: 100%; margin: 0 }
