@@ -28,7 +28,7 @@ function EmptyCards() {
  * Home is the overview, not a second contact list: three counts that each open the right screen, then what needs you.
  * Search lives in Contacts and Companies; scanning is the floating button.
  */
-export default function Home({ cards, dupes, ready, needsKey, install, backupNudge, onBackup, onSnoozeBackup, onOpenContact, onContacts, onCompanies, onStarred, onAttention, onInsights, onAccuracy, onSetup }: {
+export default function Home({ cards, dupes, ready, needsKey, install, backupNudge, onBackup, onSnoozeBackup, onOpenContact, onContacts, onCompanies, onStarred, onAttention, onInsights, onAccuracy, onSetup, onSettings }: {
   cards: CardRecord[]
   dupes: Map<string, CardRecord[]>
   ready: boolean
@@ -45,6 +45,7 @@ export default function Home({ cards, dupes, ready, needsKey, install, backupNud
   onInsights: () => void
   onAccuracy: () => void
   onSetup: () => void
+  onSettings: () => void
 }) {
   const people = cards.filter((c) => c.status === 'done').flatMap((c) => (c.corrected ?? []).map((p, i) => ({ card: c, p, i })))
   const starred = people.filter((x) => x.p.priority).length
@@ -58,6 +59,7 @@ export default function Home({ cards, dupes, ready, needsKey, install, backupNud
     <>
       <header className="album-head">
         <span className="wordmark">CardPulse</span>
+        <button className="icon-btn ghost" onClick={onSettings} aria-label="Settings"><Icon name="sliders" size={20} /></button>
       </header>
 
       {needsKey && !ready && (

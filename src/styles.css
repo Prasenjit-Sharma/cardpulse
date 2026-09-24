@@ -1,9 +1,10 @@
 /* ============================================================================
-   CardPulse — interface system
-   A calm, competitor-grade business app: soft grey ground, white rounded
-   cards, pill buttons, filled rounded fields, sentence case throughout. One
-   UI face (Inter), one user-chosen accent. The business card itself (photo
-   or digital card) is the only rich object on the screen.
+   CardPulse — interface system: the trading desk
+   Contacts read like a watchlist: a flat white ground, hairline rules instead
+   of shadows, grey bands between sections, dense rows with figures right-
+   aligned in tabular numerals, 8px corners, underline tabs. Palette law: the
+   accent means tappable or live, red means due, green means done, amber means
+   check this. One UI face (Inter) at a compact scale.
    ========================================================================== */
 
 /* The digital cards are drawn on canvas in their own faces; Archivo stays loaded for them. */
@@ -18,85 +19,90 @@
 
 :root {
   /* ground and surfaces (the old token names are kept so every component keeps working) */
-  --board: #F4F5F7;            /* the app's ground */
-  --board-2: #ECEEF1;          /* tonal fills: secondary buttons, chips, badges */
+  --board: #FFFFFF;            /* the app's ground: flat white, like a trading screen */
+  --band: #F5F6F8;             /* grey bands: section headings, the ticker, index tiles */
+  --board-2: #F0F2F5;          /* tonal fills: secondary buttons, chips, badges */
   --well: #E4E7EB;             /* pressed / track */
-  --desk: #E9EBEF;             /* wide screens, around the app column */
-  --board-edge: #DDE1E6;       /* borders */
-  --sleeve: #FFFFFF;           /* cards, sheets, the tab bar */
+  --desk: #ECEEF1;             /* wide screens, around the app column */
+  --board-edge: #D9DDE3;       /* borders */
+  --sleeve: #FFFFFF;           /* panels, sheets, the tab bar */
   --sleeve-lip: transparent;
-  --field: #F1F3F6;            /* text fields and pickers */
+  --field: #F3F4F6;            /* text fields and pickers */
 
-  --ink: #111418;
-  --ink-2: #434A55;
-  --ink-3: #5B6370;            /* 5.9:1 on white, 5.5:1 on the ground */
-  --rule: rgba(17,20,24,.10);
-  --rule-soft: rgba(17,20,24,.07);
+  --ink: #14171C;
+  --ink-2: #3D444E;
+  --ink-3: #626975;            /* 5.5:1 on white, 5.1:1 on a band */
+  --rule: rgba(20,23,28,.11);
+  --rule-soft: rgba(20,23,28,.08);
 
-  /* the accent: --brand-base / --brand-lite are set at run time from Settings (src/lib/accents.ts); Graphite by default */
-  --brand-base: #2A2F36;
-  --brand-lite: #C8CDD3;
+  /* the accent: --brand-base / --brand-lite are set at run time from Settings (src/lib/accents.ts); Blue by default */
+  --brand-base: #1A58C2;
+  --brand-lite: #8DB0F0;
   --brand: var(--brand-base);
   --brand-ink: #FFFFFF;
   --brand-wash: color-mix(in srgb, var(--brand-base) 9%, transparent);
-  --brand-edge: color-mix(in srgb, var(--brand-base) 26%, transparent);
+  --brand-edge: color-mix(in srgb, var(--brand-base) 30%, transparent);
   --lock: #5DD6C8;             /* "card locked" in the camera: shows over any photo, whatever the accent */
 
-  --red: #C4281C;
-  --red-wash: rgba(196,40,28,.09);
-  --amber: #A34A08;
-  --amber-wash: rgba(180,83,9,.12);
-  --green: #1E7B45;
+  /* palette law: red is due or overdue and nothing else; green is done or up; amber is check this */
+  --red: #C62F22;
+  --red-wash: rgba(198,47,34,.09);
+  --amber: #9A4A06;
+  --amber-wash: rgba(180,83,9,.11);
+  --green: #13773F;
+  --green-wash: rgba(19,119,63,.10);
 
   /* kept only so older inline art still resolves */
-  --punch: rgba(17,20,24,.16);
+  --punch: rgba(20,23,28,.16);
   --punch-hole: #D5D9DE;
 
-  --seat: 0 1px 2px rgba(16,24,40,.05), 0 1px 3px rgba(16,24,40,.07);
+  /* no shadows on the page: a surface is marked by a hairline. Only sheets and toasts float. */
+  --seat: 0 0 0 1px var(--rule);
   --seat-deep: 0 2px 6px rgba(16,24,40,.08), 0 14px 34px rgba(16,24,40,.14);
 
-  --r-card: 8px;               /* a card photo or thumbnail */
-  --r-sleeve: 16px;            /* cards and panels */
-  --r-field: 12px;
-  --r-pill: 999px;
-  --r-tab: 999px;
+  --r-card: 6px;               /* a card photo or thumbnail */
+  --r-sleeve: 10px;            /* panels */
+  --r-field: 8px;
+  --r-pill: 8px;               /* buttons, chips and pickers: squared, never pills */
+  --r-round: 999px;            /* the few things that stay round: switches, dots */
+  --r-tab: 8px;
 
-  /* type: Inter, five sizes. meta 12 / caption 13 / body 15 / title 17 / page 28 */
-  --t-xs: 12px; --t-s: 13px; --t-m: 15px; --t-l: 17px; --t-xl: 28px;
+  /* type: Inter, five sizes. meta 12 / caption 13 / body 14 / title 16 / page 22 */
+  --t-xs: 12px; --t-s: 13px; --t-m: 14px; --t-l: 16px; --t-xl: 22px;
   --wdth-label: 100; --wdth-body: 100;
 
   --spine: 0px;
-  --rail-h: 64px;
+  --rail-h: 60px;
   --ease: cubic-bezier(.2,.7,.2,1);
-  --dur-1: 120ms; --dur-2: 200ms; --dur-3: 320ms;
+  --dur-1: 120ms; --dur-2: 180ms; --dur-3: 280ms;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --board: #0E1013; --board-2: #1D2127; --well: #262B33; --desk: #07080A; --board-edge: #2B3038;
-    --sleeve: #171A1F; --field: #20242B;
-    --ink: #F1F3F5; --ink-2: rgba(241,243,245,.80); --ink-3: rgba(241,243,245,.62);
-    --rule: rgba(241,243,245,.12); --rule-soft: rgba(241,243,245,.07);
+    --board: #0E1013; --band: #15181C; --board-2: #1C2026; --well: #262B32; --desk: #07080A; --board-edge: #2B3038;
+    --sleeve: #121519; --field: #1C2026;
+    --ink: #EDEFF2; --ink-2: rgba(237,239,242,.80); --ink-3: rgba(237,239,242,.62);
+    --rule: rgba(237,239,242,.11); --rule-soft: rgba(237,239,242,.07);
     --brand: var(--brand-lite); --brand-ink: #0B0E10;
-    --brand-wash: color-mix(in srgb, var(--brand-lite) 16%, transparent); --brand-edge: color-mix(in srgb, var(--brand-lite) 34%, transparent);
+    --brand-wash: color-mix(in srgb, var(--brand-lite) 15%, transparent); --brand-edge: color-mix(in srgb, var(--brand-lite) 36%, transparent);
     --red: #F2867C; --red-wash: rgba(242,134,124,.14);
-    --amber: #E8A25C; --amber-wash: rgba(232,162,92,.15); --green: #6FCF97;
+    --amber: #E8A25C; --amber-wash: rgba(232,162,92,.15); --green: #6FCF97; --green-wash: rgba(111,207,151,.14);
     --punch: rgba(0,0,0,.5); --punch-hole: #08090A;
-    --seat: 0 1px 2px rgba(0,0,0,.35);
+    --seat: 0 0 0 1px var(--rule);
     --seat-deep: 0 2px 8px rgba(0,0,0,.5), 0 16px 38px rgba(0,0,0,.45);
   }
 }
 :root[data-theme='dark'] {
-  --board: #0E1013; --board-2: #1D2127; --well: #262B33; --desk: #07080A; --board-edge: #2B3038;
-  --sleeve: #171A1F; --field: #20242B;
-  --ink: #F1F3F5; --ink-2: rgba(241,243,245,.80); --ink-3: rgba(241,243,245,.62);
-  --rule: rgba(241,243,245,.12); --rule-soft: rgba(241,243,245,.07);
+  --board: #0E1013; --band: #15181C; --board-2: #1C2026; --well: #262B32; --desk: #07080A; --board-edge: #2B3038;
+  --sleeve: #121519; --field: #1C2026;
+  --ink: #EDEFF2; --ink-2: rgba(237,239,242,.80); --ink-3: rgba(237,239,242,.62);
+  --rule: rgba(237,239,242,.11); --rule-soft: rgba(237,239,242,.07);
   --brand: var(--brand-lite); --brand-ink: #0B0E10;
-  --brand-wash: color-mix(in srgb, var(--brand-lite) 16%, transparent); --brand-edge: color-mix(in srgb, var(--brand-lite) 34%, transparent);
+  --brand-wash: color-mix(in srgb, var(--brand-lite) 15%, transparent); --brand-edge: color-mix(in srgb, var(--brand-lite) 36%, transparent);
   --red: #F2867C; --red-wash: rgba(242,134,124,.14);
-  --amber: #E8A25C; --amber-wash: rgba(232,162,92,.15); --green: #6FCF97;
+  --amber: #E8A25C; --amber-wash: rgba(232,162,92,.15); --green: #6FCF97; --green-wash: rgba(111,207,151,.14);
   --punch: rgba(0,0,0,.5); --punch-hole: #08090A;
-  --seat: 0 1px 2px rgba(0,0,0,.35);
+  --seat: 0 0 0 1px var(--rule);
   --seat-deep: 0 2px 8px rgba(0,0,0,.5), 0 16px 38px rgba(0,0,0,.45);
 }
 :root[data-theme='dark'] { color-scheme: dark } :root[data-theme='light'] { color-scheme: light }
@@ -119,10 +125,10 @@ body {
 
 /* ---------- the app column ---------- */
 .app { max-width: 560px; margin: 0 auto; min-height: 100dvh; display: flex; flex-direction: column; position: relative; background: var(--board) }
-main { flex: 1; padding: calc(12px + env(safe-area-inset-top)) 16px calc(var(--rail-h) + 104px + env(safe-area-inset-bottom)) }
+main { flex: 1; padding: calc(8px + env(safe-area-inset-top)) 16px calc(var(--rail-h) + 40px + env(safe-area-inset-bottom)) }
 
 h1 { font-size: var(--t-xl); font-weight: 700; line-height: 1.15; letter-spacing: -.022em; margin: 0 }
-h2 { font-size: 20px; font-weight: 650; line-height: 1.25; letter-spacing: -.01em; margin: 0 }
+h2 { font-size: 18px; font-weight: 650; line-height: 1.25; letter-spacing: -.01em; margin: 0 }
 h3 { font-size: var(--t-m); font-weight: 600; margin: 0 }
 small, .muted, .hint { font-size: var(--t-s); color: var(--ink-3) }
 .hint { line-height: 1.45; margin: 8px 0 }
@@ -133,9 +139,11 @@ a { color: var(--brand); text-underline-offset: 3px; text-decoration-thickness: 
 
 /* section headings: small caps grey, like a phone's own settings */
 .group, .filters-label, .eyebrow {
-  font-size: var(--t-xs); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3);
-  margin: 26px 4px 8px; display: flex; align-items: center; gap: 8px;
+  font-size: var(--t-xs); font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-3);
+  margin: 20px 0 8px; display: flex; align-items: center; gap: 8px;
 }
+/* a section heading over a watchlist is a grey band across the whole column */
+.group.band { margin: 16px -16px 0; padding: 0 16px; min-height: 32px; background: var(--band); border-block: 1px solid var(--rule-soft) }
 .group .link, h3.section .link { margin-left: auto; min-height: 0; padding: 0; font-size: var(--t-s); letter-spacing: 0; text-transform: none; font-weight: 600 }
 .section { margin: 26px 0 10px; font-size: var(--t-l); font-weight: 650; display: flex; align-items: center; gap: 8px }
 h3.section .link { position: relative } h3.section .link::after { content: ''; position: absolute; inset: -14px -10px }
@@ -151,16 +159,16 @@ button:active:not(:disabled) { transform: scale(.98) }
 button:disabled { opacity: .45; cursor: default }
 button svg, a svg { flex-shrink: 0 }   /* an icon keeps its size however little room its button has */
 button.cta {
-  width: 100%; min-height: 50px; background: var(--primary-fill, var(--brand)); color: var(--brand-ink); border: 0; font-size: var(--t-m); font-weight: 650;
-  box-shadow: 0 1px 2px rgba(16,24,40,.08), 0 6px 16px color-mix(in srgb, var(--brand) 22%, transparent);
+  width: 100%; min-height: 48px; background: var(--primary-fill, var(--brand)); color: var(--brand-ink); border: 0; font-size: var(--t-m); font-weight: 650;
+  box-shadow: none;
 }
 button.cta.small { width: auto; min-height: 44px; padding: 0 22px }
 button.cta:disabled { opacity: 1; background: var(--board-2); color: var(--ink-3); box-shadow: none }
 /* dark: the accent's light twin, lifted further towards white so the one primary reads as the strongest thing on the screen; no coloured glow */
 :root[data-theme='dark'] { --primary-fill: color-mix(in srgb, var(--brand-lite) 62%, #fff) }
 @media (prefers-color-scheme: dark) { :root:not([data-theme='light']) { --primary-fill: color-mix(in srgb, var(--brand-lite) 62%, #fff) } }
-:root[data-theme='dark'] :is(button.cta:not(:disabled), .fab-scan, .fab-main, nav button.on .ind) { box-shadow: none }
-@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) :is(button.cta:not(:disabled), .fab-scan, .fab-main) { box-shadow: none } }
+:root[data-theme='dark'] :is(button.cta:not(:disabled), .fab-main) { box-shadow: none }
+@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) :is(button.cta:not(:disabled), .fab-main) { box-shadow: none } }
 button.primary { background: var(--brand); color: var(--brand-ink) }
 button.outline { background: transparent; box-shadow: inset 0 0 0 1px var(--board-edge); width: 100% }
 button.outline.center { width: auto; margin: 14px auto 0; padding: 0 22px }
@@ -174,7 +182,7 @@ button.link { border: 0; background: none; min-height: 0; padding: 0; color: var
 button.link.bad { color: var(--red) }
 button.link:active:not(:disabled) { transform: none; opacity: .7 }
 button.wide { width: 100%; margin-top: 12px }
-.icon-btn { width: 40px; height: 40px; min-height: 40px; padding: 0; border-radius: 50%; flex: none; background: var(--board-2); color: var(--ink) }
+.icon-btn { width: 40px; height: 40px; min-height: 40px; padding: 0; border-radius: 8px; flex: none; background: var(--board-2); color: var(--ink) }
 .icon-btn.ghost { background: none; color: var(--ink) }
 .icon-btn.ghost:active:not(:disabled) { background: var(--board-2) }
 .icon-btn.ghost.small { width: 32px; height: 32px; min-height: 32px }
@@ -225,7 +233,7 @@ input[inputmode='tel'], .num input { font-variant-numeric: tabular-nums }
 .check-row { width: 100%; min-height: 44px; margin: 10px 0 0; padding: 4px 0; background: none; border-radius: 0; justify-content: flex-start; gap: 12px; text-align: left; font-weight: 400; font-size: var(--t-m); color: var(--ink) }
 .check-row .grow { display: flex; flex-direction: column } .check-row small { color: var(--ink-3) }
 .check-row:active:not(:disabled) { transform: none }
-.switch { width: 48px; height: 28px; flex: none; position: relative; border-radius: var(--r-pill); background: var(--well); transition: background var(--dur-2) var(--ease) }
+.switch { width: 48px; height: 28px; flex: none; position: relative; border-radius: var(--r-round); background: var(--well); transition: background var(--dur-2) var(--ease) }
 .switch i { position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(16,24,40,.25); transition: transform var(--dur-2) var(--ease) }
 [role='switch'][aria-checked='true'] .switch { background: var(--brand) }
 [role='switch'][aria-checked='true'] .switch i { transform: translateX(20px) }
@@ -255,7 +263,7 @@ input[inputmode='tel'], .num input { font-variant-numeric: tabular-nums }
 .field-box.pickbox { padding: 8px 12px; margin: 10px 0 }
 
 /* ---------- page chrome ---------- */
-.page-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 4px 0 14px; min-height: 44px }
+.page-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 0 0 10px; min-height: 44px }
 .page-head p { margin: 3px 0 0 }
 .head-left { display: flex; align-items: center; gap: 8px; min-width: 0 }
 .page-head .icon-btn { background: var(--sleeve); box-shadow: var(--seat) }
@@ -278,18 +286,18 @@ input[inputmode='tel'], .num input { font-variant-numeric: tabular-nums }
 
 /* ---------- lists of people ---------- */
 /* people are one grouped white card per section, rows ruled apart by an inset hairline (as Covve lists them) */
-.plain-list { display: flex; flex-direction: column; background: var(--sleeve); border-radius: var(--r-sleeve); box-shadow: var(--seat); overflow: hidden }
+.plain-list { display: flex; flex-direction: column; margin: 0 -16px; background: var(--board) }
 .scan-row, .contact-row {
-  display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 14px; min-height: 66px;
+  display: flex; align-items: center; gap: 12px; padding: 8px 16px; min-height: 58px;
   cursor: pointer; min-width: 0; position: relative; background: none;
   animation: rise .3s var(--ease) both; animation-delay: calc(min(var(--i, 0), 10) * 20ms);
   transition: background var(--dur-1) linear;
 }
-.scan-row + .scan-row::before, .contact-row + .contact-row::before { content: ''; position: absolute; top: 0; left: 94px; right: 0; height: 1px; background: var(--rule-soft) }
+.scan-row + .scan-row::before, .contact-row + .contact-row::before { content: ''; position: absolute; top: 0; left: 16px; right: 0; height: 1px; background: var(--rule-soft) }
 .scan-row:active, .contact-row:active { background: var(--board-2) }
 .contact-row.off { opacity: .45 }
 .scan-row .grow, .contact-row .grow { display: flex; flex-direction: column; gap: 2px }
-.scan-row strong, .contact-row strong { font-size: 16px; font-weight: 600; line-height: 1.25; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow-wrap: anywhere; letter-spacing: -.005em }
+.scan-row strong, .contact-row strong { font-size: 15px; font-weight: 600; line-height: 1.25; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow-wrap: anywhere; letter-spacing: -.005em }
 .contact-row strong svg { color: var(--red); fill: var(--red); flex: none }
 .scan-row .muted, .contact-row .muted { font-size: var(--t-s); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
 .contact-row .muted.sm, .scan-row .time { font-size: var(--t-xs); color: var(--ink-3) }
@@ -300,7 +308,7 @@ input[inputmode='tel'], .num input { font-variant-numeric: tabular-nums }
 .contact-row .star-btn { width: 36px; height: 40px; min-height: 40px; margin-right: -6px }
 .plus { color: var(--ink-3); font-weight: 400 }
 .scan-thumb, .thumb {
-  width: 68px; height: 42px; object-fit: cover; flex: none; border-radius: 6px; background: var(--board-2);
+  width: 52px; height: 30px; object-fit: cover; flex: none; border-radius: 4px; background: var(--board-2);
   box-shadow: 0 0 0 1px var(--rule);
 }
 .scan-thumb.blank { display: block }
@@ -347,17 +355,6 @@ input[inputmode='tel'], .num input { font-variant-numeric: tabular-nums }
 }
 .ring::before { content: ''; position: absolute; inset: 6px; background: var(--sleeve); border-radius: 50% }
 .ring > * { position: relative } .ring b { font-size: var(--t-l); font-weight: 700 } .ring span { font-size: var(--t-xs); color: var(--ink-3) }
-
-/* the floating Scan button */
-.fab-scan {
-  position: fixed; z-index: 6; bottom: calc(var(--rail-h) + env(safe-area-inset-bottom) + 16px);
-  right: max(16px, calc(50% - 280px + 16px)); height: 56px; min-height: 56px; padding: 0 22px 0 20px; gap: 10px; border-radius: var(--r-pill);
-  background: var(--primary-fill, var(--brand)); color: var(--brand-ink); font-size: var(--t-l); font-weight: 650;
-  box-shadow: 0 2px 6px color-mix(in srgb, var(--brand) 30%, transparent), 0 12px 28px color-mix(in srgb, var(--brand) 30%, transparent);
-  animation: fab-rise var(--dur-3) var(--ease) both;
-}
-.fab-scan:active:not(:disabled) { transform: scale(.96) }
-body:has(.selbar) .fab-scan { display: none }
 
 /* empty states */
 .empty-scan { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 40px 12px 0 }
@@ -597,21 +594,25 @@ td { font-variant-numeric: tabular-nums }
 /* ---------- the tab bar ---------- */
 nav {
   position: fixed; bottom: 0; left: 0; right: 0; max-width: 560px; margin: auto; display: flex; align-items: stretch;
-  background: color-mix(in srgb, var(--sleeve) 92%, transparent); -webkit-backdrop-filter: saturate(1.4) blur(14px); backdrop-filter: saturate(1.4) blur(14px);
-  border-top: 1px solid var(--rule-soft); padding: 6px 4px env(safe-area-inset-bottom); z-index: 5;
+  background: var(--sleeve); border-top: 1px solid var(--rule); padding: 0 4px env(safe-area-inset-bottom); z-index: 5;
 }
-nav button { flex: 1; flex-direction: column; gap: 3px; background: none; border-radius: 0; min-height: calc(var(--rail-h) - 8px); padding: 2px 0 6px; color: var(--ink-3); font-size: 11px; font-weight: 600; position: relative }
+nav button { flex: 1; flex-direction: column; gap: 3px; background: none; border-radius: 0; min-height: var(--rail-h); padding: 6px 0 7px; color: var(--ink-3); font-size: 11px; font-weight: 600; position: relative }
 nav button:active:not(:disabled) { transform: none }
-nav button .ind { display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 30px; border-radius: var(--r-pill); transition: background var(--dur-2) var(--ease), color var(--dur-2) var(--ease) }
-nav button.on { color: var(--ink) }
-nav button.on .ind { background: color-mix(in srgb, var(--brand) 14%, transparent); color: var(--brand) }
+nav button .ind { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 26px; transition: color var(--dur-2) var(--ease), transform var(--dur-1) var(--ease) }
+/* the active tab: the accent, and a 2px rule along the bar's top edge */
+nav button.on { color: var(--brand) }
+nav button.on::before { content: ''; position: absolute; top: -1px; left: 22%; right: 22%; height: 2px; background: var(--brand) }
+/* Scan: the one filled key on the bar, in ink so each screen keeps its own single accent action */
+nav button.scan-key { color: var(--ink) }
+nav button.scan-key .ind { width: 48px; height: 32px; margin-top: -3px; border-radius: 9px; background: var(--ink); color: var(--board) }
+nav button.scan-key:active:not(:disabled) .ind { transform: scale(.94) }
 
 /* ---------- transient surfaces ---------- */
 .view { animation: view-in var(--dur-3) var(--ease) backwards }  /* backwards only: a filled opacity animation would keep a stacking layer alive and put the tab bar above every sheet */
 .toast {
-  position: fixed; left: 12px; right: 12px; bottom: calc(var(--rail-h) + 84px + env(safe-area-inset-bottom));
+  position: fixed; left: 12px; right: 12px; bottom: calc(var(--rail-h) + 16px + env(safe-area-inset-bottom));
   max-width: 536px; margin: auto; z-index: 7; display: flex; align-items: center; gap: 12px; padding: 12px 14px;
-  background: var(--ink); color: var(--board); border-radius: 16px; box-shadow: var(--seat-deep);
+  background: var(--ink); color: var(--board); border-radius: 10px; box-shadow: var(--seat-deep);
   animation: slip-in .34s var(--ease) both;
 }
 .toast .grow { display: flex; flex-direction: column } .toast span:not(.toast-check) { font-size: var(--t-s); opacity: .74 } .toast button.link { color: var(--board); text-decoration: underline }
@@ -621,14 +622,14 @@ nav button.on .ind { background: color-mix(in srgb, var(--brand) 14%, transparen
 .sheet-wrap { position: fixed; inset: 0; z-index: 30 } .sheet-wrap .scrim { position: absolute; z-index: auto } .sheet-wrap.out .scrim { animation: fade-out var(--dur-2) var(--ease) both }
 .sheet {
   position: absolute; left: 0; right: 0; bottom: 0; max-width: 560px; margin: auto; background: var(--sleeve);
-  border-radius: 24px 24px 0 0; padding: 6px 8px calc(18px + env(safe-area-inset-bottom));
+  border-radius: 14px 14px 0 0; padding: 6px 8px calc(18px + env(safe-area-inset-bottom));
   box-shadow: 0 -10px 40px rgba(8,10,14,.18); animation: sheet-in var(--dur-3) var(--ease) both; max-height: 88dvh; overflow: auto;
 }
 .sheet-wrap.out .sheet { animation: sheet-out var(--dur-2) var(--ease) both }
 .handle { display: block; width: 36px; height: 5px; border-radius: 3px; background: var(--board-edge); margin: 6px auto 10px }
 .sheet h3 { padding: 4px 16px 12px; color: var(--ink); font-size: var(--t-l); font-weight: 650 }
 .sheet-list { display: flex; flex-direction: column }
-.sheet-item { width: 100%; justify-content: flex-start; gap: 14px; min-height: 54px; padding: 6px 14px; background: none; border-radius: 14px; font-weight: 400; font-size: var(--t-m); text-align: left; color: var(--ink) }
+.sheet-item { width: 100%; justify-content: flex-start; gap: 14px; min-height: 50px; padding: 6px 14px; background: none; border-radius: 8px; font-weight: 400; font-size: var(--t-m); text-align: left; color: var(--ink) }
 .sheet-item > svg:first-child { color: var(--ink-2); flex: none }
 .sheet-item.danger, .sheet-item.danger svg { color: var(--red) }
 .sheet-item:active:not(:disabled) { background: var(--board-2); transform: none }
@@ -815,8 +816,9 @@ a.public-btn { display: inline-flex; align-items: center; justify-content: cente
   body { background: var(--desk) }
   .app { max-width: 880px; box-shadow: 0 0 0 1px var(--rule-soft), 0 18px 60px rgba(16,24,40,.12) }
   nav, .toast, .selbar { max-width: 880px }
-  .fab-scan, .fab-menu { right: calc(50% - 440px + 20px) }
+  .fab-menu { right: calc(50% - 440px + 20px) }
   main { padding-left: 28px; padding-right: 28px }
+  .plain-list, .group.band, .full-bleed { margin-left: -28px; margin-right: -28px } .group.band { padding-left: 28px; padding-right: 28px }
   .filters, .tab-strip { margin-left: -28px; margin-right: -28px; padding-left: 28px; padding-right: 28px }
 }
 

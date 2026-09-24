@@ -82,12 +82,14 @@ Constraints:
 
 Name: **CardPulse** (kept by default, but the user has confirmed nothing is fixed — name, logo, colours and
 structure are all open to replacement). Existing logo is a business card carrying a pulse line. The accent is
-user-selectable (Settings > Appearance), Graphite by default.
+user-selectable (Settings > Appearance), Blue by default.
 
-**Standing look preference (user, 2026-09-24):** the interface must look professional and competitive in the
-class of Covve and HiHello, a blend of Covve's calm grouped lists and settings with HiHello's stronger card
-presentation. Convention played at full craft is the commitment; no skeuomorphic or novelty world (the earlier
-"Card Album" world was rejected as not professional). Recorded in DESIGN.md.
+**Standing look preference (user, 2026-09-24, revised the same day):** professional, modern and compact, and
+distinct from the other scanner apps rather than in their class. The earlier "sit beside Covve and HiHello"
+commitment is withdrawn at the user's request. The chosen world is the Trading Desk: contacts read like a
+watchlist in the trading apps Indian professionals use daily (dense rows, right-aligned tabular figures,
+a ticker of today's numbers). Never too sparse. The distinctive character lives on Home and on My Card &
+sharing. No skeuomorphic or novelty world (the earlier "Card Album" world was rejected as not professional).
 
 ## Evidence on Hand
 
