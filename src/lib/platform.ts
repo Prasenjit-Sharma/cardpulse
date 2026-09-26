@@ -33,6 +33,8 @@ export interface Native {
   openUrl(url: string): Promise<void>
   closeBrowser(): Promise<void>
   onAppUrl(cb: (url: string) => void): void
+  /** The link that cold-started the app, if any (Android can kill the app while the user is in the browser). */
+  launchUrl(): Promise<string | undefined>
   setStatusBar(icons: 'light' | 'dark'): Promise<void>
 }
 let native: Native | null = null
@@ -43,6 +45,26 @@ export const getNative = (): Native | null => native
 export function cacheName(name: string): string {
   const clean = name.replace(/[^\p{L}\p{M}\p{N}._-]+/gu, '_')
   return clean.startsWith('.') ? `file${clean}` : clean
+}
+
+/* ---------- notices: a failure the user should hear about, shown by the app as a banner ---------- */
+
+type NoticeListener = (message: string) => void
+const listeners = new Set<NoticeListener>()
+/** Subscribe to notices; returns the unsubscribe. */
+export function onNotice(cb: NoticeListener): () => void { listeners.add(cb); return () => { listeners.delete(cb) } }
+export function notify(message: string): void { for (const cb of listeners) cb(message) }
+
+/* ---------- writing big files through the bridge ---------- */
+
+/** Bytes per write: base64 of a multiple of 3 bytes has no padding, so slices can be appended one after another. */
+export const CHUNK_BYTES = 3 * 1024 * 1024
+/** [start, end) byte ranges covering `size`, `step` bytes at a time; an empty file is one empty write. */
+export function sliceRanges(size: number, step: number = CHUNK_BYTES): [number, number][] {
+  if (size === 0) return [[0, 0]]
+  const out: [number, number][] = []
+  for (let start = 0; start < size; start += step) out.push([start, Math.min(start + step, size)])
+  return out
 }
 
 /* ---------- sharing: the same shape as navigator's, so existing code keeps one path ---------- */
@@ -101,6 +123,22 @@ export function authCodeFromUrl(url: string): string | null {
   try { return new URL(url).searchParams.get('code') } catch { return null }
 }
 
-/** Status bar icons must read against what is under them: the deep indigo top, the black camera, a dark theme, or the light wash. */
-export const statusBarIcons = (s: { deepTop: boolean; dark: boolean; camera: boolean }): 'light' | 'dark' =>
-  s.deepTop || s.dark || s.camera ? 'light' : 'dark'
+/**
+ * Status bar icons must read against what is under them: the deep indigo top, the black camera, a dark theme, or the light
+ * wash. Stall mode (the QR shown to visitors) is white in every theme, so it always takes dark icons.
+ */
+export const statusBarIcons = (s: { deepTop: boolean; dark: boolean; camera: boolean; stall?: boolean }): 'light' | 'dark' =>
+  s.stall ? 'dark' : s.deepTop || s.dark || s.camera ? 'light' : 'dark'
+
+/**
+ * Finishes a sign-in from a link the app was opened with. Anything that is not our own callback is ignored. Google's
+ * error, or a code the server refuses, is reported: the user tapped Sign in and must not be left guessing.
+ */
+export async function finishAppSignIn(url: string, deps: { exchange(code: string): Promise<{ error: unknown }>; close(): Promise<void>; notify(message: string): void }): Promise<void> {
+  if (!url.startsWith(APP_AUTH_REDIRECT)) return
+  await deps.close()
+  const code = authCodeFromUrl(url)
+  if (!code) { deps.notify('Sign-in was cancelled.'); return }
+  const { error } = await deps.exchange(code)
+  if (error) deps.notify('Sign-in did not finish. Try signing in again.')
+}

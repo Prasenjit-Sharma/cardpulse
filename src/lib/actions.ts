@@ -2,7 +2,7 @@ import { displayName, type NameFormat } from './naming.ts'
 import { splitAddress } from './address.ts'
 import { rankedPhones, vcardTelType } from './phones.ts'
 import type { Contact } from './types'
-import { saveBlob, shareNav } from './platform.ts'
+import { notify, saveBlob, shareNav } from './platform.ts'
 
 /** wa.me wants country code + number, digits only. Bare Indian numbers get 91. */
 export function waNumber(phone: string): string {
@@ -40,9 +40,13 @@ export function toVCard(c: Contact, note = '', fmt: NameFormat = 'name'): string
   return lines.join('\r\n')
 }
 
-/** A file to keep: a download in a browser, the share sheet in the app (the WebView cannot download). */
-export function download(name: string, text: string, type: string) {
-  void saveBlob(name, new Blob([text], { type }))
+/**
+ * A file to keep: a download in a browser, the share sheet in the app (the WebView cannot download). A failure is shown
+ * to the user as a notice rather than lost; closing the share sheet is not a failure.
+ */
+export async function download(name: string, text: string, type: string): Promise<void> {
+  try { await saveBlob(name, new Blob([text], { type })) }
+  catch (e) { if ((e as Error)?.name !== 'AbortError') notify('Could not save the file. Try again.') }
 }
 
 /* ---------- Save to phone / Share ---------- */

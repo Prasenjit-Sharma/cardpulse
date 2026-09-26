@@ -23,7 +23,7 @@ import QrScanner from './components/QrScanner'
 import QrResult from './components/QrResult'
 import { eventState, openingEvent, showEvent } from './lib/eventname'
 import { localISO } from './lib/followups'
-import { getNative, statusBarIcons } from './lib/platform'
+import { getNative, onNotice, statusBarIcons } from './lib/platform'
 import { deleteMyCard, emptyCard, listMyCards, MAX_CARDS, planCardRestore, putMyCard, type MyCard } from './lib/mycards'
 import Companies from './components/Companies'
 import Home from './components/Home'
@@ -112,7 +112,9 @@ export default function App() {
   // Android app: the status bar sits over the page top, so its icons follow the screen under them
   const deepTop = !open && !editingCard && (tab === 'home' || tab === 'contacts' || tab === 'exhibition' || tab === 'mycard')
   const darkTheme = settings.theme === 'dark' || (settings.theme !== 'light' && typeof matchMedia !== 'undefined' && matchMedia('(prefers-color-scheme: dark)').matches)
-  useEffect(() => { void getNative()?.setStatusBar(statusBarIcons({ deepTop, dark: darkTheme, camera: camOpen || qrOpen })) }, [deepTop, darkTheme, camOpen, qrOpen])
+  useEffect(() => { void getNative()?.setStatusBar(statusBarIcons({ deepTop, dark: darkTheme, camera: camOpen || qrOpen, stall: !!stallCard })) }, [deepTop, darkTheme, camOpen, qrOpen, stallCard])
+  // failures the user should hear about (a file that could not be saved, a sign-in that did not finish) show as the banner
+  useEffect(() => onNotice(setBanner), [])
   const [qrText, setQrText] = useState('')
   const [toast, setToast] = useState<ToastData | null>(null)
   const toastAt = useRef({ at: 0, count: 0 })

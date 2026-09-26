@@ -1,7 +1,7 @@
 import { readVerified, readZip, createZip, type ZipEntry } from './zip.ts'
 import { cardsFromEntries, cardsToEntries, type MyCard } from './mycards.ts'
 import type { CardRecord, EventRec } from './types'
-import { saveBlob, shareNav } from './platform.ts'
+import { getNative, saveBlob, shareNav } from './platform.ts'
 
 export const BACKUP_VERSION = 1
 const BLOBS = ['image', 'back', 'original', 'originalBack'] as const
@@ -86,7 +86,9 @@ export async function saveBackupFile(blob: Blob, name: string): Promise<void> {
   const file = new File([blob], name, { type: 'application/zip' })
   const nav = shareNav()
   if (nav.canShare?.({ files: [file] })) {
-    try { await nav.share!({ files: [file], title: 'CardPulse backup' }); return } catch (e) { if ((e as Error)?.name === 'AbortError') throw e }
+    // in the app the share sheet is the only way out: a failure is an error, never a second sheet that a cancel would
+    // turn into a false "backed up"
+    try { await nav.share!({ files: [file], title: 'CardPulse backup' }); return } catch (e) { if ((e as Error)?.name === 'AbortError' || getNative()) throw e }
   }
   await saveBlob(name, blob)
 }

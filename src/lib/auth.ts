@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './supabase'
-import { APP_AUTH_REDIRECT, authCodeFromUrl, getNative, isApp } from './platform'
+import { APP_AUTH_REDIRECT, finishAppSignIn, getNative, isApp, notify } from './platform'
 
 /** The current session, kept live. `null` whether signed out or cloud is not configured at all. */
 export function useSession(): Session | null {
@@ -25,15 +25,20 @@ export async function signInWithGoogle(): Promise<void> {
   await n.openUrl(data.url)
 }
 
-/** Inside the app: finish a sign-in when Google sends the user back. Called once from main.tsx. */
+/**
+ * Inside the app: finish a sign-in when Google sends the user back. Called once from main.tsx. The return arrives as a
+ * link while the app runs, or, when Android closed the app while the user was in the browser, as the link it started with.
+ */
 export function startAppAuth(): void {
   const n = getNative()
   if (!n || !supabase) return
-  n.onAppUrl((url) => {
-    const code = authCodeFromUrl(url)
-    void n.closeBrowser()
-    if (code) void supabase!.auth.exchangeCodeForSession(code)
+  const finish = (url: string) => finishAppSignIn(url, {
+    exchange: async (code) => ({ error: (await supabase!.auth.exchangeCodeForSession(code)).error }),
+    close: () => n.closeBrowser(),
+    notify,
   })
+  n.onAppUrl((url) => void finish(url))
+  void n.launchUrl().then((url) => { if (url) void finish(url) })
 }
 export async function signOut(): Promise<void> {
   if (!supabase) return

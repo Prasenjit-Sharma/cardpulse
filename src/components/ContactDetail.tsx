@@ -19,6 +19,7 @@ import DateChip from './DateChip'
 import { showEvent } from '../lib/eventname'
 import { dueFigure, phase } from '../lib/watch'
 import { callNumber, canWhatsApp, kindLabel, PHONE_KINDS, phoneKey, prunePhoneMeta, rankedPhones, whatsAppNumber } from '../lib/phones'
+import { isApp } from '../lib/platform'
 
 const SUGGESTED_TAGS = ['Customer', 'Supplier', 'Partner', 'Investor', 'Hot lead']
 const withProtocol = (w: string) => (/^https?:\/\//i.test(w) ? w : `https://${w}`)
@@ -223,7 +224,7 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
       </div>
 
       <Sheet open={menu} onClose={() => setMenu(false)} title={c?.name || 'Contact'}>
-        {c && <SheetItem icon="file" label="Download contact file (.vcf)" onClick={() => { setMenu(false); download(`${c.name || 'contact'}.vcf`, toVCard(c, noteFor(), currentNameFormat()), 'text/x-vcard'); setFlash('Downloaded. Open the file to choose Contacts.') }} />}
+        {c && <SheetItem icon="file" label="Download contact file (.vcf)" onClick={() => { setMenu(false); download(`${c.name || 'contact'}.vcf`, toVCard(c, noteFor(), currentNameFormat()), 'text/x-vcard'); if (!isApp) setFlash('Downloaded. Open the file to choose Contacts.') }} />}
         <SheetItem icon="trash" danger label="Delete contact" onClick={() => { setMenu(false); void confirmAsk({ title: 'Delete this contact?', confirmLabel: 'Delete', danger: true }).then((ok) => ok && removePerson()) }} />
         <SheetItem icon="trash" danger label="Delete card" onClick={() => { setMenu(false); void confirmAsk({ title: 'Delete the whole card?', message: 'Every contact on it is deleted too.', confirmLabel: 'Delete', danger: true }).then((ok) => ok && onDelete()) }} />
       </Sheet>
@@ -338,7 +339,7 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
             <div className="editor-box followbox" ref={followRef}>
               <DateChip value={c.followUp ?? ''} label="Follow-up date" autoOpen={followOpen} onChange={(v) => patch({ followUp: v }, false)} />
               {c.followUp && <small className={`due${dueStatus(c.followUp, today).state === 'upcoming' ? ' soon' : ''}`}>{dueLabel(c.followUp, today)}</small>}
-              {c.followUp && <button className="x-btn cal" title="Add to calendar" aria-label="Add to calendar" onClick={() => { download(`follow-up-${(c.name || 'contact').replace(/[^\p{L}\p{N}]+/gu, '-')}.ics`, followUpIcs(c, c.followUp!), 'text/calendar'); setFlash('Opens in your calendar app.') }}><Icon name="calendar" size={18} /></button>}
+              {c.followUp && <button className="x-btn cal" title="Add to calendar" aria-label="Add to calendar" onClick={() => { download(`follow-up-${(c.name || 'contact').replace(/[^\p{L}\p{N}]+/gu, '-')}.ics`, followUpIcs(c, c.followUp!), 'text/calendar'); setFlash(isApp ? 'Choose your calendar app to add it.' : 'Opens in your calendar app.') }}><Icon name="calendar" size={18} /></button>}
               <button className="x-btn" onClick={() => { patch({ followUp: '' }, false); setFollowOpen(false) }} aria-label="Remove follow-up"><Icon name="x" size={16} /></button>
             </div>
           )}

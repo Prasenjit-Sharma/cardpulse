@@ -1,7 +1,7 @@
 // Run: node --test test/platform.test.mjs
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { authCodeFromUrl, cacheName, detectApp, makeAppNav, publicBaseFor, statusBarIcons } from '../src/lib/platform.ts'
+import { CHUNK_BYTES, authCodeFromUrl, cacheName, detectApp, finishAppSignIn, makeAppNav, notify, onNotice, publicBaseFor, sliceRanges, statusBarIcons } from '../src/lib/platform.ts'
 
 test('the app is detected only through Capacitor', () => {
   assert.equal(detectApp(undefined), false)
@@ -72,4 +72,60 @@ test('status bar icons: light on indigo, the camera and dark mode; dark on the l
   assert.equal(statusBarIcons({ deepTop: false, dark: false, camera: false }), 'dark')    // Insights, a contact, Settings
   assert.equal(statusBarIcons({ deepTop: false, dark: true, camera: false }), 'light')
   assert.equal(statusBarIcons({ deepTop: false, dark: false, camera: true }), 'light')
+})
+
+test('status bar icons: dark over stall mode, which is white whatever the theme (review I1)', () => {
+  assert.equal(statusBarIcons({ deepTop: true, dark: false, camera: false, stall: true }), 'dark')
+  assert.equal(statusBarIcons({ deepTop: false, dark: true, camera: false, stall: true }), 'dark')
+})
+
+function signInDeps({ exchangeError = null } = {}) {
+  const calls = { exchanged: [], closed: 0, notices: [] }
+  return {
+    calls,
+    deps: {
+      exchange: async (code) => { calls.exchanged.push(code); return { error: exchangeError } },
+      close: async () => { calls.closed++ },
+      notify: (m) => calls.notices.push(m),
+    },
+  }
+}
+
+test('finishing sign-in: a code is exchanged and the browser closed (review I2)', async () => {
+  const { deps, calls } = signInDeps()
+  await finishAppSignIn('in.cardpulse.app://auth/callback?code=abc', deps)
+  assert.deepEqual(calls.exchanged, ['abc']); assert.equal(calls.closed, 1); assert.deepEqual(calls.notices, [])
+})
+
+test('finishing sign-in: Google sent an error, so nothing is exchanged and the user is told', async () => {
+  const { deps, calls } = signInDeps()
+  await finishAppSignIn('in.cardpulse.app://auth/callback?error=access_denied', deps)
+  assert.deepEqual(calls.exchanged, []); assert.equal(calls.closed, 1); assert.equal(calls.notices.length, 1)
+})
+
+test('finishing sign-in: a failed exchange is reported, not silent', async () => {
+  const { deps, calls } = signInDeps({ exchangeError: new Error('invalid grant') })
+  await finishAppSignIn('in.cardpulse.app://auth/callback?code=old', deps)
+  assert.equal(calls.notices.length, 1); assert.match(calls.notices[0], /sign/i)
+})
+
+test('finishing sign-in: a link that is not ours is ignored entirely', async () => {
+  const { deps, calls } = signInDeps()
+  await finishAppSignIn('https://example.com/?code=abc', deps)
+  assert.deepEqual(calls.exchanged, []); assert.equal(calls.closed, 0); assert.deepEqual(calls.notices, [])
+})
+
+test('big files are written in slices that keep base64 aligned (review I4)', () => {
+  assert.deepEqual(sliceRanges(0, 6), [[0, 0]])
+  assert.deepEqual(sliceRanges(5, 6), [[0, 5]])
+  assert.deepEqual(sliceRanges(13, 6), [[0, 6], [6, 12], [12, 13]])
+  assert.equal(CHUNK_BYTES % 3, 0)
+})
+
+test('notices reach whoever listens (the app shows them as a banner)', () => {
+  const seen = []
+  const off = onNotice((m) => seen.push(m))
+  notify('Could not save the file.')
+  off(); notify('after')
+  assert.deepEqual(seen, ['Could not save the file.'])
 })
