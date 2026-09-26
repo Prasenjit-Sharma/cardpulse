@@ -1,6 +1,7 @@
 import { readVerified, readZip, createZip, type ZipEntry } from './zip.ts'
 import { cardsFromEntries, cardsToEntries, type MyCard } from './mycards.ts'
 import type { CardRecord, EventRec } from './types'
+import { saveBlob, shareNav } from './platform.ts'
 
 export const BACKUP_VERSION = 1
 const BLOBS = ['image', 'back', 'original', 'originalBack'] as const
@@ -83,11 +84,9 @@ export const backupFileName = (now = Date.now()) => `cardpulse-backup-${new Date
 /** Hands the backup to the phone: the share sheet where files are supported (Drive, WhatsApp, Files), else a download. */
 export async function saveBackupFile(blob: Blob, name: string): Promise<void> {
   const file = new File([blob], name, { type: 'application/zip' })
-  if (navigator.canShare?.({ files: [file] })) {
-    try { await navigator.share({ files: [file], title: 'CardPulse backup' }); return } catch (e) { if ((e as Error)?.name === 'AbortError') throw e }
+  const nav = shareNav()
+  if (nav.canShare?.({ files: [file] })) {
+    try { await nav.share!({ files: [file], title: 'CardPulse backup' }); return } catch (e) { if ((e as Error)?.name === 'AbortError') throw e }
   }
-  const a = document.createElement('a')
-  a.href = URL.createObjectURL(blob); a.download = name
-  document.body.appendChild(a); a.click(); a.remove()
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000)
+  await saveBlob(name, blob)
 }

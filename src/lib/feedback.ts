@@ -1,3 +1,5 @@
+import { shareNav } from './platform.ts'
+
 /** Where feedback goes when the phone cannot share it. Set this to a real address once there is one. */
 export const SUPPORT_EMAIL = ''
 
@@ -35,8 +37,9 @@ export type Sent = 'shared' | 'mailed' | 'copied'
 
 /** The share sheet where there is one (WhatsApp, Gmail), else a ready-addressed email, else the clipboard. */
 export async function sendFeedback(text: string): Promise<Sent> {
-  if (navigator.share) {
-    try { await navigator.share({ title: 'CardPulse feedback', text }); return 'shared' } catch (e) { if ((e as Error)?.name === 'AbortError') throw e }
+  const nav = shareNav()
+  if (nav.share) {
+    try { await nav.share({ title: 'CardPulse feedback', text }); return 'shared' } catch (e) { if ((e as Error)?.name === 'AbortError') throw e }
   }
   if (SUPPORT_EMAIL) {
     location.href = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('CardPulse feedback')}&body=${encodeURIComponent(text.slice(0, 1800))}`

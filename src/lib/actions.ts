@@ -2,6 +2,7 @@ import { displayName, type NameFormat } from './naming.ts'
 import { splitAddress } from './address.ts'
 import { rankedPhones, vcardTelType } from './phones.ts'
 import type { Contact } from './types'
+import { saveBlob, shareNav } from './platform.ts'
 
 /** wa.me wants country code + number, digits only. Bare Indian numbers get 91. */
 export function waNumber(phone: string): string {
@@ -39,12 +40,9 @@ export function toVCard(c: Contact, note = '', fmt: NameFormat = 'name'): string
   return lines.join('\r\n')
 }
 
+/** A file to keep: a download in a browser, the share sheet in the app (the WebView cannot download). */
 export function download(name: string, text: string, type: string) {
-  const a = document.createElement('a')
-  a.href = URL.createObjectURL(new Blob([text], { type }))
-  a.download = name
-  a.click()
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000)
+  void saveBlob(name, new Blob([text], { type }))
 }
 
 /* ---------- Save to phone / Share ---------- */
@@ -64,7 +62,7 @@ export interface ActionEnv {
   log?: (msg: string) => void
 }
 
-export const browserEnv = (log?: (m: string) => void): ActionEnv => ({ nav: navigator as unknown as ActionEnv['nav'], download, log })
+export const browserEnv = (log?: (m: string) => void): ActionEnv => ({ nav: shareNav() as ActionEnv['nav'], download, log })
 
 export type ActionResult = 'shared' | 'copied' | 'downloaded' | 'cancelled'
 export interface ActionOutcome { result: ActionResult; /** Why the share sheet could not be used, if it could not. */ problem?: string }

@@ -7,6 +7,7 @@ import { cardQr } from '../lib/cardqr'
 import { drawCard } from '../lib/drawcard'
 import type { MyCard } from '../lib/mycards'
 import Sheet, { SheetItem } from './Sheet'
+import { saveBlob, shareNav } from '../lib/platform'
 
 const EXPORT_PX = 2000
 
@@ -16,13 +17,6 @@ async function cardPng(card: MyCard): Promise<Blob> {
   c.width = EXPORT_PX; c.height = Math.round(EXPORT_PX / 1.75)
   await drawCard(c.getContext('2d')!, card, cardQr(card).matrix, EXPORT_PX)
   return new Promise<Blob>((resolve, reject) => c.toBlob((b) => (b ? resolve(b) : reject(new Error('encode'))), 'image/png'))
-}
-
-function saveFile(blob: Blob, name: string) {
-  const a = document.createElement('a')
-  a.href = URL.createObjectURL(blob); a.download = name
-  document.body.appendChild(a); a.click(); a.remove()
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000)
 }
 
 /** Four ways to give someone the card: show the QR, send the contact file, send the picture, copy the text. */
@@ -43,8 +37,9 @@ export default function CardShare({ card, onClose, onStall }: { card: MyCard; on
   const sendImage = guard(async () => {
     const blob = await cardPng(card)
     const file = new File([blob], cardFileName(card, 'png'), { type: 'image/png' })
-    if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], title: card.name }); noteShare(card.id, 'picture'); return }
-    saveFile(blob, file.name); noteShare(card.id, 'picture'); say('Saved as a picture.')
+    const nav = shareNav()
+    if (nav.canShare?.({ files: [file] })) { await nav.share!({ files: [file], title: card.name }); noteShare(card.id, 'picture'); return }
+    await saveBlob(file.name, blob); noteShare(card.id, 'picture'); say('Saved as a picture.')
   })
   const copy = guard(async () => { await navigator.clipboard.writeText(cardAsText(card)); noteShare(card.id, 'text'); say('Copied.') })
 
