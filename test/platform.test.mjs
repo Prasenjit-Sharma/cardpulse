@@ -1,7 +1,7 @@
 // Run: node --test test/platform.test.mjs
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { authCodeFromUrl, cacheName, detectApp, makeAppNav, publicBaseFor } from '../src/lib/platform.ts'
+import { authCodeFromUrl, cacheName, detectApp, makeAppNav, publicBaseFor, statusBarIcons } from '../src/lib/platform.ts'
 
 test('the app is detected only through Capacitor', () => {
   assert.equal(detectApp(undefined), false)
@@ -65,4 +65,11 @@ test('sign-in return: only our own callback with a code is exchanged', () => {
   assert.equal(authCodeFromUrl('in.cardpulse.app://something-else?code=abc'), null)
   assert.equal(authCodeFromUrl('https://evil.example/auth/callback?code=abc'), null)
   assert.equal(authCodeFromUrl('not a url'), null)
+})
+
+test('status bar icons: light on indigo, the camera and dark mode; dark on the light wash', () => {
+  assert.equal(statusBarIcons({ deepTop: true, dark: false, camera: false }), 'light')    // Home, Contacts, Events, My Card
+  assert.equal(statusBarIcons({ deepTop: false, dark: false, camera: false }), 'dark')    // Insights, a contact, Settings
+  assert.equal(statusBarIcons({ deepTop: false, dark: true, camera: false }), 'light')
+  assert.equal(statusBarIcons({ deepTop: false, dark: false, camera: true }), 'light')
 })

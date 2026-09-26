@@ -100,3 +100,7 @@ export function authCodeFromUrl(url: string): string | null {
   if (!url.startsWith(APP_AUTH_REDIRECT)) return null
   try { return new URL(url).searchParams.get('code') } catch { return null }
 }
+
+/** Status bar icons must read against what is under them: the deep indigo top, the black camera, a dark theme, or the light wash. */
+export const statusBarIcons = (s: { deepTop: boolean; dark: boolean; camera: boolean }): 'light' | 'dark' =>
+  s.deepTop || s.dark || s.camera ? 'light' : 'dark'
