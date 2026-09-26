@@ -78,11 +78,13 @@ export default function CardEditor({ card, isNew, onSave, onDelete, onClose }: {
 
   return (
     <div className="page-plain card-editor">
-      <header className="bar-top">
-        <button className="icon-btn ghost" onClick={requestClose} aria-label="Back"><Icon name="back" /></button>
-        <span className="grow"><strong>{isNew ? 'New card' : 'Edit card'}</strong></span>
-        <button className="cta small" disabled={!canSave} onClick={() => void save()}>{busy ? 'Saving…' : 'Save'}</button>
-      </header>
+      <div className="page-top">
+        <header className="bar-top">
+          <button className="icon-btn ghost" onClick={requestClose} aria-label="Back"><Icon name="back" /></button>
+          <span className="grow"><strong>{isNew ? 'New card' : 'Edit card'}</strong></span>
+          <button className="cta small" disabled={!canSave} onClick={() => void save()}>{busy ? 'Saving…' : 'Save'}</button>
+        </header>
+      </div>
 
       <div className="editor-preview"><CardCanvas card={draft} /></div>
       {!draft.name.trim() && <p className="hint" role="status">Add your name to save this card.</p>}

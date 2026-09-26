@@ -42,7 +42,7 @@ export default function MyCards({ cards, stats, onAdd, onEdit, onShare, onStall 
     <>
       {cards.length === 0 ? (
         <>
-          <header className="page-head"><h1>My Card</h1></header>
+          <div className="page-top"><header className="page-head"><h1>My Card</h1></header></div>
           <div className="empty-scan">
             <CardStack />
             <h2>Your digital card</h2>
@@ -52,7 +52,7 @@ export default function MyCards({ cards, stats, onAdd, onEdit, onShare, onStall 
         </>
       ) : (
         <>
-          <section className="mycards-hero">
+          <section className="mycards-hero page-top">
             <header className="mycards-head">
               <h1>My Card{current?.label && <span className="mycards-label">{current.label}</span>}</h1>
               {current && <button className="icon-btn ghost" onClick={() => onEdit(current.id)} aria-label="Edit card"><Icon name="edit" size={20} /></button>}
@@ -74,15 +74,17 @@ export default function MyCards({ cards, stats, onAdd, onEdit, onShare, onStall 
             {cards.length + (canAdd ? 1 : 0) > 1 && (
               <div className="dots-row mycards-dots" aria-hidden="true">{Array.from({ length: cards.length + (canAdd ? 1 : 0) }, (_, i) => <i key={i} className={i === index ? 'on' : ''} />)}</div>
             )}
-          </section>
-          {current && (
-            <>
-              <div className="holding full-bleed" role="group" aria-label="This card's figures">
+            {current && (
+              <div className="figgrid" style={{ ['--cols' as string]: 4 }} role="group" aria-label="This card's figures">
                 <div><span>Shared</span><b className="num">{tally.shared + tally.exchanged}</b></div>
                 <div><span>QR shown</span><b className="num">{tally.qr}</b></div>
                 <div><span>Views</span><b className="num">{stat ? stat.views : '–'}</b></div>
                 <div><span>Leads</span><b className={`num${stat?.leads ? ' up' : ''}`}>{stat ? stat.leads : '–'}</b></div>
               </div>
+            )}
+          </section>
+          {current && (
+            <>
               {!stat && <p className="holding-note">Views and leads count when you are signed in.</p>}
               <div className="mycards-actions">
                 <button className="cta" onClick={() => onShare(current.id)}><Icon name="share" size={19} /> Share card</button>

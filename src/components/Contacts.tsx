@@ -81,25 +81,27 @@ export default function Contacts({ onScan, cards: allCards, events, activeEvent,
 
   return (
     <div>
-      <header className="page-head">
-        <h1>Contacts <span className="count num">{rows.length}</span></h1>
-        {rows.length > 0 && (sel ? <button className="link" onClick={exit}>Cancel</button> : <button className="link" onClick={() => { setOpenKey(''); setSel(new Set()) }}>Select</button>)}
-      </header>
+      <div className="page-top">
+        <header className="page-head">
+          <h1>Contacts <span className="count num">{rows.length}</span></h1>
+          {rows.length > 0 && (sel ? <button className="link" onClick={exit}>Cancel</button> : <button className="link" onClick={() => { setOpenKey(''); setSel(new Set()) }}>Select</button>)}
+        </header>
 
-      {events.length > 0 && (
-        <div className="wl-tabs full-bleed ev-tabs" role="tablist" aria-label="Events">
-          <button role="tab" aria-selected={activeEvent === ''} className={activeEvent === '' ? 'on' : ''} onClick={() => onSelectEvent('')}>All</button>
-          {tabEvents.map((e) => (
-            <button key={e.id} role="tab" aria-selected={activeEvent === e.id} className={activeEvent === e.id ? 'on' : ''} onClick={() => onSelectEvent(e.id)} title={e.name}>
-              {eventState(e, today) === 'live' && <i className="live-dot" aria-label="Live" />}{showEvent(e.name)}
-            </button>
-          ))}
-          {moreEvents && (
-            <Picker className="ev-more" title="Show event" label="More" value={activeEvent} onChange={onSelectEvent}
-              options={featuredEvents(events, today, events.length).map((e) => ({ value: e.id, label: showEvent(e.name) }))} />
-          )}
-        </div>
-      )}
+        {events.length > 0 && (
+          <div className="wl-tabs full-bleed ev-tabs" role="tablist" aria-label="Events">
+            <button role="tab" aria-selected={activeEvent === ''} className={activeEvent === '' ? 'on' : ''} onClick={() => onSelectEvent('')}>All</button>
+            {tabEvents.map((e) => (
+              <button key={e.id} role="tab" aria-selected={activeEvent === e.id} className={activeEvent === e.id ? 'on' : ''} onClick={() => onSelectEvent(e.id)} title={e.name}>
+                {eventState(e, today) === 'live' && <i className="live-dot" aria-label="Live" />}{showEvent(e.name)}
+              </button>
+            ))}
+            {moreEvents && (
+              <Picker className="ev-more" title="Show event" label="More" value={activeEvent} onChange={onSelectEvent}
+                options={featuredEvents(events, today, events.length).map((e) => ({ value: e.id, label: showEvent(e.name) }))} />
+            )}
+          </div>
+        )}
+      </div>
 
       <div className="searchbox">
         <Icon name="search" size={18} />

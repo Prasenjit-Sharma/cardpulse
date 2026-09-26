@@ -32,13 +32,24 @@ export default function Exhibition({ cards, events, activeEvent, onNew, onEdit, 
   const focus = events.find((e) => e.id === activeEvent) ?? ordered[0]
   const latest = focus ? cards.filter((c) => c.eventId === focus.id && c.status === 'done').sort((a, b) => b.createdAt - a.createdAt)
     .flatMap((c) => (c.corrected ?? []).map((p, i) => ({ card: c, p, i, key: `${c.id}:${i}` }))).slice(0, 6) : []
+  const liveNow = events.filter((e) => eventState(e, today) === 'live').length
+  const filed = cards.filter((c) => c.eventId && events.some((e) => e.id === c.eventId)).length
   const eventName = (id?: string) => events.find((e) => e.id === id)?.name ?? ''
   return (
     <>
-      <header className="page-head">
-        <h1>Events {events.length > 0 && <span className="count num">{events.length}</span>}</h1>
-        <button className="icon-btn ghost" onClick={onNew} aria-label="New event"><Icon name="plus" size={20} /></button>
-      </header>
+      <div className="page-top">
+        <header className="page-head">
+          <h1>Events {events.length > 0 && <span className="count num">{events.length}</span>}</h1>
+          <button className="icon-btn ghost" onClick={onNew} aria-label="New event"><Icon name="plus" size={20} /></button>
+        </header>
+        {events.length > 0 && (
+          <div className="figgrid" role="group" aria-label="Events at a glance">
+            <div><span>Events</span><b className="num">{events.length}</b></div>
+            <div><span>Live now</span><b className="num">{liveNow}</b></div>
+            <div><span>Cards filed</span><b className="num">{filed}</b></div>
+          </div>
+        )}
+      </div>
 
       {events.length === 0 && (
         <EmptyState icon="booth" title="No events yet" text="Trade shows, meetings, anywhere you collect cards. Create one, then scan into it."

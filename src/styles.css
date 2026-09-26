@@ -44,6 +44,8 @@
   --brand-ink: #FFFFFF;
   --brand-wash: color-mix(in srgb, var(--brand-base) 9%, transparent);
   --brand-edge: color-mix(in srgb, var(--brand-base) 30%, transparent);
+  --wash: color-mix(in srgb, var(--brand) 7%, var(--board));        /* the page top: every screen opens on it */
+  --wash-press: color-mix(in srgb, var(--brand) 12%, var(--board));
   --band-ink: #4A43A6;         /* band headings: the brand's hue at text weight, 7:1 on a band */
   --on-brand: #FFFFFF;
   --on-brand-2: rgba(255,255,255,.78);   /* labels on the masthead: 7.6:1 */
@@ -285,8 +287,21 @@ input[inputmode='tel'], .num input { font-variant-numeric: tabular-nums }
 .bar-top .star-btn { width: 40px; height: 40px; min-height: 40px; border-radius: 8px; background: none }
 .bar-top { gap: 8px; margin: 0 0 12px }
 .bar-top + h1 { margin: 4px 0 14px }
-.chip-pill { display: inline-flex; align-items: center; gap: 7px; background: var(--sleeve); border-radius: var(--r-pill); padding: 8px 14px; font-size: var(--t-s); font-weight: 600; color: var(--ink-2); box-shadow: var(--seat) }
 .brand { display: flex; align-items: center; gap: 9px; font-weight: 600 }
+
+/* ---------- the page top: every screen opens on the indigo wash, up under the status bar. Home's masthead is its deep
+   form. It holds the title row, and on screens that count things, a figure grid whose columns always align. ---------- */
+.page-top { margin: calc(-8px - env(safe-area-inset-top)) -16px 0; padding: calc(8px + env(safe-area-inset-top)) 16px 0; background: var(--wash); border-bottom: 1px solid var(--brand-edge) }
+.page-top > .page-head, .page-top > .bar-top { margin-bottom: 6px }
+.page-top > .page-head:last-child, .page-top > .bar-top:last-child { margin-bottom: 8px }
+.page-top > .figgrid:last-child, .page-top > .ev-tabs:last-child { border-bottom: 0; margin-bottom: 0 }
+.page-top .ev-tabs { border-bottom: 0; margin-bottom: 0; border-top: 1px solid var(--brand-edge) }
+.page-top + .group.band, .page-top + section > .group.band:first-child { margin-top: 0; border-top: 0 }
+.page-top + .infos { border-top: 0 }
+.page-top + .searchbox, .page-top + .eventbar, .page-top + .note, .page-top + .banner, .page-top + p, .page-top + .empty-scan { margin-top: 12px }
+.page-top .icon-btn.ghost:active:not(:disabled) { background: var(--wash-press) }
+/* a tool well used as a row's leading mark (Insights' "What needs you") */
+.index-row .tool-well { width: 36px; height: 36px; border-radius: 10px; flex: none }
 
 /* home masthead: the one indigo surface. The wordmark, then today's six figures in one grid of three columns, so the
    second row always sits under the first. The brand's pulse line runs behind them. */
@@ -370,19 +385,7 @@ input[inputmode='tel'], .num input { font-variant-numeric: tabular-nums }
 
 /* ---------- home: the day's desk ---------- */
 /* the ticker: standing figures in one band, ruled apart like a market strip */
-/* index tiles: today's three figures */
-.indices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0 -16px 10px; border-bottom: 1px solid var(--rule) }
-.indices button {
-  display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 0; min-height: 0; padding: 12px 16px 13px; text-align: left;
-  background: none; border-radius: 0; color: var(--ink); font-weight: 400
-}
-.indices button + button { box-shadow: inset 1px 0 0 var(--rule-soft) }
-.indices button:active:not(:disabled) { transform: none; background: var(--band) }
-.indices span { font-size: var(--t-xs); font-weight: 500; color: var(--ink-3) }
-.indices b { font-size: 28px; font-weight: 700; line-height: 1.2; letter-spacing: -.02em; font-variant-numeric: tabular-nums }
-.indices small { font-size: var(--t-xs); color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100% }
-.indices .due b { color: var(--red) }
-small.up, .indices small.up { color: var(--green); font-weight: 600 }
+small.up { color: var(--green); font-weight: 600 }
 /* watchlist tabs: underlined, never pills */
 .wl-tabs { display: flex; padding: 0 6px; border-bottom: 1px solid var(--rule); overflow-x: auto; scrollbar-width: none }
 .wl-tabs::-webkit-scrollbar { display: none }
@@ -402,6 +405,8 @@ small.up, .indices small.up { color: var(--green); font-weight: 600 }
 .index-row .grow { display: flex; flex-direction: column; gap: 1px; min-width: 0 }
 .index-row strong { font-size: var(--t-m); font-weight: 650; letter-spacing: .01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
 .index-row .muted { font-size: var(--t-xs) }
+.index-row .muted.wrap { white-space: normal; line-height: 1.4 }
+.index-row > svg:last-child { flex: none; color: var(--ink-3) }
 .group.band .link { margin-left: auto; font-size: var(--t-xs); letter-spacing: 0; text-transform: none }
 
 /* ---------- the watchlist row and its depth drawer ---------- */
@@ -604,7 +609,7 @@ button.add { min-height: 36px; padding: 0 2px; font-size: var(--t-s); background
 .act-row .x-btn { margin: -4px -6px -4px 0 }
 
 /* ---------- review ---------- */
-.photo-frame { display: flex; justify-content: center; background: var(--sleeve); border-radius: var(--r-sleeve); padding: 14px; margin: 16px 0 10px; box-shadow: var(--seat) }
+.photo-frame { display: flex; justify-content: center; margin: 0 -16px; padding: 14px 16px; background: var(--band); border-bottom: 1px solid var(--rule-soft) }
 .photo-frame img { max-height: 152px; max-width: 100%; border-radius: var(--r-card); box-shadow: 0 0 0 1px var(--rule) }
 .sticky-cta { position: sticky; bottom: calc(12px + env(safe-area-inset-bottom)); margin-top: 18px; padding-top: 12px; background: linear-gradient(transparent, var(--board) 32%) }
 
@@ -632,7 +637,7 @@ button.add { min-height: 36px; padding: 0 2px; font-size: var(--t-s); background
 .settings-head h1 { font-size: var(--t-xl) }
 .dev-panel { padding: 12px 0 4px }
 /* the hub's head: who you are, then what this phone holds, on one indigo wash */
-.acct { background: color-mix(in srgb, var(--brand) 7%, var(--board)); border-block: 1px solid var(--brand-edge) }
+.acct { background: var(--wash); border-block: 1px solid var(--brand-edge) }
 .acct-who { width: 100%; justify-content: flex-start; gap: 12px; min-height: 64px; padding: 10px 16px; background: none; border-radius: 0; border-bottom: 1px solid var(--brand-edge); color: var(--ink); font-weight: 400; text-align: left }
 .acct-who:active:not(:disabled) { transform: none; background: color-mix(in srgb, var(--brand) 12%, var(--board)) }
 .acct-who .grow { display: flex; flex-direction: column; gap: 1px; min-width: 0 }
@@ -640,15 +645,18 @@ button.add { min-height: 36px; padding: 0 2px; font-size: var(--t-s); background
 .acct-who small { font-size: var(--t-xs); color: var(--ink-3) }
 .acct-who > svg { flex: none; color: var(--ink-3) }
 .acct-avatar { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 40px; height: 40px; border-radius: 50%; background: var(--brand); color: var(--brand-ink); font-size: var(--t-l); font-weight: 700 }
-.acct-figs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) }
-.acct-figs > * { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; min-width: 0; min-height: 0; padding: 10px 16px 12px; background: none; border-radius: 0; color: var(--ink); font-weight: 400; text-align: left }
-.acct-figs > * + * { box-shadow: inset 1px 0 0 var(--brand-edge) }
-.acct-figs > button:active:not(:disabled) { transform: none; background: color-mix(in srgb, var(--brand) 12%, var(--board)) }
-.acct-figs span { font-size: 11px; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; white-space: nowrap; color: var(--ink-3) }
-.acct-figs b { font-size: 20px; font-weight: 700; letter-spacing: -.02em; line-height: 1.2; font-variant-numeric: tabular-nums }
+.acct-figs, .figgrid { display: grid; grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr)) }
+.figgrid { margin: 0 -16px; border-top: 1px solid var(--brand-edge) }
+.acct-figs > *, .figgrid > * { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; min-width: 0; min-height: 0; padding: 10px 16px 12px; background: none; border-radius: 0; color: var(--ink); font-weight: 400; text-align: left }
+.acct-figs > * + *, .figgrid > * + * { box-shadow: inset 1px 0 0 var(--brand-edge) }
+.acct-figs > button:active:not(:disabled), .figgrid > button:active:not(:disabled) { transform: none; background: var(--wash-press) }
+.acct-figs span, .figgrid span { font-size: 11px; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; white-space: nowrap; color: var(--ink-3) }
+.acct-figs b, .figgrid b { font-size: 20px; font-weight: 700; letter-spacing: -.02em; line-height: 1.2; font-variant-numeric: tabular-nums }
 .acct-figs > button b { color: var(--brand) }
+.figgrid small { max-width: 100%; overflow: hidden; font-size: 11px; color: var(--ink-3); white-space: nowrap; text-overflow: ellipsis }
+.figgrid .due b { color: var(--red) } .figgrid .up { color: var(--green); font-weight: 600 }
 /* tools: four equal keys ruled apart, each an indigo well over its name; never a sideways scroll */
-.tools { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-bottom: 1px solid var(--rule-soft) }
+.tools { display: grid; grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr)); border-bottom: 1px solid var(--rule-soft) }
 .tools > button, .tools > label { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 7px; min-width: 0; min-height: 0; margin: 0; padding: 14px 4px 12px; background: none; border-radius: 0; color: var(--ink); font-size: var(--t-s); font-weight: 600; cursor: pointer }
 .tools > * + * { box-shadow: inset 1px 0 0 var(--rule-soft) }
 .tools > button:active:not(:disabled), .tools > label:active { transform: none; background: var(--band) }
@@ -680,7 +688,6 @@ label.setting-row > span.grow:not(.sr) { display: flex } label.datechip > span:n
 .menu-item .grow { display: flex; flex-direction: column } .menu-item strong { font-weight: 500 } .menu-item small { color: var(--ink-3) }
 .menu-item > svg:first-child { color: var(--ink-2); flex: none } .menu-item > svg:last-child:not(:first-child) { transform: rotate(180deg); color: var(--ink-3) }
 .menu-item:active:not(:disabled) { transform: none; background: var(--board-2) }
-.menu-row { width: 100%; margin-top: 16px; justify-content: flex-start; gap: 14px; text-align: left; min-height: 58px; background: var(--sleeve); border-radius: var(--r-sleeve); box-shadow: var(--seat); font-weight: 400 } .menu-row .grow { display: flex; flex-direction: column } .menu-row strong { font-weight: 500 } .menu-row small { color: var(--ink-3) } .menu-row svg:last-child { transform: rotate(180deg); color: var(--ink-3) } .menu-row > svg:first-child { color: var(--ink-2) }
 .about { display: flex; align-items: center; justify-content: center; gap: 9px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--rule-soft); color: var(--ink-3); font-size: var(--t-s) }
 .radio-list { display: flex; flex-direction: column; margin: 10px 0 }
 .radio { width: 100%; justify-content: flex-start; text-align: left; gap: 14px; min-height: 56px; padding: 8px 2px; background: none; border-radius: 12px; font-weight: 400 }
@@ -715,22 +722,11 @@ label.setting-row > span.grow:not(.sr) { display: flex } label.datechip > span:n
 .soon-row { display: flex; align-items: center; gap: 13px; padding: 13px 0; border-top: 1px solid var(--rule-soft) } .soon-row > svg { color: var(--brand); flex: none } .soon-row .grow { display: flex; flex-direction: column } .soon-row small { color: var(--ink-3) }
 
 /* ---------- insights / accuracy / companies ---------- */
-.stats, .stats2 { display: flex; flex-direction: column; margin: 10px 0; background: var(--sleeve); border-radius: var(--r-sleeve); box-shadow: var(--seat); overflow: hidden }
-.stats > div, .stats2 > div { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 16px; min-height: 52px }
-.stats > div + div, .stats2 > div + div { border-top: 1px solid var(--rule-soft) }
-.stats > div > svg, .stats2 > div > svg { display: none }
-.stats b, .stats2 b { order: 2; font-size: var(--t-m); font-weight: 600; font-variant-numeric: tabular-nums }
-.stats span, .stats2 span { order: 1; font-size: var(--t-m); color: var(--ink) }
-.stats2 .warm b { color: var(--red) }
-.insight { display: flex; align-items: flex-start; gap: 13px } .insight p { margin: 2px 0 0; font-size: var(--t-s); color: var(--ink-2) } .insight .grow strong { display: block }
-.insight-icon { width: 38px; height: 38px; border-radius: 12px; background: var(--amber-wash); color: var(--amber); display: inline-flex; align-items: center; justify-content: center; flex: none }
 .row { display: flex; align-items: center; gap: 13px; padding: 12px 0; border-bottom: 1px solid var(--rule-soft); min-width: 0 } .row .grow { display: flex; flex-direction: column } .row .muted { overflow: hidden; text-overflow: ellipsis; white-space: nowrap } .row.static { cursor: default }
 .list { display: flex; flex-direction: column }
 table { width: 100%; border-collapse: collapse; background: var(--sleeve); border-radius: var(--r-sleeve); overflow: hidden; font-size: var(--t-s); box-shadow: var(--seat) }
 th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--rule-soft) } th { color: var(--ink-3); font-weight: 600; font-size: var(--t-xs) }
 td { font-variant-numeric: tabular-nums }
-.eventbar { display: flex; gap: 8px; margin: 0 0 14px } .eventbar select { flex: 1; min-width: 0 }
-.list:has(> .company-row) { background: var(--sleeve); border-radius: var(--r-sleeve); box-shadow: var(--seat); overflow: hidden }
 .company-row { width: 100%; text-align: left; min-height: 56px; background: none; border: 0; border-radius: 0; color: var(--ink); font-weight: 400; justify-content: flex-start; padding: 0 16px; position: relative }
 .company-row + .company-row::before { content: ''; position: absolute; top: 0; left: 72px; right: 0; height: 1px; background: var(--rule-soft) }
 .company-row:active:not(:disabled) { background: var(--board-2); transform: none }
@@ -805,14 +801,6 @@ nav button.scan-key:active:not(:disabled) .ind { transform: scale(.94) }
 .mycards-add { width: 100%; aspect-ratio: 1.75; display: flex; align-items: center; justify-content: center; gap: 10px; border: 1.5px dashed var(--board-edge); border-radius: 12px; background: var(--band); color: var(--ink-2); font-weight: 600 }
 .mycards-add:active:not(:disabled) { transform: none; background: var(--board-2) }
 .mycards-dots { margin: -14px 0 12px }
-/* the holding: the card link's figures in one band, ruled apart */
-.holding { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: var(--band); border-block: 1px solid var(--rule-soft) }
-.holding > div { display: flex; flex-direction: column; gap: 1px; padding: 10px 12px 12px; min-width: 0 }
-.holding > div:first-child { padding-left: 16px }
-.holding > div + div { box-shadow: inset 1px 0 0 var(--rule-soft) }
-.holding span { font-size: 11px; font-weight: 600; letter-spacing: .03em; white-space: nowrap; text-transform: uppercase; color: var(--ink-3) }
-.holding b { font-size: 24px; font-weight: 700; letter-spacing: -.02em; line-height: 1.2; font-variant-numeric: tabular-nums }
-.holding b.up { color: var(--green) }
 .holding-note { margin: 6px 0 0; font-size: var(--t-xs); color: var(--ink-3) }
 .index-row.static { cursor: default }
 .lead-ico { width: 32px; height: 32px; border-radius: 8px; background: var(--board-2); color: var(--ink-2); display: inline-flex; align-items: center; justify-content: center; flex: none }
@@ -829,7 +817,8 @@ nav button.scan-key:active:not(:disabled) .ind { transform: scale(.94) }
 @media (min-width: 900px) { .mycards-hero .mycards-item { flex-basis: min(100%, 520px) } .mycards-track { margin-left: -28px; margin-right: -28px; padding-left: 28px; padding-right: 28px } .stall-row { margin-left: -28px; margin-right: -28px; width: calc(100% + 56px) } }
 /* card editor */
 /* the card being made stays in view, seated on a band, while its fields scroll under it */
-.editor-preview { position: sticky; top: 0; z-index: 3; margin: 0 -16px; padding: 12px 16px 14px; background: var(--band); border-bottom: 1px solid var(--rule) }
+.editor-preview { position: sticky; top: 0; z-index: 3; margin: 0 -16px; padding: 4px 16px 14px; background: var(--wash); border-bottom: 1px solid var(--brand-edge) }
+.page-top:has(+ .editor-preview) { border-bottom: 0 }
 .editor-preview .card-canvas { width: min(82%, 380px); margin-inline: auto }
 .photo-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 0 -16px; padding: 10px 16px; border-bottom: 1px solid var(--rule-soft) } .photo-row .hint { flex-basis: 100%; margin: 0 }
 .photo-row .grow { display: flex; flex-direction: column } .photo-row small { color: var(--ink-3); font-size: var(--t-xs) }
@@ -975,8 +964,9 @@ a.public-btn { display: inline-flex; align-items: center; justify-content: cente
   .app { max-width: 880px; box-shadow: 0 0 0 1px var(--rule-soft), 0 18px 60px rgba(16,24,40,.12) }
   nav, .toast, .selbar { max-width: 880px }
   main { padding-left: 28px; padding-right: 28px }
-  .masthead { padding-left: 28px; padding-right: 28px } .acct-who, .acct-figs > :first-child { padding-left: 28px } .mast-figs button, .event-strip-main { padding-left: 28px } .event-strip { padding-right: 28px }
-  .plain-list, .group.band, .full-bleed, .indices, .masthead, .mast-figs, .event-strip, .infos, .activity, .editor-box, .panel, .editor-preview, .photo-row, .setting-group, .setting-foot, .field-table, .field-box.pickbox { margin-left: -28px; margin-right: -28px } .group.band, .infos, .activity, .field-table, .panel, .editor-preview, .photo-row { padding-left: 28px; padding-right: 28px }
+  .masthead, .page-top { padding-left: 28px; padding-right: 28px } .figgrid { margin-left: -28px; margin-right: -28px } .figgrid > :first-child { padding-left: 28px }
+  .page-top { margin-left: -28px; margin-right: -28px } .acct-who, .acct-figs > :first-child { padding-left: 28px } .mast-figs button, .event-strip-main { padding-left: 28px } .event-strip { padding-right: 28px }
+  .plain-list, .group.band, .full-bleed, .masthead, .mast-figs, .event-strip, .infos, .activity, .editor-box, .panel, .editor-preview, .photo-row, .setting-group, .setting-foot, .field-table, .field-box.pickbox { margin-left: -28px; margin-right: -28px } .group.band, .infos, .activity, .field-table, .panel, .editor-preview, .photo-row { padding-left: 28px; padding-right: 28px }
   .banner-row, .log-add { margin-left: -28px; margin-right: -28px; width: calc(100% + 56px); padding-left: 28px }
   .filters { margin-left: -28px; margin-right: -28px; padding-left: 28px; padding-right: 28px }
 }

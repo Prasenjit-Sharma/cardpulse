@@ -28,10 +28,19 @@ export default function Companies({ cards, onBack, onOpenCompany }: { cards: Car
 
   return (
     <>
-      <header className="page-head">
-        <div className="head-left"><button className="icon-btn ghost" onClick={onBack} aria-label="Back"><Icon name="back" /></button><h1>Companies</h1></div>
-        <button className={`icon-btn ghost${searching ? ' on' : ''}`} onClick={() => { setSearching(!searching); if (searching) setQuery('') }} aria-label={searching ? 'Close search' : 'Search companies'} aria-pressed={searching}><Icon name="search" size={20} /></button>
-      </header>
+      <div className="page-top">
+        <header className="page-head">
+          <div className="head-left"><button className="icon-btn ghost" onClick={onBack} aria-label="Back"><Icon name="back" /></button><h1>Companies</h1></div>
+          <button className={`icon-btn ghost${searching ? ' on' : ''}`} onClick={() => { setSearching(!searching); if (searching) setQuery('') }} aria-label={searching ? 'Close search' : 'Search companies'} aria-pressed={searching}><Icon name="search" size={20} /></button>
+        </header>
+        {all.length > 0 && (
+          <div className="figgrid" role="group" aria-label="Companies at a glance">
+            <div><span>Companies</span><b className="num">{all.length}</b></div>
+            <div><span>2+ people</span><b className="num">{all.filter((c) => c.n > 1).length}</b></div>
+            <div><span>People</span><b className="num">{all.reduce((n, c) => n + c.n, 0)}</b></div>
+          </div>
+        )}
+      </div>
 
       {searching && (
         <div className="searchbox">
@@ -45,14 +54,14 @@ export default function Companies({ cards, onBack, onOpenCompany }: { cards: Car
 
       {top.length > 0 && (
         <section>
-          <h3 className="group">Top companies</h3>
-          <div className="list">{top.map(row)}</div>
+          <h3 className="group band">Top companies</h3>
+          <div className="plain-list">{top.map(row)}</div>
         </section>
       )}
       {shown.length > 0 && (
         <section>
-          <h3 className="group">{q ? `${shown.length} found` : `All companies (${all.length})`}</h3>
-          <div className="list">{alphabetical.map(row)}</div>
+          <h3 className="group band">{q ? `${shown.length} found` : 'A to Z'}<span className="num band-count">{shown.length}</span></h3>
+          <div className="plain-list">{alphabetical.map(row)}</div>
         </section>
       )}
     </>

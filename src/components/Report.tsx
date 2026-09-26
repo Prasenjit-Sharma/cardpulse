@@ -40,41 +40,45 @@ export default function Report({ cards: allCards, events, dupes, onBack }: { car
 
   return (
     <>
-      <header className="bar-top"><button className="icon-btn" onClick={onBack} aria-label="Back"><Icon name="back" /></button></header>
-      <h1>Accuracy</h1>
-      {events.length > 0 && (
-        <div className="eventbar">
-          <Picker title="Event" value={evId} onChange={setEvId} options={[{ value: '', label: 'All events' }, ...events.map((e) => ({ value: e.id, label: showEvent(e.name) }))]} />
-        </div>
-      )}
+      <div className="page-top">
+        <header className="page-head">
+          <div className="head-left"><button className="icon-btn ghost" onClick={onBack} aria-label="Back"><Icon name="back" /></button><h1>Accuracy</h1></div>
+          {events.length > 0 && (
+            <Picker title="Event" value={evId} onChange={setEvId} options={[{ value: '', label: 'All events' }, ...events.map((e) => ({ value: e.id, label: showEvent(e.name) }))]} />
+          )}
+        </header>
+        {scored.length > 0 && (
+          <div className="figgrid" role="group" aria-label="Reading at a glance">
+            <div><span>Read right</span><b className="num">{pct(overall(totals))}</b><small>fields, no changes</small></div>
+            <div><span>Untouched</span><b className="num">{unchanged}</b><small>of {scored.length} cards</small></div>
+            <div><span>Opened</span><b className="num">{scored.length}</b><small>{scored.length === 1 ? 'card counted' : 'cards counted'}</small></div>
+          </div>
+        )}
+      </div>
 
       {scored.length === 0 ? (
         <p className="empty small">Open a few contacts and this page will show how well your cards were read.</p>
       ) : (
         <>
-          <p className="muted">Based on {scored.length} {scored.length === 1 ? 'card' : 'cards'} you have opened.</p>
-          <div className="stats">
-            <div><b>{pct(overall(totals))}</b><span>Read right, no changes</span></div>
-            <div><b>{unchanged} of {scored.length}</b><span>Cards needing no changes</span></div>
+          <h3 className="group band">Most corrected</h3>
+          <div className="plain-list">
+            {corrected.length === 0 && <p className="wl-empty">Nothing has needed correcting.</p>}
+            {corrected.map(({ f, n }) => (
+              <div key={f} className="index-row static">
+                <span className="grow"><strong>{LABEL[f]}</strong><span className="muted">Corrected after reading</span></span>
+                <span className="fig"><b className="num">{n}</b><small>{n === 1 ? 'card' : 'cards'}</small></span>
+              </div>
+            ))}
           </div>
-
-          <h3 className="group">Most corrected</h3>
-          {corrected.length === 0 ? (
-            <p className="muted">Nothing has needed correcting.</p>
-          ) : (
-            <div className="stats">
-              {corrected.map(({ f, n }) => <div key={f}><b>{n} {n === 1 ? 'card' : 'cards'}</b><span>{LABEL[f]}</span></div>)}
-            </div>
-          )}
         </>
       )}
 
-      <h3 className="group">Export</h3>
-      <Check checked={skipDupes} onChange={setSkipDupes}>Export duplicates once only ({[...dupes.keys()].filter((id) => done.some((c) => c.id === id)).length} cards flagged)</Check>
-      <div className="actions">
-        <button onClick={exportCsv} disabled={!done.length}>Export CSV</button>
-        <button onClick={exportVcf} disabled={!done.length}>Export vCard</button>
+      <h3 className="group band">Export{evId ? ` ${showEvent(eventName(evId))}` : ''}</h3>
+      <div className="tools full-bleed" style={{ ['--cols' as string]: 2 }} role="group" aria-label="Export">
+        <button onClick={exportCsv} disabled={!done.length}><span className="tool-well"><Icon name="file" size={20} /></span>Spreadsheet (CSV)</button>
+        <button onClick={exportVcf} disabled={!done.length}><span className="tool-well"><Icon name="users" size={20} /></span>Phone contacts (vCard)</button>
       </div>
+      <Check checked={skipDupes} onChange={setSkipDupes}>Export duplicates once only ({[...dupes.keys()].filter((id) => done.some((c) => c.id === id)).length} cards flagged)</Check>
     </>
   )
 }

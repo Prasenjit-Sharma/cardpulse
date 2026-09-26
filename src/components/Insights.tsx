@@ -1,7 +1,9 @@
-import { dueLabel, dueStatus, localISO } from '../lib/followups'
+import { useState } from 'react'
+import { localISO } from '../lib/followups'
+import { dueFigure, rowFigure } from '../lib/watch'
 import type { CardRecord } from '../lib/types'
-import Avatar from './Avatar'
 import Icon from './Icon'
+import WatchRow from './WatchRow'
 
 const today = () => localISO()                            // the phone's own day, not UTC
 
@@ -35,55 +37,68 @@ export default function Insights({ cards, onBack, onContacts, onAccuracy, onOpen
         ? `${noFollow} contact${noFollow > 1 ? 's have' : ' has'} no follow-up date yet.`
         : 'You are all caught up. Nothing is waiting on you.'
 
+  const [openKey, setOpenKey] = useState('')
+  const t = today()
+
   return (
     <>
-      <header className="page-head">
-        <div className="head-left"><button className="icon-btn ghost" onClick={onBack} aria-label="Back"><Icon name="back" /></button><h1>Insights</h1></div>
-      </header>
-
-      <div className="stats2">
-        <div><Icon name="users" size={18} /><b className="num">{people.length}</b><span>Contacts</span></div>
-        <div><Icon name="building" size={18} /><b className="num">{byCompany.size}</b><span>{byCompany.size === 1 ? 'Company' : 'Companies'}</span></div>
-        <div className={due.length ? 'warm' : ''}><Icon name="calendar" size={18} /><b className="num">{due.length}</b><span>Follow-ups due</span></div>
-        <div><Icon name="star" size={18} /><b className="num">{priority}</b><span>Priority</span></div>
+      <div className="page-top">
+        <header className="page-head">
+          <div className="head-left"><button className="icon-btn ghost" onClick={onBack} aria-label="Back"><Icon name="back" /></button><h1>Insights</h1></div>
+        </header>
+        <div className="figgrid" style={{ ['--cols' as string]: 4 }} role="group" aria-label="Your contacts at a glance">
+          <div><span>Contacts</span><b className="num">{people.length}</b></div>
+          <div><span>Companies</span><b className="num">{byCompany.size}</b></div>
+          <div className={due.length ? 'due' : ''}><span>Due</span><b className="num">{due.length}</b></div>
+          <div><span>Starred</span><b className="num">{priority}</b></div>
+        </div>
       </div>
 
-      <section className="card insight">
-        <span className="insight-icon"><Icon name="spark" size={18} /></span>
-        <div className="grow"><strong>What needs you</strong><p>{insight}</p></div>
-        {people.length > 0 && <button className="link" onClick={onContacts}>Open</button>}
-      </section>
+      <div className="plain-list">
+        <div className="index-row static">
+          <span className="tool-well"><Icon name="spark" size={18} /></span>
+          <span className="grow"><strong>What needs you</strong><span className="muted wrap">{insight}</span></span>
+          {people.length > 0 && <button className="link" onClick={onContacts}>Open</button>}
+        </div>
+      </div>
 
       {upcoming.length + due.length > 0 && (
-        <section>
-          <h3 className="group">Follow-ups</h3>
-          <div className="list">
-            {[...due, ...upcoming].slice(0, 5).map(({ c, p, i }) => (
-              <div key={`${c.id}:${i}`} className="row" onClick={() => onOpen(c.id, i)}>
-                <Avatar name={p.name} />
-                <div className="grow"><strong>{p.name}</strong><span className="muted">{[p.title, p.company].filter(Boolean).join(' · ')}</span></div>
-                <span className="tags"><em className={dueStatus(p.followUp, today()).state === 'upcoming' ? '' : 'warn'}>{dueLabel(p.followUp, today())}</em></span>
-              </div>
-            ))}
+        <>
+          <h3 className="group band">Follow-ups</h3>
+          <div className="plain-list">
+            {[...due, ...upcoming].slice(0, 5).map(({ c, p, i }, n) => {
+              const key = `${c.id}:${i}`
+              return (
+                <WatchRow key={key} card={c} p={p} i={n} figure={dueFigure(p.followUp, t) ?? rowFigure(p, c.createdAt, t)}
+                  open={openKey === key} onToggle={() => setOpenKey(openKey === key ? '' : key)} onOpen={() => onOpen(c.id, i)} />
+              )
+            })}
           </div>
-        </section>
+        </>
       )}
 
       {top.length > 0 && (
-        <section>
-          <h3 className="group">Top companies</h3>
-          <div className="list">
-            {top.map((t) => (
-              <div key={t.name} className="row static">
-                <Avatar name={t.name} />
-                <div className="grow"><strong>{t.name}</strong><span className="muted">{t.n} {t.n === 1 ? 'person' : 'people'}</span></div>
+        <>
+          <h3 className="group band">Top companies</h3>
+          <div className="plain-list">
+            {top.map((co) => (
+              <div key={co.name} className="index-row static">
+                <span className="grow"><strong>{co.name}</strong></span>
+                <span className="fig"><b className="num">{co.n}</b><small>{co.n === 1 ? 'person' : 'people'}</small></span>
               </div>
             ))}
           </div>
-        </section>
+        </>
       )}
 
-      <button className="menu-row" onClick={onAccuracy}><Icon name="chart" /><span className="grow"><strong>Accuracy</strong><small>How well cards are read</small></span><Icon name="back" size={16} /></button>
+      <h3 className="group band">Reading</h3>
+      <div className="plain-list">
+        <button className="index-row" onClick={onAccuracy}>
+          <span className="tool-well"><Icon name="chart" size={18} /></span>
+          <span className="grow"><strong>Accuracy</strong><span className="muted">How well cards are read</span></span>
+          <Icon name="chevron" size={18} />
+        </button>
+      </div>
     </>
   )
 }

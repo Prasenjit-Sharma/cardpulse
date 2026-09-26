@@ -25,13 +25,18 @@ export default function ScanResult({ card, events, onBack, onKeep, onEdit }: {
 
   return (
     <div className="page-plain">
-      <header className="bar-top">
-        <button className="icon-btn ghost" onClick={onBack} aria-label="Back"><Icon name="back" /></button>
-        <h2 className="title">Review details</h2>
-        <span style={{ width: 40 }} />
-      </header>
-
-      <div className="center"><span className="chip-pill"><Icon name="users" size={16} /> {people.length} new {people.length === 1 ? 'contact' : 'contacts'}{companies > 0 && ` · ${companies} ${companies === 1 ? 'company' : 'companies'}`}</span></div>
+      <div className="page-top">
+        <header className="bar-top">
+          <button className="icon-btn ghost" onClick={onBack} aria-label="Back"><Icon name="back" /></button>
+          <h2 className="title">Review details</h2>
+          <span style={{ width: 40 }} />
+        </header>
+        <div className="figgrid" role="group" aria-label="This card">
+          <div><span>Found</span><b className="num">{people.length}</b><small>{people.length === 1 ? 'person' : 'people'}</small></div>
+          <div><span>Companies</span><b className="num">{companies}</b></div>
+          <div><span>Saving</span><b className="num">{on.size}</b><small>tap a row to skip</small></div>
+        </div>
+      </div>
       {url && <div className="photo-frame"><img src={url} alt="Scanned card" /></div>}
 
       <div className="plain-list">

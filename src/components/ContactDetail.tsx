@@ -189,28 +189,44 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
 
   return (
     <div className="page-plain">
-      <header className="bar-top">
-        <button className="icon-btn" onClick={onClose} aria-label="Back"><Icon name="back" /></button>
-        <span className="grow" />
-        {card.status === 'done' && c && <StarButton on={!!c.priority} onToggle={() => patch({ priority: !c.priority }, false)} />}
-        {card.status === 'done' && c && (
-          <button className={`icon-btn${editing ? ' on' : ''}`} onClick={() => (editing ? finishEditing() : setEditing(true))} aria-label={editing ? 'Done editing' : 'Edit'}><Icon name={editing ? 'check' : 'edit'} size={20} /></button>
+      {/* the person, on the page top: who, their phase and follow-up, the card they handed over */}
+      <div className="page-top">
+        <header className="bar-top">
+          <button className="icon-btn" onClick={onClose} aria-label="Back"><Icon name="back" /></button>
+          <span className="grow" />
+          {card.status === 'done' && c && <StarButton on={!!c.priority} onToggle={() => patch({ priority: !c.priority }, false)} />}
+          {card.status === 'done' && c && (
+            <button className={`icon-btn${editing ? ' on' : ''}`} onClick={() => (editing ? finishEditing() : setEditing(true))} aria-label={editing ? 'Done editing' : 'Edit'}><Icon name={editing ? 'check' : 'edit'} size={20} /></button>
+          )}
+          <button className="icon-btn" onClick={() => setMenu(true)} aria-label="More options"><Icon name="more" /></button>
+        </header>
+        {contacts.length > 1 && (
+          <div className="chips scroll">
+            {contacts.map((p, i) => <button key={i} className={i === idx ? 'chip on' : 'chip'} onClick={() => setIdx(i)}>{p.name || `Person ${i + 1}`}</button>)}
+            <button className="chip" onClick={() => { commit([...contacts, emptyContact()], false); setIdx(contacts.length); setEditing(true) }}><Icon name="plus" size={14} /> Person</button>
+          </div>
         )}
-        <button className="icon-btn" onClick={() => setMenu(true)} aria-label="More options"><Icon name="more" /></button>
-      </header>
+        {card.status === 'done' && c && !editing && (
+          <div className="quote">
+            <div className="quote-id">
+              <h1>{c.name || '(no name)'}</h1>
+              {(c.title || c.company) && <span className="co">{[c.title, c.company].filter(Boolean).join(' · ')}</span>}
+              <span className="quote-line">
+                <em className="phase">{phase(c)}</em>
+                {(() => { const f = dueFigure(c.followUp, today); return f && <b className={`num ${f.tone}`}>{f.text}</b> })()}
+                {eventName && <span>{showEvent(eventName)}</span>}
+              </span>
+            </div>
+            {url && <button className="namecard-photo" onClick={() => setLight(url)} aria-label="View the card photo"><img src={url} alt="" /></button>}
+          </div>
+        )}
+      </div>
 
       <Sheet open={menu} onClose={() => setMenu(false)} title={c?.name || 'Contact'}>
         {c && <SheetItem icon="file" label="Download contact file (.vcf)" onClick={() => { setMenu(false); download(`${c.name || 'contact'}.vcf`, toVCard(c, noteFor(), currentNameFormat()), 'text/x-vcard'); setFlash('Downloaded. Open the file to choose Contacts.') }} />}
         <SheetItem icon="trash" danger label="Delete contact" onClick={() => { setMenu(false); void confirmAsk({ title: 'Delete this contact?', confirmLabel: 'Delete', danger: true }).then((ok) => ok && removePerson()) }} />
         <SheetItem icon="trash" danger label="Delete card" onClick={() => { setMenu(false); void confirmAsk({ title: 'Delete the whole card?', message: 'Every contact on it is deleted too.', confirmLabel: 'Delete', danger: true }).then((ok) => ok && onDelete()) }} />
       </Sheet>
-
-      {contacts.length > 1 && (
-        <div className="chips scroll">
-          {contacts.map((p, i) => <button key={i} className={i === idx ? 'chip on' : 'chip'} onClick={() => setIdx(i)}>{p.name || `Person ${i + 1}`}</button>)}
-          <button className="chip" onClick={() => { commit([...contacts, emptyContact()], false); setIdx(contacts.length); setEditing(true) }}><Icon name="plus" size={14} /> Person</button>
-        </div>
-      )}
 
       {adjusting && card[adjusting] && (
         <PhotoAdjust photo={card[adjusting]!} canUndo={!!card[adjusting === 'image' ? 'original' : 'originalBack']}
@@ -238,19 +254,6 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
 
       {card.status === 'done' && c && !editing && (
         <>
-          <div className="quote">
-            <div className="quote-id">
-              <h1>{c.name || '(no name)'}</h1>
-              {(c.title || c.company) && <span className="co">{[c.title, c.company].filter(Boolean).join(' · ')}</span>}
-              <span className="quote-line">
-                <em className="phase">{phase(c)}</em>
-                {(() => { const f = dueFigure(c.followUp, today); return f && <b className={`num ${f.tone}`}>{f.text}</b> })()}
-                {eventName && <span>{showEvent(eventName)}</span>}
-              </span>
-            </div>
-            {url && <button className="namecard-photo" onClick={() => setLight(url)} aria-label="View the card photo"><img src={url} alt="" /></button>}
-          </div>
-
           {flagged && (
             <div className="note attn" role="status">
               <strong>Worth a quick check</strong>
