@@ -1,6 +1,7 @@
 node_modules
 dist
 .env*
+!.env.android
 tsconfig.tsbuildinfo
 .DS_Store
 server/.dev.vars

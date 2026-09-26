@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { isApp } from './platform'
 
 interface InstallEvent extends Event { prompt(): Promise<void>; userChoice: Promise<{ outcome: string }> }
 
@@ -18,7 +19,7 @@ export function useInstall() {
     return () => window.removeEventListener('beforeinstallprompt', on)
   }, [])
 
-  const installed = standalone()
+  const installed = isApp || standalone()
   const mode: 'native' | 'ios' | null = installed ? null : evt ? 'native' : isIos() ? 'ios' : null
   return {
     mode,
