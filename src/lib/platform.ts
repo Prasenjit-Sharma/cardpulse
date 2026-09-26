@@ -25,6 +25,13 @@ export const publicBase = (): string => publicBaseFor(isApp, typeof location ===
 
 /* ---------- native abilities, injected by main.tsx inside the app ---------- */
 
+/** A contact as the phone's new-contact screen takes it. Phones are in calling order with Android's type numbers. */
+export interface ContactFields {
+  name: string; company: string; title: string
+  phones: { number: string; type: number }[]
+  emails: string[]; website: string; address: string; note: string
+}
+
 export interface NativeShare { title?: string; text?: string; files?: string[] }
 export interface Native {
   /** Writes to the app's cache and returns a file URI the share sheet can read. */
@@ -35,6 +42,8 @@ export interface Native {
   onAppUrl(cb: (url: string) => void): void
   /** The link that cold-started the app, if any (Android can kill the app while the user is in the browser). */
   launchUrl(): Promise<string | undefined>
+  /** Opens the phone's own new-contact screen, filled in; the user picks the account (Google, Outlook, the phone) and saves. */
+  saveContact?(f: ContactFields): Promise<void>
   setStatusBar(icons: 'light' | 'dark'): Promise<void>
 }
 let native: Native | null = null

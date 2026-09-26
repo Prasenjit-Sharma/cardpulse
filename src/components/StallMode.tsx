@@ -12,6 +12,8 @@ import { noteShare } from '../lib/sharelog'
 import type { EventRec } from '../lib/types'
 import { useOnline } from '../lib/useOnline'
 import { useWakeLock } from '../lib/wakelock'
+import { useObjectUrl } from '../lib/useObjectUrl'
+import { photoKindOf, type PhotoKind } from '../lib/cardphoto'
 import Icon from './Icon'
 import Picker from './Picker'
 import Sheet from './Sheet'
@@ -29,6 +31,8 @@ type Step = 'setup' | 'show'
 export default function StallMode({ card, events, initialEventId, onClose }: { card: MyCard; events: EventRec[]; initialEventId?: string; onClose: () => void }) {
   const canvas = useRef<HTMLCanvasElement>(null)
   const [step, setStep] = useState<Step>('setup')
+  const photoUrl = useObjectUrl(card.photo)
+  const [picKind, setPicKind] = useState<PhotoKind>('face')
   useBackClose(step === 'show', () => { setStep('setup'); return false })
   useEffect(() => { if (step === 'show') noteShare(card.id, 'qr') }, [step, card.id])
   const { supported } = useWakeLock(step === 'show')
@@ -119,6 +123,7 @@ export default function StallMode({ card, events, initialEventId, onClose }: { c
       {eventName && <span className="stall-event-tag">{showEvent(eventName)}</span>}
       <p className="stall-cap">{caption}</p>
       {showQr && <canvas ref={canvas} className="stall-qr" role="img" aria-label={`Contact card QR for ${card.name}`} />}
+      {photoUrl && <img className={`stall-pic ${picKind}`} src={photoUrl} alt="" onLoad={(e) => { const im = e.currentTarget; setPicKind(photoKindOf(im, im.naturalWidth, im.naturalHeight)) }} />}
       <strong className="stall-name">{card.name}</strong>
       {card.company && <span className="stall-co">{card.company}</span>}
       {!supported && <p className="stall-hint">Raise your screen timeout so the code stays on.</p>}

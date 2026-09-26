@@ -67,3 +67,31 @@ test('the accessible description names the person and how to reach them', () => 
   assert.equal(cardDescription(base()), 'Rajesh Shah, General Manager, ABC Polymers Pvt. Ltd., +91 98240 22893, rajesh@abcpolymers.com')
   assert.equal(cardDescription(emptyCard()), 'Unnamed')
 })
+
+test('every template shows the uploaded photo or logo, clear of the QR code', () => {
+  for (const template of TEMPLATES) {
+    const { ops, qrBox } = layoutCard({ ...base(), template, photo: new Blob(['x']) }, measure, false)
+    const pic = ops.find((o) => o.kind === 'photo')
+    assert.ok(pic, `${template} has no photo`)
+    const b = pic.box
+    const overlaps = b.x < qrBox.x + qrBox.w && qrBox.x < b.x + b.w && b.y < qrBox.y + qrBox.h && qrBox.y < b.y + b.h
+    assert.equal(overlaps, false, `${template} photo overlaps the QR`)
+  }
+})
+
+test('the picture slot is wide enough for a wide logo, and inside the card', () => {
+  for (const template of TEMPLATES) {
+    const { ops } = layoutCard({ ...base(), template, photo: new Blob(['x']) }, measure, false)
+    const b = ops.find((o) => o.kind === 'photo').box
+    assert.ok(b.w >= 2 * b.h, `${template}: slot ${b.w.toFixed(1)} x ${b.h.toFixed(1)} is too narrow for a logo`)
+    assert.ok(inside(b), `${template}: slot leaves the card`)
+  }
+})
+
+test('text never runs under the picture slot', () => {
+  for (const template of TEMPLATES) {
+    const { ops } = layoutCard({ ...base(), template, photo: new Blob(['x']), company: 'Hindustan Petroleum Corporation Limited', emails: ['balasubramaniam.venkataraghavan@hindustanpetroleum.example.com'] }, measure, false)
+    const pic = ops.find((o) => o.kind === 'photo').box
+    for (const t of ops.filter((o) => o.kind === 'text')) assert.ok(!overlap(t.box, pic), `${template}: "${t.text}" overlaps the picture`)
+  }
+})

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useObjectUrl } from '../lib/useObjectUrl'
 import { attentionReasons } from '../lib/attention'
 import { dueLabel, dueStatus, followUpIcs, localISO, logInteraction, removeInteraction, type Interaction } from '../lib/followups'
-import { browserEnv, download, saveToPhone, shareContact, telHref, toVCard, waNumber } from '../lib/actions'
+import { browserEnv, download, saveToPhone, shareContact, telHref, waNumber } from '../lib/actions'
 import { currentNameFormat } from '../lib/db'
 import { log } from '../lib/debug'
 import { speechSupported, startDictation } from '../lib/speech'
@@ -224,7 +224,6 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
       </div>
 
       <Sheet open={menu} onClose={() => setMenu(false)} title={c?.name || 'Contact'}>
-        {c && <SheetItem icon="file" label="Download contact file (.vcf)" onClick={() => { setMenu(false); download(`${c.name || 'contact'}.vcf`, toVCard(c, noteFor(), currentNameFormat()), 'text/x-vcard'); if (!isApp) setFlash('Downloaded. Open the file to choose Contacts.') }} />}
         <SheetItem icon="trash" danger label="Delete contact" onClick={() => { setMenu(false); void confirmAsk({ title: 'Delete this contact?', confirmLabel: 'Delete', danger: true }).then((ok) => ok && removePerson()) }} />
         <SheetItem icon="trash" danger label="Delete card" onClick={() => { setMenu(false); void confirmAsk({ title: 'Delete the whole card?', message: 'Every contact on it is deleted too.', confirmLabel: 'Delete', danger: true }).then((ok) => ok && onDelete()) }} />
       </Sheet>
@@ -406,7 +405,7 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
               ? <a className="trade primary" href={telHref(callNumber(c)!)}><Icon name="phone" size={18} />Call</a>
               : c.emails[0] ? <a className="trade primary" href={`mailto:${c.emails[0]}`}><Icon name="mail" size={18} />Email</a> : null}
             {whatsAppNumber(c) && <a className="trade" href={`https://wa.me/${waNumber(whatsAppNumber(c)!)}`} target="_blank" rel="noreferrer"><Icon name="chat" size={18} />WhatsApp</a>}
-            <button className="trade sq" onClick={() => void run('save')} aria-label="Save to phone" title="Save to phone"><Icon name="download" size={19} /></button>
+            <button className="trade sq" onClick={() => void run('save')} aria-label="Save to phone" title="Save to phone"><Icon name="useradd" size={19} /></button>
             <button className="trade sq" onClick={() => void run('share')} aria-label="Share contact" title="Share contact"><Icon name="share" size={19} /></button>
           </div>
         </>

@@ -4,8 +4,7 @@ import { MAX_CARDS, type MyCard } from '../lib/mycards'
 import CardCanvas from './CardCanvas'
 import CardStack from './CardStack'
 import Icon from './Icon'
-import { readShareLog, SHARE_LABEL, tallyShares, type ShareKind } from '../lib/sharelog'
-import { shortDate } from '../lib/watch'
+import { readShareLog, tallyShares } from '../lib/sharelog'
 
 const LONG_PRESS_MS = 600
 
@@ -35,8 +34,6 @@ export default function MyCards({ cards, stats, onAdd, onEdit, onShare, onStall 
   // figures this phone records itself, so the holding is never empty when signed out; views and leads come from the server
   const log = readShareLog()
   const tally = current ? tallyShares(log, current.id) : { shared: 0, qr: 0, exchanged: 0 }
-  const recent = current ? log.filter((e) => e.card === current.id).slice(0, 5) : []
-  const icon: Record<ShareKind, 'qr' | 'file' | 'image' | 'note' | 'refresh'> = { qr: 'qr', file: 'file', picture: 'image', text: 'note', exchange: 'refresh' }
 
   return (
     <>
@@ -94,19 +91,6 @@ export default function MyCards({ cards, stats, onAdd, onEdit, onShare, onStall 
                 <span className="grow"><strong>At a stall</strong><span className="muted">Show your QR full screen. Or press and hold the card.</span></span>
                 <Icon name="chevron" size={18} />
               </button>
-
-              <h3 className="group band">Recent sharing</h3>
-              <div className="plain-list">
-                {recent.length === 0 && <p className="wl-empty">Nothing shared from this phone yet. Share card sends a link, a picture or a contact file.</p>}
-                {recent.map((e) => (
-                  <div key={e.at} className="index-row static">
-                    <span className="lead-ico"><Icon name={icon[e.kind]} size={16} /></span>
-                    <span className="grow"><strong>{SHARE_LABEL[e.kind]}</strong></span>
-                    <span className="fig"><b className="num">{shortDate(e.at)}</b><small>{new Date(e.at).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })}</small></span>
-                  </div>
-                ))}
-              </div>
-
             </>
           )}
         </>

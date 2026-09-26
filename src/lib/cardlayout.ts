@@ -16,7 +16,7 @@ export type Op =
   | { kind: 'rect'; box: Box; fill: string; radius?: number }
   | { kind: 'text'; box: Box; text: string; size: number; weight: number; color: string; caps?: boolean; spacing?: number; stretch?: Stretch }
   | { kind: 'qr'; box: Box }
-  | { kind: 'photo'; box: Box }
+  | { kind: 'photo'; box: Box; anchor: 'left' | 'right' }
   | { kind: 'mono'; box: Box; text: string; fill: string; color: string }
 export interface Layout { ops: Op[]; qrBox: Box; background: string }
 
@@ -56,9 +56,18 @@ class Sheet {
     this.ops.push({ kind: 'text', box, text: f.text, size: f.size, weight, color, caps: extra.caps, spacing: style.spacing, stretch: style.stretch })
     return box
   }
-  /** The person's photo if there is one, else their initials. */
-  face(box: Box, fill: string, color: string) {
-    if (this.card.photo) this.ops.push({ kind: 'photo', box })
+  /**
+   * The room a picture takes. With a picture it widens to 2.3 times its height, from the `anchor` side, so a wide logo is
+   * readable (a face still draws as a circle at that end); with none it is the monogram's square.
+   */
+  slot(box: Box, anchor: 'left' | 'right' = 'right'): Box {
+    if (!this.card.photo) return box
+    const w = box.h * 2.3
+    return { x: anchor === 'right' ? box.x + box.w - w : box.x, y: box.y, w, h: box.h }
+  }
+  /** The person's photo or logo if there is one, else their initials. */
+  face(box: Box, fill: string, color: string, anchor: 'left' | 'right' = 'right') {
+    if (this.card.photo) this.ops.push({ kind: 'photo', box: this.slot(box, anchor), anchor })
     else this.ops.push({ kind: 'mono', box, text: initials(this.card.name), fill, color })
   }
   qr(box: Box) { this.ops.push({ kind: 'qr', box }) }
@@ -71,7 +80,7 @@ const FACE_TR: Box = { x: CARD_W - M - 9.4, y: 5, w: 9.4, h: 9.4 }
 
 function ledger(c: MyCard, m: Measure): Layout {
   const a = accentById(c.accent).hex, s = new Sheet(m, c), qr = qrBottomRight
-  s.keepClear(qr); s.keepClear(FACE_TR)
+  s.keepClear(qr); s.keepClear(s.slot(FACE_TR))
   s.text(c.company, M, 5.4, CARD_W - 2 * M, 2.5, 1.8, 650, a, { caps: true, spacing: 0.14, stretch: 'semi-condensed' })
   s.face(FACE_TR, a, WHITE)
   const name = s.text(c.name, M, 15.4, CARD_W - 2 * M, 7, 3.6, 700, INK, { stretch: 'semi-condensed' })
@@ -89,7 +98,7 @@ function ledger(c: MyCard, m: Measure): Layout {
 
 function header(c: MyCard, m: Measure): Layout {
   const a = accentById(c.accent).hex, s = new Sheet(m, c), qr = qrBottomRight, band = CARD_H * 0.39
-  s.keepClear(qr); s.keepClear(FACE_TR)
+  s.keepClear(qr); s.keepClear(s.slot(FACE_TR))
   s.rect({ x: 0, y: 0, w: CARD_W, h: band }, a)
   s.face(FACE_TR, WHITE, a)
   const bottom = band - 4
@@ -108,7 +117,7 @@ function split(c: MyCard, m: Measure): Layout {
   const a = accentById(c.accent).hex, s = new Sheet(m, c)
   const qr: Box = { x: 5.4, y: CARD_H - 5.4 - 20.5, w: 20.5, h: 20.5 }
   s.rect({ x: 0, y: 0, w: 37, h: CARD_H }, a)
-  s.face({ x: 5.4, y: 5.4, w: 11, h: 11 }, WHITE, a)
+  s.face({ x: 5.4, y: 5.4, w: 11, h: 11 }, WHITE, a, 'left')
   const x = 43, w = CARD_W - x - 5.6
   s.text(c.name, x, 6, w, 6.2, 3.4, 700, INK, { stretch: 'semi-condensed' })
   s.text(c.title, x, 15, w, 3.3, 2.4, 500, MUTED)
@@ -120,7 +129,7 @@ function split(c: MyCard, m: Measure): Layout {
 
 function noir(c: MyCard, m: Measure): Layout {
   const acc = accentById(c.accent), s = new Sheet(m, c), qr = qrBottomRight
-  s.keepClear(qr); s.keepClear(FACE_TR)
+  s.keepClear(qr); s.keepClear(s.slot(FACE_TR))
   s.text(c.company, M, 5.4, CARD_W - 2 * M, 2.5, 1.8, 650, acc.lite, { caps: true, spacing: 0.14, stretch: 'semi-condensed' })
   s.face(FACE_TR, acc.lite, NOIR)
   const name = s.text(c.name, M, 18.15, CARD_W - 2 * M, 7, 3.6, 700, '#F6F7F8', { stretch: 'semi-condensed' })
@@ -131,9 +140,13 @@ function noir(c: MyCard, m: Measure): Layout {
   return { ops: s.ops, qrBox: qr, background: NOIR }
 }
 
+/** Bold's picture sits bottom right, under the QR, only when there is one: the template has no monogram. */
+const PIC_BR: Box = { x: CARD_W - 5 - 11, y: CARD_H - 4.6 - 11, w: 11, h: 11 }
+
 function bold(c: MyCard, m: Measure): Layout {
   const a = accentById(c.accent).hex, s = new Sheet(m, c), qr = qrTopRight
   s.keepClear(qr)
+  if (c.photo) { s.keepClear(s.slot(PIC_BR)); s.face(PIC_BR, WHITE, a) }
   s.text(c.company, M, 5.4, CARD_W - 2 * M, 2.5, 1.8, 650, 'rgba(255,255,255,0.88)', { caps: true, spacing: 0.14, stretch: 'semi-condensed' })
   const name = s.text(c.name, M, 16, 66, 10.4, 4.5, 800, WHITE, { caps: true, stretch: 'condensed' })
   s.text(c.title, M, (name ? name.y + name.h : 16) + 1, CARD_W - 2 * M, 3.3, 2.4, 500, 'rgba(255,255,255,0.92)')

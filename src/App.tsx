@@ -6,6 +6,7 @@ import { fitForBatch, prepareImage } from './lib/image'
 import { prepareCardImage } from './lib/cardImage'
 import type { CardRecord, Contact, EventRec } from './lib/types'
 import { loadActiveEvent, loadEvents, saveActiveEvent, saveEvents } from './lib/events'
+import { wipeContactData } from './lib/wipe'
 import { useSession } from './lib/auth'
 import { fetchCardStats, flushUnpublish, queueUnpublish, type CardStats } from './lib/cloudaccount'
 import { leadCardId } from './lib/synccore'
@@ -491,7 +492,7 @@ export default function App() {
             onBackup={() => void backupNow().then((m) => setBanner(m), () => setBanner('The export could not be saved. Try again.'))} onSnoozeBackup={() => { snoozeBackupNudge(); setBackupTick((n) => n + 1) }}
             onOpenContact={(id, idx) => setOpen({ id, idx })} onTogglePriority={(id, idx) => void togglePriority(id, idx)} onContacts={() => openContacts()} onCompanies={() => goto('companies')} onStarred={() => openContacts('priority')}
             onAttention={() => openContacts('attention')} onInsights={() => goto('insights', 'home')} onSetup={() => goto('settings', 'home')} onSettings={() => goto('settings', 'home')}
-            onViewEvent={(id) => { setContactsFilter(undefined); setContactsCompany(''); setActiveEvent(id); goto('contacts') }} onEvents={() => gotoTab('exhibition')} />
+            onViewEvent={(id) => { setContactsFilter(undefined); setContactsCompany(''); setActiveEvent(id); goto('contacts') }} onEvents={() => gotoTab('exhibition')} onScan={scan} onMyCard={() => gotoTab('mycard')} />
         ) : tab === 'mycard' ? (
           <MyCards cards={myCards} stats={cardStats} onAdd={() => myCards.length < MAX_CARDS && setEditingCard('new')} onEdit={setEditingCard} onShare={setSharingCard} onStall={setStallCard} />
         ) : tab === 'companies' ? (
@@ -515,7 +516,10 @@ export default function App() {
             install={install}
             sync={sync}
             onChange={(s) => { setSettings(s); saveSettings(s) }}
-            onWipe={async () => { await Promise.all(cards.map((c) => deleteCard(c.id))); await refresh() }}
+            onWipe={async () => {
+              await wipeContactData({ cardIds: () => cards.map((c) => c.id), deleteCard, saveEvents: (list) => { setEvents(list); saveEvents(list) }, setActiveEvent })
+              await refresh()
+            }}
             onBackup={backupNow} onRestore={restoreFrom} onAccuracy={() => goto('accuracy', 'settings')} onInsights={() => goto('insights', 'settings')}
             onBack={() => setTab('home')}
           />

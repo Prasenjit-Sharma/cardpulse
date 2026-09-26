@@ -54,10 +54,14 @@ export default function PublicCard({ slug }: { slug: string }) {
     return () => { live = false }
   }, [slug])
 
+  // iPhone opens a contact file straight into its "Create New Contact" card; Android hands the file to Contacts from the
+  // download, where the visitor picks Google, Outlook or the phone.
   const saveContact = () => {
     if (!card || card === 'notfound') return
+    const url = URL.createObjectURL(new Blob([buildCardVcf(card).text], { type: 'text/vcard' }))
+    if (/iphone|ipad|ipod/i.test(navigator.userAgent)) { location.href = url; return }
     const a = document.createElement('a')
-    a.href = URL.createObjectURL(new Blob([buildCardVcf(card).text], { type: 'text/vcard' }))
+    a.href = url
     a.download = cardFileName(card, 'vcf')
     document.body.appendChild(a); a.click(); a.remove()
     setTimeout(() => URL.revokeObjectURL(a.href), 1000)
@@ -80,7 +84,8 @@ export default function PublicCard({ slug }: { slug: string }) {
   return (
     <div className="public-card-page">
       <CardCanvas card={card} />
-      <button className="outline wide public-btn" onClick={saveContact}><Icon name="download" size={18} /> Save contact</button>
+      <button className="cta wide public-btn" onClick={saveContact}><Icon name="users" size={18} /> Save to phone</button>
+      <p className="hint public-save-hint">Adds {card.name.split(' ')[0] || 'this card'} to your phone's contacts: Google, Outlook or iCloud.</p>
       {card.address && (
         <a className="outline wide public-btn" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(card.address)}`} target="_blank" rel="noreferrer">
           <Icon name="pin" size={18} /> Open address

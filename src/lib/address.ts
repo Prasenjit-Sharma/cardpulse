@@ -28,6 +28,8 @@ export function splitAddress(address: string): AddressParts {
   const after = rest.slice(m.index! + m[0].length).replace(/^[\s,\-–.]+|[\s,]+$/g, '')
 
   const segs = before.split(',').map((s) => s.trim()).filter(Boolean)
+  // "…, Gujarat, India-395002": India written before the pincode is the country, not the city
+  if (segs.length && norm(segs[segs.length - 1]!) === 'india') { segs.pop(); country = 'India' }
   let region = ''
   const tail = STATES[norm(after)]
   if (tail) region = tail

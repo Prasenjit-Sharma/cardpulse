@@ -71,3 +71,6 @@ export function vcardTelType(kind: PhoneKind, main: boolean): string {
   const t = { mobile: 'CELL', work: 'WORK,VOICE', home: 'HOME,VOICE', main: 'MAIN', fax: 'WORK,FAX', other: 'VOICE' }[kind]
   return main ? `${t},PREF` : t
 }
+
+/** Android's own phone types (ContactsContract.CommonDataKinds.Phone.TYPE_*), for the phone's new-contact screen. */
+export const androidPhoneType = (kind: PhoneKind): number => ({ home: 1, mobile: 2, work: 3, fax: 4, other: 7, main: 12 })[kind]

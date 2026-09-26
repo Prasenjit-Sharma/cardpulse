@@ -362,6 +362,37 @@ input[inputmode='tel'], .num input { font-variant-numeric: tabular-nums }
 .mast-figs .mini.check b { color: var(--on-brand-amber) }
 .masthead + .banner-row, .masthead + .empty-scan { margin-top: 12px }
 
+/* first run: a sample card on the masthead inside the camera's corner frame, the read line passing over it; then one
+   invitation, one filled key, and three reasons to try it */
+.first-card { position: relative; display: block; width: min(100%, 340px); margin: 2px auto 20px }
+.first-card-body { filter: drop-shadow(0 10px 18px rgba(8, 4, 40, .32)) }
+.first-card text { font-family: 'Inter Variable', Inter, system-ui, sans-serif }
+.fc-co { font-size: 7.5px; font-weight: 650; letter-spacing: .12em; fill: #3B2FC9 }
+.fc-name { font-size: 19px; font-weight: 700; letter-spacing: -.02em; fill: #16191D }
+.fc-title { font-size: 9px; font-weight: 500; fill: #62617A }
+.fc-line { font-size: 8.5px; font-weight: 500; fill: #3D3C55 }
+.fc-mono { font-size: 10px; font-weight: 700; fill: #FFFFFF; text-anchor: middle }
+.first-frame { fill: none; stroke: var(--lock); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round }
+.first-read { fill: #3B2FC9; opacity: 0; filter: drop-shadow(0 0 6px rgba(59, 47, 201, .7)); animation: read-card 3.2s cubic-bezier(.45, 0, .25, 1) .6s infinite }
+@keyframes read-card {
+  0% { transform: translateY(0); opacity: 0 }
+  8% { opacity: .85 }
+  70% { transform: translateY(135px); opacity: .85 }
+  82%, 100% { transform: translateY(135px); opacity: 0 }
+}
+@media (prefers-reduced-motion: reduce) { .first-read { animation: none } }
+.first-scan { padding: 22px 0 8px; text-align: center }
+.first-scan h2 { margin: 0 0 6px; font-size: var(--t-xl); font-weight: 700; letter-spacing: -.02em }
+.first-scan > p { max-width: 30em; margin: 0 auto 18px; font-size: var(--t-m); color: var(--ink-2) }
+.first-cta { width: 100%; max-width: 360px; min-height: 52px; font-size: var(--t-l) }
+.first-proofs { margin: 24px -16px 0; padding: 0; list-style: none; text-align: left; border-top: 1px solid var(--rule-soft) }
+.first-proofs li { display: flex; align-items: flex-start; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--rule-soft) }
+.first-proofs .tool-well { width: 36px; height: 36px; border-radius: 10px; flex: none }
+.first-proofs .grow { display: flex; flex-direction: column; gap: 1px; min-width: 0 }
+.first-proofs strong { font-size: var(--t-m); font-weight: 650 }
+.first-proofs small { font-size: var(--t-xs); line-height: 1.4; color: var(--ink-3) }
+.first-mycard { display: inline-flex; align-items: center; gap: 2px; margin-top: 16px; font-size: var(--t-s) }
+
 /* the event that matters now, straight under the masthead: live ones on an indigo wash */
 .event-strip { display: flex; align-items: center; gap: 4px; margin: 0 -16px; padding-right: 16px; background: var(--band); border-bottom: 1px solid var(--rule-soft) }
 .event-strip.live { background: color-mix(in srgb, var(--brand) 8%, var(--board)) }
@@ -867,7 +898,10 @@ nav button.scan-key:active:not(:disabled) .ind { transform: scale(.94) }
 .stall { position: fixed; inset: 0; z-index: 40; overflow-y: auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: calc(24px + var(--inset-top)) 24px calc(24px + var(--inset-bottom)); background: #FFFFFF; color: #111418; text-align: center }
 .stall-close { position: absolute; top: calc(10px + var(--inset-top)); right: 10px; width: 48px; height: 48px; min-height: 48px; color: #111418; background: #F1F3F6 }
 .stall-cap { margin: 0; font-size: var(--t-s); font-weight: 500; color: #5B6370; max-width: min(84vw, 420px); overflow-wrap: anywhere }
-.stall-qr { width: min(80vw, 62dvh); height: min(80vw, 62dvh); display: block }
+.stall-qr { width: min(80vw, 56dvh); height: min(80vw, 56dvh); display: block }
+/* the person's photo in a circle, or their logo whole at its own shape: the same rule as the card */
+.stall-pic { display: block; width: 64px; height: 64px; margin-top: 6px; border-radius: 50%; object-fit: cover }
+.stall-pic.logo { width: auto; max-width: min(60vw, 200px); height: 56px; border-radius: 0; object-fit: contain }
 .stall-name { font-size: 26px; font-weight: 700; letter-spacing: -.02em; line-height: 1.15; overflow-wrap: anywhere }
 .stall-co { font-size: var(--t-l); color: #434A55 }
 .stall-hint { margin: 6px 0 0; font-size: var(--t-s); color: #5B6370 }
@@ -884,6 +918,7 @@ nav button.scan-key:active:not(:disabled) .ind { transform: scale(.94) }
 .public-card-page { max-width: 440px; margin: 0 auto; padding: calc(24px + var(--inset-top)) 16px calc(24px + var(--inset-bottom)); display: flex; flex-direction: column; gap: 10px; background: var(--board); min-height: 100dvh }
 .public-card-page .card-canvas { margin-bottom: 6px }
 .public-btn { min-height: 50px }
+.public-save-hint { margin: -2px 0 6px; text-align: center; font-size: var(--t-xs) }
 a.public-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: var(--r-pill); background: var(--sleeve); box-shadow: var(--seat); color: var(--ink); font-weight: 600; text-decoration: none }
 .public-card-page .outline.public-btn { background: var(--sleeve); box-shadow: var(--seat) }
 .lead-form { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; padding: 18px 16px 16px; background: var(--sleeve); border-radius: var(--r-sleeve); box-shadow: var(--seat) }
@@ -994,7 +1029,7 @@ a.public-btn { display: inline-flex; align-items: center; justify-content: cente
   .app { max-width: 880px; box-shadow: 0 0 0 1px var(--rule-soft), 0 18px 60px rgba(16,24,40,.12) }
   nav, .toast, .selbar { max-width: 880px }
   main { padding-left: 28px; padding-right: 28px }
-  .masthead, .page-top { padding-left: 28px; padding-right: 28px } .figgrid { margin-left: -28px; margin-right: -28px } .figgrid > :first-child { padding-left: 28px }
+  .masthead, .page-top { padding-left: 28px; padding-right: 28px } .first-proofs { margin-left: -28px; margin-right: -28px } .first-proofs li { padding-left: 28px } .figgrid { margin-left: -28px; margin-right: -28px } .figgrid > :first-child { padding-left: 28px }
   .page-top { margin-left: -28px; margin-right: -28px } .acct-who, .acct-figs > :first-child { padding-left: 28px } .mast-figs button, .event-strip-main { padding-left: 28px } .event-strip { padding-right: 28px }
   .plain-list, .group.band, .full-bleed, .masthead, .mast-figs, .event-strip, .infos, .activity, .editor-box, .panel, .editor-preview, .photo-row, .setting-group, .setting-foot, .field-table, .field-box.pickbox { margin-left: -28px; margin-right: -28px } .group.band, .infos, .activity, .field-table, .panel, .editor-preview, .photo-row { padding-left: 28px; padding-right: 28px }
   .banner-row, .log-add { margin-left: -28px; margin-right: -28px; width: calc(100% + 56px); padding-left: 28px }

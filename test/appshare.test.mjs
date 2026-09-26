@@ -7,13 +7,14 @@ import { onNotice, setNative } from '../src/lib/platform.ts'
 import { browserEnv, download, saveToPhone } from '../src/lib/actions.ts'
 import { saveBackupFile } from '../src/lib/backup.ts'
 
-const calls = { written: [], shared: [] }
+const calls = { written: [], shared: [], contacts: [] }
 // each test can make the native side fail: writeFail / shareFail are functions that throw, or null
 let writeFail = null, shareFail = null
 setNative({
   writeCache: async (name, blob) => { if (writeFail) writeFail(); calls.written.push({ name, type: blob.type }); return `file:///cache/${name}` },
   share: async (o) => { calls.shared.push(o); if (shareFail) shareFail() },
-  openUrl: async () => {}, closeBrowser: async () => {}, onAppUrl: () => {}, setStatusBar: async () => {},
+  openUrl: async () => {}, closeBrowser: async () => {}, onAppUrl: () => {}, setStatusBar: async () => {}, launchUrl: async () => undefined,
+  saveContact: async (f) => { calls.contacts.push(f) },
 })
 const c = { name: 'Rajesh Shah', title: '', company: 'ABC', phones: ['+91 98765 43210'], emails: [], website: '', address: '', gstin: '', social: [] }
 
@@ -25,11 +26,18 @@ test('in the app, a download goes to the share sheet as a file', async () => {
   assert.deepEqual(calls.shared[0].files, ['file:///cache/Plast_India.csv'])
 })
 
-test('in the app, Save to phone shares the contact file through the native sheet', async () => {
-  calls.written.length = 0; calls.shared.length = 0
-  const out = await saveToPhone(c, '', browserEnv())
+test('in the app, Save to phone opens the phone\'s own new-contact screen, filled in, not a file', async () => {
+  calls.written.length = 0; calls.shared.length = 0; calls.contacts.length = 0
+  const haresh = { ...c, name: 'Haresh Shah', company: 'Mayur Wovens', title: 'CEO', phones: ['+91 2717 297051', '+91 9898 22 88 55'], emails: ['h@mayur.in'], website: 'mayurwovens.com', address: 'Kalol, Gujarat' }
+  const out = await saveToPhone(haresh, 'Met at Plast India', browserEnv(), 'name-company')
   assert.equal(out.result, 'shared')
-  assert.equal(calls.written[0].name, 'Rajesh_Shah.vcf')
+  assert.equal(calls.written.length, 0)                        // no .vcf file
+  const f = calls.contacts[0]
+  assert.equal(f.name, 'Haresh Shah (Mayur Wovens)')           // the chosen Saved as format, so the company shows on calls
+  assert.equal(f.company, 'Mayur Wovens'); assert.equal(f.title, 'CEO')
+  assert.deepEqual(f.phones, [{ number: '+91 9898 22 88 55', type: 2 }, { number: '+91 2717 297051', type: 3 }])   // mobile first, Android's own types
+  assert.deepEqual(f.emails, ['h@mayur.in']); assert.equal(f.website, 'mayurwovens.com')
+  assert.equal(f.address, 'Kalol, Gujarat'); assert.equal(f.note, 'Met at Plast India')
 })
 
 test('in the app, a failed backup share is an error, never a second share sheet (review I5)', async () => {

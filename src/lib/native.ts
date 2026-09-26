@@ -1,9 +1,12 @@
-import { SystemBars, SystemBarsStyle } from '@capacitor/core'
+import { registerPlugin, SystemBars, SystemBarsStyle } from '@capacitor/core'
 import { App } from '@capacitor/app'
 import { Browser } from '@capacitor/browser'
 import { Directory, Filesystem } from '@capacitor/filesystem'
 import { Share } from '@capacitor/share'
-import { sliceRanges, type Native } from './platform'
+import { sliceRanges, type ContactFields, type Native } from './platform'
+
+/** The app's own plugin (android/app/src/main/java/in/cardpulse/app/SaveContactPlugin.java). */
+const SaveContact = registerPlugin<{ insert(f: ContactFields): Promise<void> }>('SaveContact')
 
 /** Base64 without the data-URL prefix, as Filesystem.writeFile expects. */
 const toBase64 = (blob: Blob) => new Promise<string>((resolve, reject) => {
@@ -31,6 +34,7 @@ export const native: Native = {
   closeBrowser: async () => { await Browser.close().catch(() => {}) },
   onAppUrl: (cb) => { void App.addListener('appUrlOpen', (e) => cb(e.url)) },
   launchUrl: async () => (await App.getLaunchUrl())?.url,
+  saveContact: async (f) => { await SaveContact.insert(f) },
   // SystemBarsStyle.Dark means light icons (for a dark background), as in Capacitor's docs
   setStatusBar: async (icons) => { await SystemBars.setStyle({ style: icons === 'light' ? SystemBarsStyle.Dark : SystemBarsStyle.Light }) },
 }

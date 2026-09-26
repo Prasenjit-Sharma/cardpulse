@@ -1,4 +1,5 @@
 import { CARD_H, CARD_W, layoutCard, type Box, type Op, type TextStyle } from './cardlayout'
+import { photoKindOf, type PhotoKind } from './cardphoto'
 import type { FontId, MyCard } from './mycards'
 
 const FAMILY: Record<FontId, string> = {
@@ -37,7 +38,8 @@ export async function drawCard(ctx: CanvasRenderingContext2D, card: MyCard, qr: 
   ctx.save()
   ctx.clearRect(0, 0, px, CARD_H * k)
   ctx.fillStyle = background; ctx.fillRect(0, 0, px, CARD_H * k)
-  for (const op of ops) paint(ctx, op, k, font, qr, qrBox, photo)
+  const kind = photo ? photoKindOf(photo, photo.width, photo.height) : 'face'
+  for (const op of ops) paint(ctx, op, k, font, qr, qrBox, photo, kind)
   ctx.restore()
   photo?.close()
 }
@@ -48,7 +50,7 @@ function setStyle(ctx: CanvasRenderingContext2D, style: TextStyle | undefined, s
   if ('fontStretch' in ctx) ctx.fontStretch = style?.stretch ?? 'normal'
 }
 
-function paint(ctx: CanvasRenderingContext2D, op: Op, k: number, font: (s: number, w: number) => string, qr: boolean[][], qrBox: Box, photo?: ImageBitmap): void {
+function paint(ctx: CanvasRenderingContext2D, op: Op, k: number, font: (s: number, w: number) => string, qr: boolean[][], qrBox: Box, photo?: ImageBitmap, kind: PhotoKind = 'face'): void {
   const b = op.box
   if (op.kind === 'rect') {
     ctx.fillStyle = op.fill; ctx.beginPath(); ctx.roundRect(b.x * k, b.y * k, b.w * k, b.h * k, (op.radius ?? 0) * k); ctx.fill()
@@ -63,10 +65,22 @@ function paint(ctx: CanvasRenderingContext2D, op: Op, k: number, font: (s: numbe
     ctx.fillText(op.text, (b.x + b.w / 2) * k, (b.y + b.h / 2) * k); ctx.textAlign = 'left'
   } else if (op.kind === 'photo') {
     if (!photo) return
-    const cx = (b.x + b.w / 2) * k, cy = (b.y + b.h / 2) * k
-    ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, (b.w / 2) * k, 0, Math.PI * 2); ctx.clip()
-    const s = Math.max((b.w * k) / photo.width, (b.h * k) / photo.height)
-    ctx.drawImage(photo, cx - (photo.width * s) / 2, cy - (photo.height * s) / 2, photo.width * s, photo.height * s)
+    const right = op.anchor === 'right'
+    if (kind === 'logo') {
+      // a logo is drawn whole on a white plate, like the QR's, sized to the logo and set against the slot's anchored end
+      const pad = b.h * 0.12
+      const fit = Math.min(((b.w - 2 * pad) * k) / photo.width, ((b.h - 2 * pad) * k) / photo.height)
+      const w = photo.width * fit, h = photo.height * fit
+      const plateW = w + 2 * pad * k, plateX = right ? (b.x + b.w) * k - plateW : b.x * k
+      ctx.fillStyle = '#FFFFFF'; ctx.beginPath(); ctx.roundRect(plateX, b.y * k, plateW, b.h * k, 1.4 * k); ctx.fill()
+      ctx.drawImage(photo, plateX + pad * k, (b.y + b.h / 2) * k - h / 2, w, h)
+      return
+    }
+    // a face fills a circle the slot's height, at its anchored end
+    const r = (b.h / 2) * k, cx = right ? (b.x + b.w) * k - r : b.x * k + r, cy = (b.y + b.h / 2) * k
+    ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.clip()
+    const sc = Math.max((2 * r) / photo.width, (2 * r) / photo.height)
+    ctx.drawImage(photo, cx - (photo.width * sc) / 2, cy - (photo.height * sc) / 2, photo.width * sc, photo.height * sc)
     ctx.restore()
   } else if (op.kind === 'qr') {
     // A white plate with dark modules and a quiet zone of four modules: the same on every template, whatever the accent.

@@ -87,8 +87,8 @@ export default function SettingsPage({ cards, events, settings, install, sync, o
     const ok = await confirmAsk({
       title: 'Delete all data?',
       message: sync.enabled
-        ? 'Every card and contact on this phone, and on your other synced phones, is deleted. This cannot be undone.'
-        : 'Every card and contact on this phone is deleted. This cannot be undone.',
+        ? 'Every scanned card, contact and event on this phone, and on your other synced phones, is deleted. Your own digital cards and settings stay. This cannot be undone.'
+        : 'Every scanned card, contact and event on this phone is deleted. Your own digital cards and settings stay. This cannot be undone.',
       confirmLabel: 'Delete all', danger: true,
     })
     if (ok) onWipe()
@@ -202,7 +202,7 @@ export default function SettingsPage({ cards, events, settings, install, sync, o
       <Sheet open={sheet === 'export'} onClose={() => setSheet(null)} title="Export">
         <SheetItem icon="file" label="Spreadsheet (CSV)" hint={`All ${people} contacts, for Excel or Google Sheets`} disabled={!done.length}
           onClick={() => { setSheet(null); download(`cardpulse-contacts-${stamp}.csv`, buildCsv(done, eventName), 'text/csv') }} />
-        <SheetItem icon="users" label="Phone contacts (vCard)" hint="Open it on a phone to add them all to Contacts" disabled={!done.length}
+        <SheetItem icon="users" label="Contacts file (vCard)" hint="Import into Google Contacts, Outlook or iCloud to add them all at once" disabled={!done.length}
           onClick={() => { setSheet(null); download(`cardpulse-contacts-${stamp}.vcf`, buildVcf(done, eventName, currentNameFormat()), 'text/vcard') }} />
         <SheetItem icon="download" label="Backup file" hint={`Contacts, photos and events, to restore on any phone. ${lastLabel}`}
           onClick={() => { setSheet(null); void runData(onBackup) }} />

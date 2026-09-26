@@ -27,11 +27,21 @@ test('REGRESSION: works with a navigator that rejects detached calls (real Chrom
   assert.equal(calls.share.length, 1)
 })
 
-test('Share contact: vCard file plus readable text in one share', async () => {
+// REGRESSION (2026-09-26, WhatsApp: "The format of this vcard is not supported"): a contact file must travel alone.
+// Android sends a text/x-vcard share with any text as EXTRA_TEXT, and WhatsApp reads that text as the vCard itself.
+test('Share contact: the vCard file alone, never with text beside it', async () => {
   const { env, calls } = chromeNavigator()
   await shareContact(c, '', env)
   const d = calls.share[0]
-  assert.equal(d.files[0].type, 'text/x-vcard'); assert.equal(d.files[0].name, 'Rajesh Shah.vcf'); assert.match(d.text, /\+91 98765 43210/); assert.match(d.text, /rajesh@abc\.com/)
+  assert.equal(d.files[0].type, 'text/x-vcard'); assert.equal(d.files[0].name, 'Rajesh Shah.vcf')
+  assert.equal(d.text, undefined)
+})
+
+test('Share contact: where files cannot be shared, the readable text goes instead', async () => {
+  const { env, calls } = chromeNavigator({ files: false })
+  await shareContact(c, '', env)
+  const d = calls.share[0]
+  assert.equal(d.files, undefined); assert.match(d.text, /\+91 98765 43210/); assert.match(d.text, /rajesh@abc\.com/)
 })
 
 test('Save to phone: share sheet with the file only (no text), so Contacts apps are offered; never a plain download', async () => {
@@ -127,7 +137,6 @@ test('vCard: "Name only" keeps the structured name split (first/last)', () => {
 
 test('the naming choice reaches what is shared and saved', async () => {
   const a = chromeNavigator(); await shareContact(c, '', a.env, 'name-company')
-  assert.match(a.calls.share[0].text, /Rajesh Shah/)                          // the readable text stays the plain name
   const sent = await a.calls.share[0].files[0].text(); assert.match(sent, /FN:Rajesh Shah \(ABC Polymers Pvt\. Ltd\.\)/)
   const b = chromeNavigator(); await saveToPhone(c, '', b.env, 'company-name')
   assert.match(await b.calls.share[0].files[0].text(), /FN:ABC Polymers Pvt\. Ltd\. - Rajesh Shah/)

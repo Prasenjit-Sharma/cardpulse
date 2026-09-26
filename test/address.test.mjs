@@ -32,3 +32,8 @@ test('the vCard carries street, city, postcode and country as separate parts', a
   const line = toVCard(c, '', 'name').split('\r\n').find((l) => l.startsWith('ADR'))
   assert.equal(line, 'ADR;TYPE=WORK:;;1 & 2\\, Balaji Estate\\, Narol;Ahmedabad;;382405;India')
 })
+
+test('"India-395002." at the end: India is the country, not the city (as printed on Surat cards)', () => {
+  assert.deepEqual(splitAddress('112, World Trade Center, Near Parag House, Ring Road, Surat, Gujarat, India-395002.'),
+    { street: '112, World Trade Center, Near Parag House, Ring Road', city: 'Surat', region: 'Gujarat', postcode: '395002', country: 'India' })
+})

@@ -1,8 +1,8 @@
 import { displayName, type NameFormat } from './naming.ts'
 import { splitAddress } from './address.ts'
-import { rankedPhones, vcardTelType } from './phones.ts'
+import { androidPhoneType, rankedPhones, vcardTelType } from './phones.ts'
 import type { Contact } from './types'
-import { notify, saveBlob, shareNav } from './platform.ts'
+import { getNative, notify, saveBlob, shareNav, type ContactFields } from './platform.ts'
 
 /** wa.me wants country code + number, digits only. Bare Indian numbers get 91. */
 export function waNumber(phone: string): string {
@@ -96,7 +96,9 @@ export async function shareVcf(name: string, vcf: string, title: string, text: s
   env.log?.(`share: hasShare=${typeof nav.share === 'function'} canShareFiles=${canFiles} type=${file.type}`)
 
   if (typeof nav.share === 'function' && canFiles) {
-    try { await nav.share({ files: [file], title, ...(text ? { text } : {}) }); return { result: 'shared' } }
+    // the file travels alone: Android puts any text beside a text/x-vcard file in EXTRA_TEXT, and WhatsApp then reads
+    // that text as the vCard ("The format of this vcard is not supported"). Text is only the fallback below.
+    try { await nav.share({ files: [file], title }); return { result: 'shared' } }
     catch (e) { if (errName(e) === 'AbortError') return { result: 'cancelled' }; problem = `share file: ${errName(e)}`; env.log?.(`share: ${problem}`) }
   }
   if (typeof nav.share === 'function' && text && textOnlyFallback) {
@@ -111,8 +113,22 @@ export async function shareVcf(name: string, vcf: string, title: string, text: s
   return { result: 'downloaded', problem }
 }
 
-/** "Save to phone": the share sheet with the vCard file (pick Contacts and your account). Falls back to a download. */
-export function saveToPhone(c: Contact, note: string, env: ActionEnv = browserEnv(), fmt: NameFormat = 'name'): Promise<ActionOutcome> {
+/** The contact as the phone's new-contact screen takes it: the Saved as name, numbers main first with their types. */
+export function contactFields(c: Contact, note: string, fmt: NameFormat): ContactFields {
+  return {
+    name: displayName(c, fmt), company: c.company, title: c.title,
+    phones: rankedPhones(c).map((p) => ({ number: p.number, type: androidPhoneType(p.kind) })),
+    emails: c.emails, website: c.website, address: c.address, note,
+  }
+}
+
+/**
+ * "Save to phone". In the app: the phone's own new-contact screen, filled in, where the user picks Google, Outlook or the
+ * phone and saves; no file changes hands. In a browser: the share sheet with the contact file, else a download.
+ */
+export async function saveToPhone(c: Contact, note: string, env: ActionEnv = browserEnv(), fmt: NameFormat = 'name'): Promise<ActionOutcome> {
+  const n = getNative()
+  if (n?.saveContact) { await n.saveContact(contactFields(c, note, fmt)); return { result: 'shared' } }
   return shareVcf(`${c.name || 'contact'}.vcf`, toVCard(c, note, fmt), displayName(c, fmt), undefined, env, false)
 }
 
