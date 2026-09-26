@@ -37,7 +37,7 @@ export default function Exhibition({ cards, events, activeEvent, onNew, onEdit, 
   const eventName = (id?: string) => events.find((e) => e.id === id)?.name ?? ''
   return (
     <>
-      <div className="page-top">
+      <div className="page-top deep">
         <header className="page-head">
           <h1>Events {events.length > 0 && <span className="count num">{events.length}</span>}</h1>
           <button className="icon-btn ghost" onClick={onNew} aria-label="New event"><Icon name="plus" size={20} /></button>

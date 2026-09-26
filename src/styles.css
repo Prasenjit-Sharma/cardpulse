@@ -300,6 +300,33 @@ input[inputmode='tel'], .num input { font-variant-numeric: tabular-nums }
 .page-top + .infos { border-top: 0 }
 .page-top + .searchbox, .page-top + .eventbar, .page-top + .note, .page-top + .banner, .page-top + p, .page-top + .empty-scan { margin-top: 12px }
 .page-top .icon-btn.ghost:active:not(:disabled) { background: var(--wash-press) }
+/* the deep page top: the four tab-bar screens (Home's masthead, Contacts, Events, My Card) share the deep indigo, so moving
+   between tabs never loses the brand. Detail screens keep the light wash, which marks them as a step in. */
+.page-top.deep { background: var(--brand-deep); color: var(--on-brand); border-bottom: 0 }
+.page-top.deep h1, .page-top.deep .mycards-head h1 { color: var(--on-brand) }
+.page-top.deep h1 .count { color: var(--on-brand-2) }
+.page-top.deep button.link { color: var(--on-brand) }
+.page-top.deep .icon-btn { background: none; color: var(--on-brand) }
+.page-top.deep .icon-btn:active:not(:disabled) { background: rgba(255,255,255,.12) }
+.page-top.deep :focus-visible { outline-color: var(--on-brand) }
+.page-top.deep .figgrid { border-top-color: var(--on-brand-rule) }
+.page-top.deep .figgrid > * + * { box-shadow: inset 1px 0 0 var(--on-brand-rule) }
+.page-top.deep .figgrid span, .page-top.deep .figgrid small { color: var(--on-brand-2) }
+.page-top.deep .figgrid b { color: var(--on-brand) }
+.page-top.deep .figgrid .due b { color: var(--on-brand-red) } .page-top.deep .figgrid .up { color: var(--on-brand-green) }
+.page-top.deep .figgrid > button:active:not(:disabled) { background: rgba(255,255,255,.08) }
+.page-top.deep .ev-tabs { border-top-color: var(--on-brand-rule) }
+.page-top.deep .ev-tabs button { color: var(--on-brand-2) }
+.page-top.deep .ev-tabs button.on { color: var(--on-brand) }
+.page-top.deep .ev-tabs button.on::after { background: var(--on-brand) }
+.page-top.deep .ev-tabs .live-dot { background: var(--on-brand-green) }
+.page-top.deep .ev-more svg { color: var(--on-brand-2) }
+.page-top.deep .mycards-label { background: rgba(255,255,255,.14); color: var(--on-brand) }
+.page-top.deep .dots-row i { background: rgba(255,255,255,.3) } .page-top.deep .dots-row i.on { background: var(--on-brand) }
+.page-top.deep .mycards-add { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.4); color: var(--on-brand) }
+.page-top.deep .mycards-add:active:not(:disabled) { background: rgba(255,255,255,.12) }
+.page-top.deep + .empty-scan { margin-top: 24px }
+
 /* a tool well used as a row's leading mark (Insights' "What needs you") */
 .index-row .tool-well { width: 36px; height: 36px; border-radius: 10px; flex: none }
 

@@ -81,7 +81,7 @@ export default function Contacts({ onScan, cards: allCards, events, activeEvent,
 
   return (
     <div>
-      <div className="page-top">
+      <div className="page-top deep">
         <header className="page-head">
           <h1>Contacts <span className="count num">{rows.length}</span></h1>
           {rows.length > 0 && (sel ? <button className="link" onClick={exit}>Cancel</button> : <button className="link" onClick={() => { setOpenKey(''); setSel(new Set()) }}>Select</button>)}

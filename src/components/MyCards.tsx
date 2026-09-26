@@ -42,7 +42,7 @@ export default function MyCards({ cards, stats, onAdd, onEdit, onShare, onStall 
     <>
       {cards.length === 0 ? (
         <>
-          <div className="page-top"><header className="page-head"><h1>My Card</h1></header></div>
+          <div className="page-top deep"><header className="page-head"><h1>My Card</h1></header></div>
           <div className="empty-scan">
             <CardStack />
             <h2>Your digital card</h2>
@@ -52,7 +52,7 @@ export default function MyCards({ cards, stats, onAdd, onEdit, onShare, onStall 
         </>
       ) : (
         <>
-          <section className="mycards-hero page-top">
+          <section className="mycards-hero page-top deep">
             <header className="mycards-head">
               <h1>My Card{current?.label && <span className="mycards-label">{current.label}</span>}</h1>
               {current && <button className="icon-btn ghost" onClick={() => onEdit(current.id)} aria-label="Edit card"><Icon name="edit" size={20} /></button>}
