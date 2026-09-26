@@ -1,6 +1,6 @@
 # CardPulse Android app (Capacitor, bundled): design
 
-Date: 2026-09-24. Status: design approved in conversation; this written spec awaits the user's review. No code yet.
+Date: 2026-09-24. Status: approved by the user on 2026-09-26; implementation plan in docs/superpowers/plans/2026-09-26-android-app.md.
 
 ## Goal
 
