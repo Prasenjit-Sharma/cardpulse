@@ -8,7 +8,7 @@ import { confirmAsk } from './Dialog'
 import Sheet from './Sheet'
 import { SettingGroup, SettingRow, SwitchRow } from './SettingRow'
 
-function statusLine(s: SyncStatus, enabled: boolean, now = Date.now()): string {
+export function statusLine(s: SyncStatus, enabled: boolean, now = Date.now()): string {
   if (!enabled) return 'Off. Contacts stay on this phone only.'
   if (s.kind === 'syncing') return 'Syncing…'
   if (s.kind === 'offline') return 'Waiting for network'

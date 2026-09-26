@@ -1,21 +1,26 @@
 import { useEffect, useState } from 'react'
-import { ACCENTS, accentById } from '../lib/accents'
 import { lastBackupAt } from '../lib/backup'
 import { buildFeedback, sendFeedback, type Diagnostics } from '../lib/feedback'
 import { clearLog, readLog, subscribe } from '../lib/debug'
 import { DEFAULT_MODEL, listModels, serverMode } from '../lib/gemini'
 import type { Settings, Theme } from '../lib/db'
 import { overall, scoreCard, sumTallies } from '../lib/score'
-import type { CardRecord } from '../lib/types'
+import type { CardRecord, EventRec } from '../lib/types'
+import { download } from '../lib/actions'
+import { currentNameFormat } from '../lib/db'
+import { buildCsv, buildVcf } from '../lib/export'
+import { useSession } from '../lib/auth'
+import { cloudEnabled } from '../lib/supabase'
+import { useBackClose } from '../lib/useBackClose'
 import { DEFAULT_NAME_FORMAT, NAME_FORMATS, type NameFormat } from '../lib/naming'
 import type { SyncControl } from '../lib/useSync'
-import AccountSection from './AccountSection'
+import AccountSection, { statusLine } from './AccountSection'
 import Check from './Check'
 import { confirmAsk } from './Dialog'
 import Icon from './Icon'
 import Picker, { type PickOption } from './Picker'
 import Logo from './Logo'
-import Sheet from './Sheet'
+import Sheet, { SheetItem } from './Sheet'
 import { SettingGroup, SettingRow } from './SettingRow'
 
 const MODELS_KEY = 'cardpulse.models'
@@ -42,8 +47,15 @@ function PickRow<T extends string>({ icon, label, value, options, onChange }: { 
   )
 }
 
-export default function SettingsPage({ cards, settings, install, sync, onChange, onWipe, onBackup, onRestore, onAccuracy, onBack }: {
+type Sub = 'account' | 'prefs' | 'help'
+
+/**
+ * Settings is a hub, not one long list: who you are and what this phone holds at the top, the tools you reach for as four
+ * keys, and the rest (preferences, account, help) each on a page of its own, so nothing is more than one tap deep.
+ */
+export default function SettingsPage({ cards, events, settings, install, sync, onChange, onWipe, onBackup, onRestore, onAccuracy, onInsights, onBack }: {
   cards: CardRecord[]
+  events: EventRec[]
   sync: SyncControl
   settings: Settings
   install: Install
@@ -52,6 +64,7 @@ export default function SettingsPage({ cards, settings, install, sync, onChange,
   onBackup: () => Promise<string>
   onRestore: (f: File) => Promise<string>
   onAccuracy: () => void
+  onInsights: () => void
   onBack: () => void
 }) {
   const [lines, setLines] = useState(readLog)
@@ -59,7 +72,11 @@ export default function SettingsPage({ cards, settings, install, sync, onChange,
   const [dataMsg, setDataMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [busyData, setBusyData] = useState(false)
   const [last, setLast] = useState(lastBackupAt)
-  const [sheet, setSheet] = useState<'feedback' | 'diagnostics' | null>(null)
+  const [sheet, setSheet] = useState<'feedback' | 'diagnostics' | 'export' | null>(null)
+  const [sub, setSubState] = useState<Sub | null>(null)
+  const setSub = (v: Sub | null) => { setSubState(v); setDataMsg(null); window.scrollTo(0, 0) }
+  useBackClose(!!sub, () => setSub(null))
+  const session = useSession()
 
   const runData = async (job: () => Promise<string>) => {
     setBusyData(true); setDataMsg(null)
@@ -76,81 +93,122 @@ export default function SettingsPage({ cards, settings, install, sync, onChange,
     })
     if (ok) onWipe()
   }
-  const accent = accentById(settings.accent)
-  const lastLabel = last ? `Last exported ${new Date(last).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}` : 'Not exported yet'
+  const done = cards.filter((c) => c.status === 'done')
+  const people = done.reduce((n, c) => n + (c.corrected?.length ?? 0), 0)
+  const eventName = (id?: string) => events.find((e) => e.id === id)?.name ?? ''
+  const lastLabel = last ? `Last saved ${new Date(last).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}` : 'Not saved yet'
   // only cards the user has opened count: an unopened card has not been checked, so it says nothing about accuracy
   const acc = overall(sumTallies(cards.filter((c) => c.opened).map(scoreCard).filter((x): x is NonNullable<typeof x> => !!x)))
-  const people = cards.filter((c) => c.status === 'done').reduce((n, c) => n + (c.corrected?.length ?? 0), 0)
+  const name = (session?.user.user_metadata as { full_name?: string } | undefined)?.full_name || session?.user.email || ''
+  const stamp = new Date().toISOString().slice(0, 10)
 
-  return (
+  const msg = dataMsg && <p className={dataMsg.ok ? 'hint ok setting-msg' : 'hint bad setting-msg'} role="status">{dataMsg.text}</p>
+  const head = (title: string, back: () => void) => (
+    <header className="bar-top settings-head">
+      <button className="icon-btn" onClick={back} aria-label="Back"><Icon name="back" /></button>
+      <h1 className="grow">{title}</h1>
+    </header>
+  )
+
+  if (sub === 'account') return <>{head('Account', () => setSub(null))}<AccountSection sync={sync} /></>
+
+  if (sub === 'prefs') return (
     <>
-      <header className="bar-top settings-head">
-        <button className="icon-btn" onClick={onBack} aria-label="Back"><Icon name="back" /></button>
-        <h1 className="grow">Settings</h1>
-      </header>
-
-      {/* where this phone stands, at a glance: what it holds, how well cards are read, whether it syncs */}
-      <div className="holding full-bleed settings-glance" role="group" aria-label="This phone">
-        <div><span>Contacts</span><b className="num">{people}</b></div>
-        <button onClick={onAccuracy} aria-label={`Accuracy ${acc == null ? 'not measured yet' : `${Math.round(acc * 100)}%`}. Open the accuracy report`}>
-          <span>Accuracy</span><b className="num">{acc == null ? '–' : `${Math.round(acc * 100)}%`}</b>
-        </button>
-        <div><span>Sync</span><b>{sync.enabled ? 'On' : 'Off'}</b></div>
-      </div>
-
-      <AccountSection sync={sync} />
-
-      <SettingGroup title="General" footer="How contacts are named when you save them to your phone. The call screen shows only the name, so adding the company makes it show on incoming calls.">
+      {head('Preferences', () => setSub(null))}
+      <SettingGroup title="Saving contacts" footer="How contacts are named when you save them to your phone. The call screen shows only the name, so adding the company makes it show on incoming calls.">
         <PickRow icon="phone" label="Saved as" value={settings.nameFormat ?? DEFAULT_NAME_FORMAT} options={NAMES} onChange={(v) => onChange({ ...settings, nameFormat: v })} />
+      </SettingGroup>
+      <SettingGroup title="Display">
+        <PickRow icon="moon" label="Theme" value={settings.theme ?? 'system'} options={THEMES} onChange={(v) => onChange({ ...settings, theme: v })} />
+      </SettingGroup>
+      <SettingGroup title="This phone" footer={sync.enabled ? 'Deleting here deletes on your synced phones too.' : "Contacts live only on this phone until you sync or export them."}>
         <PickRow icon="image" label="Keep card photos" value={settings.keepPhotos} options={PHOTOS} onChange={(v) => onChange({ ...settings, keepPhotos: v })} />
         {install.mode && (
           <SettingRow icon="download" label="Install app" hint={install.mode === 'ios' ? 'Tap Share, then Add to Home Screen' : 'Add CardPulse to your home screen'}
             onClick={install.mode === 'native' ? install.install : undefined} />
         )}
-      </SettingGroup>
-
-      <SettingGroup title="Display">
-        <PickRow icon="moon" label="Theme" value={settings.theme ?? 'system'} options={THEMES} onChange={(v) => onChange({ ...settings, theme: v })} />
-        <div className="setting-row accent-row-wrap">
-          <Icon name="droplet" size={20} />
-          <span className="grow"><strong>Accent colour</strong><small>{accent.name}</small></span>
-          <div className="accent-row" role="radiogroup" aria-label="Accent colour">
-            {ACCENTS.map((a) => (
-              <button key={a.id} role="radio" aria-checked={accent.id === a.id} aria-label={`${a.name}, ${a.suits}`} title={a.name}
-                className="accent-sw" style={{ ['--sw' as string]: a.hex, ['--sw-l' as string]: a.lite }} onClick={() => onChange({ ...settings, accent: a.id })} />
-            ))}
-          </div>
-        </div>
-      </SettingGroup>
-
-      <SettingGroup title="Your data" footer={sync.enabled
-        ? 'Sync keeps every phone up to date by itself. An export is a file you save yourself: a copy as of that moment, which you can restore on any phone.'
-        : "Contacts are stored only on this phone. Clearing the app's data removes them, so export a copy now and then."}>
-        <SettingRow icon="download" label="Export all contacts" hint={lastLabel} disabled={busyData} onClick={() => void runData(onBackup)} />
-        <label className="setting-row">
-          <Icon name="upload" size={20} /><span className="grow"><strong>Restore from an export</strong><small>Adds what is missing; never overwrites</small></span><Icon name="chevron" size={16} />
-          <input type="file" accept=".zip,application/zip" hidden disabled={busyData} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void runData(() => onRestore(f)) }} />
-        </label>
         <SettingRow icon="trash" label="Delete all data" danger onClick={() => void wipe()} />
       </SettingGroup>
-      {dataMsg && <p className={dataMsg.ok ? 'hint ok setting-msg' : 'hint bad setting-msg'} role="status">{dataMsg.text}</p>}
+      {!serverMode && <DeveloperKey settings={settings} onChange={onChange} />}
+    </>
+  )
 
-      <SettingGroup title="Help & support">
+  if (sub === 'help') return (
+    <>
+      {head('Help & support', () => setSub(null))}
+      <SettingGroup title="Talk to us">
         <SettingRow icon="chat" label="Send feedback" hint="Something wrong, or an idea?" onClick={() => setSheet('feedback')} />
+      </SettingGroup>
+      <SettingGroup title="About">
         <SettingRow icon="globe" label="Privacy policy" href={`${import.meta.env.BASE_URL}privacy.html`} />
         <SettingRow icon="file" label="Diagnostics" hint="The app's recent log, for fixing problems" onClick={() => setSheet('diagnostics')} />
       </SettingGroup>
-
-      {!serverMode && <DeveloperKey settings={settings} onChange={onChange} />}
-
-      <footer className="about"><Logo size={24} /><span>CardPulse v{__APP_VERSION__}</span></footer>
-
       <FeedbackSheet open={sheet === 'feedback'} onClose={() => setSheet(null)} cards={cards} settings={settings} lines={lines} />
       <Sheet open={sheet === 'diagnostics'} onClose={() => setSheet(null)} title="Diagnostics">
         <div className="sheet-body">
           <pre className="diag-log">{lines.join('\n') || '(empty)'}</pre>
           <button className="outline wide" onClick={clearLog}>Clear the log</button>
         </div>
+      </Sheet>
+    </>
+  )
+
+  return (
+    <>
+      {head('Settings', onBack)}
+
+      {/* who you are and what this phone holds: the one indigo-washed block on the page */}
+      <section className="acct full-bleed" aria-label="Account and this phone">
+        {cloudEnabled && (
+          <button className="acct-who" onClick={() => setSub('account')}>
+            <span className="acct-avatar" aria-hidden="true">{session ? (name.trim()[0] ?? '?').toUpperCase() : <Icon name="user" size={20} />}</span>
+            <span className="grow">
+              <strong>{session ? name : 'Sign in with Google'}</strong>
+              <small>{session ? statusLine(sync.status, sync.enabled) : 'Your card link, stall leads and sync'}</small>
+            </span>
+            <Icon name="chevron" size={16} />
+          </button>
+        )}
+        <div className="acct-figs" role="group" aria-label="This phone">
+          <div><span>Contacts</span><b className="num">{people}</b></div>
+          <button onClick={onAccuracy} aria-label={`Accuracy ${acc == null ? 'not measured yet' : `${Math.round(acc * 100)}%`}. Open the accuracy report`}>
+            <span>Accuracy</span><b className="num">{acc == null ? '–' : `${Math.round(acc * 100)}%`}</b>
+          </button>
+          <div><span>Sync</span><b>{sync.enabled ? 'On' : 'Off'}</b></div>
+        </div>
+      </section>
+
+      <h3 className="group band">Tools</h3>
+      <div className="tools full-bleed" role="group" aria-label="Tools">
+        <button onClick={() => setSheet('export')} disabled={busyData}><span className="tool-well"><Icon name="upload" size={20} /></span>Export</button>
+        <label className={busyData ? 'off' : ''}>
+          <span className="tool-well"><Icon name="download" size={20} /></span>Restore
+          <input type="file" accept=".zip,application/zip" hidden disabled={busyData} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void runData(() => onRestore(f)) }} />
+        </label>
+        <button onClick={onAccuracy}><span className="tool-well"><Icon name="chart" size={20} /></span>Accuracy</button>
+        <button onClick={onInsights}><span className="tool-well"><Icon name="spark" size={20} /></span>Insights</button>
+      </div>
+      {msg}
+
+      <h3 className="group band">More</h3>
+      <section className="setting-group">
+        <SettingRow icon="sliders" label="Preferences" hint="Contact names, card photos, theme" onClick={() => setSub('prefs')} />
+        {cloudEnabled && <SettingRow icon="cloud" label="Account and sync" hint={session ? session.user.email : 'Not signed in'} onClick={() => setSub('account')} />}
+        <SettingRow icon="chat" label="Help & support" hint="Feedback, privacy, diagnostics" onClick={() => setSub('help')} />
+      </section>
+
+      <footer className="about"><Logo size={24} /><span>CardPulse v{__APP_VERSION__}</span></footer>
+
+      <Sheet open={sheet === 'export'} onClose={() => setSheet(null)} title="Export">
+        <SheetItem icon="file" label="Spreadsheet (CSV)" hint={`All ${people} contacts, for Excel or Google Sheets`} disabled={!done.length}
+          onClick={() => { setSheet(null); download(`cardpulse-contacts-${stamp}.csv`, buildCsv(done, eventName), 'text/csv') }} />
+        <SheetItem icon="users" label="Phone contacts (vCard)" hint="Open it on a phone to add them all to Contacts" disabled={!done.length}
+          onClick={() => { setSheet(null); download(`cardpulse-contacts-${stamp}.vcf`, buildVcf(done, eventName, currentNameFormat()), 'text/vcard') }} />
+        <SheetItem icon="download" label="Backup file" hint={`Contacts, photos and events, to restore on any phone. ${lastLabel}`}
+          onClick={() => { setSheet(null); void runData(onBackup) }} />
+        <p className="hint sheet-note">{sync.enabled
+          ? 'Sync already keeps your phones up to date. An export is a copy as of now that you keep yourself.'
+          : 'Your contacts are only on this phone. A backup file keeps them safe if the phone is lost or reset.'}</p>
       </Sheet>
     </>
   )

@@ -2,10 +2,11 @@ import { useState } from 'react'
 import { needsAttention } from '../lib/attention'
 import { localISO } from '../lib/followups'
 import { companyList } from '../lib/companies'
-import { eventWhen, featuredEvents, showEvent } from '../lib/eventname'
+import { eventState, eventWhen, featuredEvents, showEvent } from '../lib/eventname'
 import { dueFigure, isToday, rowFigure, shortDate } from '../lib/watch'
 import type { CardRecord, Contact, EventRec } from '../lib/types'
 import Icon from './Icon'
+import Logo from './Logo'
 import WatchRow from './WatchRow'
 
 interface Install { mode: 'native' | 'ios' | null; visible: boolean; install: () => void; dismiss: () => void }
@@ -14,6 +15,16 @@ type List = 'due' | 'upcoming' | 'recent' | 'starred'
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000
 const ROWS = 6
+
+/** The brand's pulse, drawn once across the masthead as the app opens. */
+function PulseLine() {
+  return (
+    <svg className="mast-pulse" viewBox="0 0 400 72" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M0 40 H190 L204 40 L214 18 L228 62 L240 8 L252 40 H290 L298 32 L306 40 H400" />
+      <path className="beat" d="M0 40 H190 L204 40 L214 18 L228 62 L240 8 L252 40 H290 L298 32 L306 40 H400" pathLength="1" />
+    </svg>
+  )
+}
 
 /** The empty home: a stack of two blank cards, drawn in the app's own palette. */
 function EmptyCards() {
@@ -30,8 +41,8 @@ function EmptyCards() {
 }
 
 /**
- * Home is the day's desk: a ticker of standing numbers, three index tiles for today, a watchlist of the people who
- * need you (due, upcoming, recent, starred) with Call and WhatsApp one tap away, and the events as indices.
+ * Home is the day's desk: an indigo masthead carrying today's figures, the event that matters now, then a watchlist of
+ * the people who need you (due, upcoming, recent, starred) with Call and WhatsApp one tap away. All of it above the fold.
  */
 export default function Home({ cards, events, dupes, ready, needsKey, install, backupNudge, onBackup, onSnoozeBackup, onOpenContact, onTogglePriority, onContacts, onCompanies, onStarred, onAttention, onInsights, onSetup, onSettings, onViewEvent, onEvents }: {
   cards: CardRecord[]
@@ -92,18 +103,43 @@ export default function Home({ cards, events, dupes, ready, needsKey, install, b
       onOpen={() => onOpenContact(x.card.id, x.i)} onStar={() => onTogglePriority(x.card.id, x.i)} />
   )
 
-  // events as indices: only the live ones, else the next or the latest two, so the desk never needs scrolling for them
-  const eventRows = featuredEvents(events, today, 2).map((e) => {
-    const mine = people.filter((x) => x.card.eventId === e.id)
-    return { e, n: mine.length, today: mine.filter((x) => isToday(x.card.createdAt, today)).length }
-  })
+  // the one event that matters now (live, else the next, else the latest), under the masthead so it never needs a scroll
+  const lead = featuredEvents(events, today, 1)[0]
+  const leadCards = lead ? people.filter((x) => x.card.eventId === lead.id) : []
+  const leadToday = leadCards.filter((x) => isToday(x.card.createdAt, today)).length
 
   return (
     <>
-      <header className="desk-head">
-        <span className="wordmark">CardPulse</span>
-        <button className="icon-btn ghost" onClick={onContacts} aria-label="Search contacts"><Icon name="search" size={20} /></button>
-        <button className="icon-btn ghost" onClick={onSettings} aria-label="Settings"><Icon name="sliders" size={20} /></button>
+      <header className="masthead">
+        <PulseLine />
+        <div className="mast-top">
+          <span className="wordmark"><Logo size={24} tone="light" />CardPulse</span>
+          <button className="icon-btn ghost" onClick={onContacts} aria-label="Search contacts"><Icon name="search" size={20} /></button>
+          <button className="icon-btn ghost" onClick={onSettings} aria-label="Settings"><Icon name="sliders" size={20} /></button>
+        </div>
+        {cards.length > 0 && (
+          // one grid for both rows, so every figure sits in the same column as the one above it
+          <div className="mast-figs" role="group" aria-label="Today">
+            <button className={due.length ? 'due' : ''} onClick={() => setList('due')}>
+              <span>Due</span>
+              <b className="num">{due.length}</b>
+              <small>{overdue ? `${overdue} overdue` : due.length ? 'none overdue' : 'all clear'}</small>
+            </button>
+            <button onClick={() => setList('recent')}>
+              <span>This week</span>
+              <b className="num">{week}</b>
+              <small className={scannedToday ? 'up' : ''}>{scannedToday ? `+${scannedToday} today` : 'none today'}</small>
+            </button>
+            <button onClick={onContacts}>
+              <span>Contacts</span>
+              <b className="num">{people.length}</b>
+              <small>{events.length} {events.length === 1 ? 'event' : 'events'}</small>
+            </button>
+            <button className="mini" onClick={onStarred}><span>Starred</span><b className="num">{starred.length}</b></button>
+            <button className="mini" onClick={onCompanies}><span>Companies</span><b className="num">{companies}</b></button>
+            <button className={`mini${toCheck ? ' check' : ''}`} onClick={onAttention}><span>To check</span><b className="num">{toCheck}</b></button>
+          </div>
+        )}
       </header>
 
       {needsKey && !ready && (
@@ -134,29 +170,16 @@ export default function Home({ cards, events, dupes, ready, needsKey, install, b
         </div>
       ) : (
         <>
-          <div className="ticker full-bleed" role="group" aria-label="Standing figures">
-            <button onClick={onStarred}><span>Starred</span><b className="num">{starred.length}</b></button>
-            <button onClick={onCompanies}><span>Companies</span><b className="num">{companies}</b></button>
-            <button className={toCheck ? 'check' : ''} onClick={onAttention}><span>To check</span><b className="num">{toCheck}</b></button>
-          </div>
-
-          <div className="indices" role="group" aria-label="Today">
-            <button className={due.length ? 'due' : ''} onClick={() => setList('due')}>
-              <span>Due</span>
-              <b className="num">{due.length}</b>
-              <small>{overdue ? `${overdue} overdue` : due.length ? 'none overdue' : 'all clear'}</small>
-            </button>
-            <button onClick={() => setList('recent')}>
-              <span>This week</span>
-              <b className="num">{week}</b>
-              <small className={scannedToday ? 'up' : ''}>{scannedToday ? `+${scannedToday} today` : 'none today'}</small>
-            </button>
-            <button onClick={onContacts}>
-              <span>Contacts</span>
-              <b className="num">{people.length}</b>
-              <small>{events.length} {events.length === 1 ? 'event' : 'events'}</small>
-            </button>
-          </div>
+          {lead && (
+            <div className={`event-strip${eventState(lead, today) === 'live' ? ' live' : ''}`}>
+              <button className="event-strip-main" onClick={() => onViewEvent(lead.id)}>
+                {eventState(lead, today) === 'live' ? <em className="live-tag">Live</em> : <Icon name="booth" size={18} />}
+                <span className="grow"><strong>{showEvent(lead.name)}</strong><span className="muted">{eventWhen(lead, today, (t) => shortDate(t, now))}</span></span>
+                <span className="fig"><b className="num">{leadCards.length}</b><small className={leadToday ? 'up' : ''}>{leadToday ? `+${leadToday} today` : leadCards.length === 1 ? 'card' : 'cards'}</small></span>
+              </button>
+              <button className="link" onClick={onEvents}>{events.length > 1 ? `All ${events.length}` : 'Events'}</button>
+            </div>
+          )}
 
           <div className="wl-tabs full-bleed" role="tablist" aria-label="Watchlists">
             {lists.map((l) => (
@@ -179,19 +202,6 @@ export default function Home({ cards, events, dupes, ready, needsKey, install, b
             </>
           )}
 
-          {eventRows.length > 0 && (
-            <>
-              <h3 className="group band">Events <button className="link" onClick={onEvents}>{events.length > eventRows.length ? `All ${events.length}` : 'All events'}</button></h3>
-              <div className="plain-list">
-                {eventRows.map(({ e, n, today: t }) => (
-                  <button key={e.id} className="index-row" onClick={() => onViewEvent(e.id)}>
-                    <span className="grow"><strong>{showEvent(e.name)}</strong><span className="muted">{eventWhen(e, today, (t) => shortDate(t, now))}</span></span>
-                    <span className="fig"><b className="num">{n}</b><small className={t ? 'up' : ''}>{t ? `+${t} today` : n === 1 ? 'contact' : 'contacts'}</small></span>
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
         </>
       )}
     </>

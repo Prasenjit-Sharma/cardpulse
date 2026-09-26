@@ -19,29 +19,38 @@
 
 :root {
   /* ground and surfaces (the old token names are kept so every component keeps working) */
+  /* Neutrals lean a few degrees toward Neel Indigo, so every band, key and field carries the brand's hue. */
   --board: #FFFFFF;            /* the app's ground: flat white, like a trading screen */
-  --band: #F5F6F8;             /* grey bands: section headings, the ticker, index tiles */
-  --board-2: #F0F2F5;          /* tonal fills: secondary buttons, chips, badges */
-  --well: #E4E7EB;             /* pressed / track */
-  --desk: #ECEEF1;             /* wide screens, around the app column */
-  --board-edge: #D9DDE3;       /* borders */
+  --band: #F4F4FA;             /* indigo-grey bands: section headings, index tiles */
+  --board-2: #EEEEF7;          /* tonal fills: secondary buttons, chips, badges */
+  --well: #E2E2EF;             /* pressed / track */
+  --desk: #EAEAF3;             /* wide screens, around the app column */
+  --board-edge: #D7D7E6;       /* borders */
   --sleeve: #FFFFFF;           /* panels, sheets, the tab bar */
   --sleeve-lip: transparent;
-  --field: #F3F4F6;            /* text fields and pickers */
+  --field: #F2F2F8;            /* text fields and pickers */
 
-  --ink: #14171C;
-  --ink-2: #3D444E;
-  --ink-3: #626975;            /* 5.5:1 on white, 5.1:1 on a band */
+  --ink: #15142A;              /* ink with indigo in it, like a fountain pen's */
+  --ink-2: #3D3C55;
+  --ink-3: #62617A;            /* 6.0:1 on white, 5.5:1 on a band */
   --rule: rgba(20,23,28,.11);
   --rule-soft: rgba(20,23,28,.08);
 
-  /* the accent: --brand-base / --brand-lite are set at run time from Settings (src/lib/accents.ts); Blue by default */
-  --brand-base: #1A58C2;
-  --brand-lite: #8DB0F0;
+  /* the brand: Neel Indigo, India's indigo ink. One colour for the whole app; the digital cards keep their own list. */
+  --brand-base: #3B2FC9;       /* 8.6:1 on white; white text on it 8.6:1 */
+  --brand-lite: #A9A3FF;       /* dark mode twin, carries dark text */
+  --brand-deep: #2A1F9E;       /* the Home masthead and the Settings account band */
   --brand: var(--brand-base);
   --brand-ink: #FFFFFF;
   --brand-wash: color-mix(in srgb, var(--brand-base) 9%, transparent);
   --brand-edge: color-mix(in srgb, var(--brand-base) 30%, transparent);
+  --band-ink: #4A43A6;         /* band headings: the brand's hue at text weight, 7:1 on a band */
+  --on-brand: #FFFFFF;
+  --on-brand-2: rgba(255,255,255,.78);   /* labels on the masthead: 7.6:1 */
+  --on-brand-rule: rgba(255,255,255,.16);
+  --on-brand-red: #FFB8B0;     /* the state colours, lifted to read on indigo (all above 7:1) */
+  --on-brand-green: #9CF0C2;
+  --on-brand-amber: #FFD48E;
   --lock: #5DD6C8;             /* "card locked" in the camera: shows over any photo, whatever the accent */
 
   /* palette law: red is due or overdue and nothing else; green is done or up; amber is check this */
@@ -79,9 +88,9 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --board: #0E1013; --band: #15181C; --board-2: #1C2026; --well: #262B32; --desk: #07080A; --board-edge: #2B3038;
-    --sleeve: #121519; --field: #1C2026;
-    --ink: #EDEFF2; --ink-2: rgba(237,239,242,.80); --ink-3: rgba(237,239,242,.62);
+    --board: #0F0F17; --board-2: #1E1E2C; --well: #282838; --desk: #08080D; --board-edge: #2D2D40;
+    --sleeve: #13131C; --field: #1E1E2C; --band: #161622; --brand-deep: #221A7E; --band-ink: #B7B2F5;
+    --ink: #EEEEF6; --ink-2: rgba(238,238,246,.80); --ink-3: rgba(238,238,246,.62);
     --rule: rgba(237,239,242,.11); --rule-soft: rgba(237,239,242,.07);
     --brand: var(--brand-lite); --brand-ink: #0B0E10;
     --brand-wash: color-mix(in srgb, var(--brand-lite) 15%, transparent); --brand-edge: color-mix(in srgb, var(--brand-lite) 36%, transparent);
@@ -93,9 +102,9 @@
   }
 }
 :root[data-theme='dark'] {
-  --board: #0E1013; --band: #15181C; --board-2: #1C2026; --well: #262B32; --desk: #07080A; --board-edge: #2B3038;
-  --sleeve: #121519; --field: #1C2026;
-  --ink: #EDEFF2; --ink-2: rgba(237,239,242,.80); --ink-3: rgba(237,239,242,.62);
+  --board: #0F0F17; --board-2: #1E1E2C; --well: #282838; --desk: #08080D; --board-edge: #2D2D40;
+  --sleeve: #13131C; --field: #1E1E2C; --band: #161622; --brand-deep: #221A7E; --band-ink: #B7B2F5;
+  --ink: #EEEEF6; --ink-2: rgba(238,238,246,.80); --ink-3: rgba(238,238,246,.62);
   --rule: rgba(237,239,242,.11); --rule-soft: rgba(237,239,242,.07);
   --brand: var(--brand-lite); --brand-ink: #0B0E10;
   --brand-wash: color-mix(in srgb, var(--brand-lite) 15%, transparent); --brand-edge: color-mix(in srgb, var(--brand-lite) 36%, transparent);
@@ -143,7 +152,7 @@ a { color: var(--brand); text-underline-offset: 3px; text-decoration-thickness: 
   margin: 20px 0 8px; display: flex; align-items: center; gap: 8px;
 }
 /* a section heading over a watchlist is a grey band across the whole column */
-.group.band { margin: 16px -16px 0; padding: 0 16px; min-height: 32px; background: var(--band); border-block: 1px solid var(--rule-soft) }
+.group.band { margin: 16px -16px 0; padding: 0 16px; min-height: 32px; background: var(--band); border-block: 1px solid var(--rule-soft); color: var(--band-ink) }
 .group .link, h3.section .link { margin-left: auto; min-height: 0; padding: 0; font-size: var(--t-s); letter-spacing: 0; text-transform: none; font-weight: 600 }
 .section { margin: 26px 0 10px; font-size: var(--t-l); font-weight: 650; display: flex; align-items: center; gap: 8px }
 h3.section .link { position: relative } h3.section .link::after { content: ''; position: absolute; inset: -14px -10px }
@@ -279,9 +288,45 @@ input[inputmode='tel'], .num input { font-variant-numeric: tabular-nums }
 .chip-pill { display: inline-flex; align-items: center; gap: 7px; background: var(--sleeve); border-radius: var(--r-pill); padding: 8px 14px; font-size: var(--t-s); font-weight: 600; color: var(--ink-2); box-shadow: var(--seat) }
 .brand { display: flex; align-items: center; gap: 9px; font-weight: 600 }
 
-/* home masthead: a compact desk header */
-.desk-head { display: flex; align-items: center; gap: 2px; min-height: 48px; margin: 0 -6px 6px 0 }
-.desk-head .wordmark { flex: 1; font-size: 20px; font-weight: 750; letter-spacing: -.025em; color: var(--ink); line-height: 1 }
+/* home masthead: the one indigo surface. The wordmark, then today's six figures in one grid of three columns, so the
+   second row always sits under the first. The brand's pulse line runs behind them. */
+.masthead { position: relative; overflow: hidden; margin: calc(-8px - env(safe-area-inset-top)) -16px 0; padding: env(safe-area-inset-top) 16px 0; background: var(--brand-deep); color: var(--on-brand) }
+.mast-top { position: relative; display: flex; align-items: center; gap: 2px; min-height: 56px; margin-right: -6px }
+.masthead .wordmark { flex: 1; display: inline-flex; align-items: center; gap: 9px; font-size: 20px; font-weight: 750; letter-spacing: -.025em; line-height: 1 }
+.masthead .icon-btn { background: none; box-shadow: none; color: var(--on-brand) }
+.masthead .icon-btn:active:not(:disabled) { background: rgba(255,255,255,.12) }
+.masthead :focus-visible { outline-color: var(--on-brand) }
+.mast-pulse { position: absolute; left: 0; top: env(safe-area-inset-top); width: 100%; height: 56px; pointer-events: none }
+.mast-pulse path { fill: none; stroke: rgba(255,255,255,.10); stroke-width: 1.5; stroke-linejoin: round; vector-effect: non-scaling-stroke }
+/* once, as Home opens: a brighter beat runs along the line, like a monitor's trace */
+.mast-pulse path.beat { stroke: rgba(255,255,255,.42); stroke-dasharray: .1 .9; stroke-dashoffset: .1; opacity: 0; animation: beat 1.4s cubic-bezier(.3,.6,.2,1) .25s both }
+@keyframes beat { 0% { stroke-dashoffset: .1; opacity: 1 } 85% { opacity: 1 } 100% { stroke-dashoffset: -.9; opacity: 0 } }
+@media (prefers-reduced-motion: reduce) { .mast-pulse path.beat { display: none } }
+.mast-figs { position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0 -16px; border-top: 1px solid var(--on-brand-rule) }
+.mast-figs button { display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 0; min-width: 0; min-height: 0; padding: 10px 16px 12px; background: none; border-radius: 0; color: var(--on-brand); font-weight: 400; text-align: left }
+.mast-figs button:not(:nth-child(3n + 1)) { box-shadow: inset 1px 0 0 var(--on-brand-rule) }
+.mast-figs button:active:not(:disabled) { transform: none; background: rgba(255,255,255,.08) }
+.mast-figs span { font-size: var(--t-xs); font-weight: 500; color: var(--on-brand-2) }
+.mast-figs b { font-size: 28px; font-weight: 700; line-height: 1.2; letter-spacing: -.02em; font-variant-numeric: tabular-nums }
+.mast-figs small { max-width: 100%; overflow: hidden; font-size: var(--t-xs); color: var(--on-brand-2); white-space: nowrap; text-overflow: ellipsis }
+.mast-figs .due b { color: var(--on-brand-red) }
+.mast-figs small.up { color: var(--on-brand-green); font-weight: 600 }
+.mast-figs .mini { flex-direction: row; align-items: center; justify-content: space-between; gap: 8px; min-height: 40px; padding: 0 16px; border-top: 1px solid var(--on-brand-rule) }
+.mast-figs .mini span { overflow: hidden; font-size: 11px; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; white-space: nowrap; text-overflow: ellipsis }
+.mast-figs .mini b { font-size: var(--t-m); font-weight: 650; letter-spacing: 0 }
+.mast-figs .mini.check b { color: var(--on-brand-amber) }
+.masthead + .banner-row, .masthead + .empty-scan { margin-top: 12px }
+
+/* the event that matters now, straight under the masthead: live ones on an indigo wash */
+.event-strip { display: flex; align-items: center; gap: 4px; margin: 0 -16px; padding-right: 16px; background: var(--band); border-bottom: 1px solid var(--rule-soft) }
+.event-strip.live { background: color-mix(in srgb, var(--brand) 8%, var(--board)) }
+.event-strip-main { flex: 1; min-width: 0; justify-content: flex-start; gap: 12px; min-height: 56px; padding: 8px 12px 8px 16px; background: none; border-radius: 0; color: var(--ink); font-weight: 400; text-align: left }
+.event-strip-main:active:not(:disabled) { transform: none; background: var(--board-2) }
+.event-strip-main > svg { flex: none; color: var(--brand) }
+.event-strip .grow { display: flex; flex-direction: column; gap: 1px; min-width: 0 }
+.event-strip strong { overflow: hidden; font-size: var(--t-m); font-weight: 650; letter-spacing: .01em; white-space: nowrap; text-overflow: ellipsis }
+.event-strip .muted { font-size: var(--t-xs) }
+.event-strip > .link { flex: none; font-size: var(--t-s) }
 .full-bleed { margin-left: -16px; margin-right: -16px }
 
 /* ---------- lists of people ---------- */
@@ -325,14 +370,6 @@ input[inputmode='tel'], .num input { font-variant-numeric: tabular-nums }
 
 /* ---------- home: the day's desk ---------- */
 /* the ticker: standing figures in one band, ruled apart like a market strip */
-.ticker { display: flex; overflow-x: auto; scrollbar-width: none; background: var(--band); border-block: 1px solid var(--rule-soft) }
-.ticker::-webkit-scrollbar { display: none }
-.ticker button { flex: 1 0 auto; min-height: 40px; padding: 0 8px; gap: 4px; background: none; border-radius: 0; color: var(--ink); font-weight: 400 }
-.ticker button + button { box-shadow: inset 1px 0 0 var(--rule-soft) }
-.ticker button:active:not(:disabled) { transform: none; background: var(--board-2) }
-.ticker span { font-size: 11px; font-weight: 600; letter-spacing: .02em; text-transform: uppercase; color: var(--ink-3) }
-.ticker b { font-size: var(--t-s); font-weight: 650; font-variant-numeric: tabular-nums }
-.ticker .check b { color: var(--amber) }
 /* index tiles: today's three figures */
 .indices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0 -16px 10px; border-bottom: 1px solid var(--rule) }
 .indices button {
@@ -593,13 +630,33 @@ button.add { min-height: 36px; padding: 0 2px; font-size: var(--t-s); background
 /* ---------- settings ---------- */
 .setting-group { margin: 0 -16px }
 .settings-head h1 { font-size: var(--t-xl) }
-.settings-glance { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 2px }
-.settings-glance b { font-size: 20px } .settings-glance b.check { color: var(--amber) }
-/* Accuracy opens its report: a cell like the others, pressable */
-.settings-glance > button { display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 1px; min-width: 0; min-height: 0; padding: 10px 12px 12px; background: none; border-radius: 0; color: var(--ink); font-weight: inherit; text-align: left; box-shadow: inset 1px 0 0 var(--rule-soft) }
-.settings-glance > button:active:not(:disabled) { transform: none; background: var(--board-2) }
-.settings-glance > button + div { box-shadow: inset 1px 0 0 var(--rule-soft) }
 .dev-panel { padding: 12px 0 4px }
+/* the hub's head: who you are, then what this phone holds, on one indigo wash */
+.acct { background: color-mix(in srgb, var(--brand) 7%, var(--board)); border-block: 1px solid var(--brand-edge) }
+.acct-who { width: 100%; justify-content: flex-start; gap: 12px; min-height: 64px; padding: 10px 16px; background: none; border-radius: 0; border-bottom: 1px solid var(--brand-edge); color: var(--ink); font-weight: 400; text-align: left }
+.acct-who:active:not(:disabled) { transform: none; background: color-mix(in srgb, var(--brand) 12%, var(--board)) }
+.acct-who .grow { display: flex; flex-direction: column; gap: 1px; min-width: 0 }
+.acct-who strong { overflow: hidden; font-size: var(--t-l); font-weight: 650; white-space: nowrap; text-overflow: ellipsis }
+.acct-who small { font-size: var(--t-xs); color: var(--ink-3) }
+.acct-who > svg { flex: none; color: var(--ink-3) }
+.acct-avatar { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 40px; height: 40px; border-radius: 50%; background: var(--brand); color: var(--brand-ink); font-size: var(--t-l); font-weight: 700 }
+.acct-figs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) }
+.acct-figs > * { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; min-width: 0; min-height: 0; padding: 10px 16px 12px; background: none; border-radius: 0; color: var(--ink); font-weight: 400; text-align: left }
+.acct-figs > * + * { box-shadow: inset 1px 0 0 var(--brand-edge) }
+.acct-figs > button:active:not(:disabled) { transform: none; background: color-mix(in srgb, var(--brand) 12%, var(--board)) }
+.acct-figs span { font-size: 11px; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; white-space: nowrap; color: var(--ink-3) }
+.acct-figs b { font-size: 20px; font-weight: 700; letter-spacing: -.02em; line-height: 1.2; font-variant-numeric: tabular-nums }
+.acct-figs > button b { color: var(--brand) }
+/* tools: four equal keys ruled apart, each an indigo well over its name; never a sideways scroll */
+.tools { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-bottom: 1px solid var(--rule-soft) }
+.tools > button, .tools > label { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 7px; min-width: 0; min-height: 0; margin: 0; padding: 14px 4px 12px; background: none; border-radius: 0; color: var(--ink); font-size: var(--t-s); font-weight: 600; cursor: pointer }
+.tools > * + * { box-shadow: inset 1px 0 0 var(--rule-soft) }
+.tools > button:active:not(:disabled), .tools > label:active { transform: none; background: var(--band) }
+.tools > label.off { opacity: .45; pointer-events: none }
+.tool-well { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 12px; background: var(--brand-wash); color: var(--brand) }
+.tools + .setting-msg { margin: 8px 0 0 }
+.tools > label > .tool-well { display: inline-flex; margin: 0; font-size: inherit; color: var(--brand) }
+.sheet-note { margin: 4px 20px 8px; font-size: var(--t-xs) }
 .setting-row {
   width: 100%; min-height: 52px; padding: 8px 16px; margin: 0; background: none; border-radius: 0; position: relative;
   display: flex; align-items: center; justify-content: flex-start; gap: 14px; text-align: left; color: var(--ink);
@@ -615,10 +672,6 @@ button.setting-row, a.setting-row, label.setting-row { cursor: pointer }
 .setting-row.danger { background: none } .setting-row.danger, .setting-row.danger > svg:first-child { color: var(--red) }
 .setting-value { color: var(--ink-2); font-size: var(--t-s); font-weight: 600; white-space: nowrap; flex: none; max-width: 45%; overflow: hidden; text-overflow: ellipsis }
 .setting-foot { margin: 0 -16px; padding: 8px 16px 4px; font-size: var(--t-xs); border-top: 1px solid var(--rule-soft) } .setting-msg { margin: 8px 0 0 }
-.accent-row-wrap { flex-wrap: wrap; row-gap: 2px; padding-bottom: 6px }
-.accent-row-wrap .accent-row { flex-basis: 100%; margin-left: 34px }
-.accent-row-wrap .accent-row { gap: 2px } .accent-row-wrap .accent-sw { width: 32px }
-.settings-glance + .group.band { margin-top: 10px }
 .accent-dot { width: 20px; height: 20px; border-radius: 50%; background: var(--brand); flex: none }
 label.setting-row > span:not(.sr), label.datechip > span:not(.sr) { font-size: inherit; font-weight: inherit; color: inherit; margin: 0 }
 label.setting-row > span.grow:not(.sr) { display: flex } label.datechip > span:not(.sr) { display: inline }
@@ -922,7 +975,8 @@ a.public-btn { display: inline-flex; align-items: center; justify-content: cente
   .app { max-width: 880px; box-shadow: 0 0 0 1px var(--rule-soft), 0 18px 60px rgba(16,24,40,.12) }
   nav, .toast, .selbar { max-width: 880px }
   main { padding-left: 28px; padding-right: 28px }
-  .plain-list, .group.band, .full-bleed, .indices, .infos, .activity, .editor-box, .panel, .editor-preview, .photo-row, .setting-group, .setting-foot, .field-table, .field-box.pickbox { margin-left: -28px; margin-right: -28px } .group.band, .infos, .activity, .field-table, .panel, .editor-preview, .photo-row { padding-left: 28px; padding-right: 28px }
+  .masthead { padding-left: 28px; padding-right: 28px } .acct-who, .acct-figs > :first-child { padding-left: 28px } .mast-figs button, .event-strip-main { padding-left: 28px } .event-strip { padding-right: 28px }
+  .plain-list, .group.band, .full-bleed, .indices, .masthead, .mast-figs, .event-strip, .infos, .activity, .editor-box, .panel, .editor-preview, .photo-row, .setting-group, .setting-foot, .field-table, .field-box.pickbox { margin-left: -28px; margin-right: -28px } .group.band, .infos, .activity, .field-table, .panel, .editor-preview, .photo-row { padding-left: 28px; padding-right: 28px }
   .banner-row, .log-add { margin-left: -28px; margin-right: -28px; width: calc(100% + 56px); padding-left: 28px }
   .filters { margin-left: -28px; margin-right: -28px; padding-left: 28px; padding-right: 28px }
 }

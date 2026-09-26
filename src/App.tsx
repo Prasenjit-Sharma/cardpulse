@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { deleteCard, getCard, listCards, loadSettings, putCard, readerReady, saveSettings, type Settings } from './lib/db'
 import { log } from './lib/debug'
 import { extractCard, serverMode } from './lib/gemini'
@@ -12,7 +12,6 @@ import { leadCardId } from './lib/synccore'
 import { useSync } from './lib/useSync'
 import { findDuplicates } from './lib/dupes'
 import { backupDue, backupFileName, backupNudgeUntil, buildBackup, lastBackupAt, markBackedUp, mergeEvents, parseBackup, planRestore, saveBackupFile, snoozeBackupNudge } from './lib/backup'
-import { applyAccent } from './lib/accents'
 import { classifyFailure } from './lib/errors'
 import { applyPulledLeads, markLeadsPulled, pullNewLeads } from './lib/leads'
 import { useOnline } from './lib/useOnline'
@@ -113,7 +112,6 @@ export default function App() {
   const [toast, setToast] = useState<ToastData | null>(null)
   const toastAt = useRef({ at: 0, count: 0 })
   const install = useInstall()
-  useLayoutEffect(() => applyAccent(settings.accent), [settings.accent])          // before paint, so a chosen colour never flashes the default
   useEffect(() => {
     const t = settings.theme ?? 'system'
     if (t === 'system') document.documentElement.removeAttribute('data-theme'); else document.documentElement.dataset.theme = t
@@ -505,12 +503,13 @@ export default function App() {
         ) : (
           <SettingsPage
             cards={cards}
+            events={events}
             settings={settings}
             install={install}
             sync={sync}
             onChange={(s) => { setSettings(s); saveSettings(s) }}
             onWipe={async () => { await Promise.all(cards.map((c) => deleteCard(c.id))); await refresh() }}
-            onBackup={backupNow} onRestore={restoreFrom} onAccuracy={() => goto('accuracy', 'settings')}
+            onBackup={backupNow} onRestore={restoreFrom} onAccuracy={() => goto('accuracy', 'settings')} onInsights={() => goto('insights', 'settings')}
             onBack={() => setTab('home')}
           />
         )}
