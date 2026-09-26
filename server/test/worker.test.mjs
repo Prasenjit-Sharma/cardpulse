@@ -283,3 +283,10 @@ test('quota: invalid images are refused before anything is counted', async () =>
     assert.equal(m.calls.length, 0)
   } finally { m.restore() }
 })
+
+test('the deployed allow-list lets the Android app (https://localhost) call the API', async () => {
+  const toml = (await import('node:fs')).readFileSync(new URL('../wrangler.toml', import.meta.url), 'utf8')
+  const allowed = /^ALLOWED_ORIGINS\s*=\s*"([^"]*)"/m.exec(toml)[1]
+  const res = await worker.fetch(new Request('https://api.test/v1/extract', { method: 'OPTIONS', headers: { Origin: 'https://localhost', 'Access-Control-Request-Method': 'POST' } }), env({ ALLOWED_ORIGINS: allowed }))
+  assert.equal(res.headers.get('access-control-allow-origin'), 'https://localhost')
+})
