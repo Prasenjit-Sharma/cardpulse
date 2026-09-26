@@ -422,9 +422,11 @@ small.up, .indices small.up { color: var(--green); font-weight: 600 }
 
 /* ---------- contacts: search, filters, event tabs ---------- */
 .searchbox { display: flex; align-items: center; gap: 10px; background: var(--field); border-radius: var(--r-field); padding: 0 4px 0 12px; color: var(--ink-3) }
-.searchbox input { border: 0; background: none; min-height: 42px; padding: 0; box-shadow: none }
-.searchbox input:focus { background: none; box-shadow: none; border: 0 }
+.searchbox input { border: 0; background: none; min-height: 42px; padding: 0; box-shadow: none; font-size: var(--t-m) }
+/* the box is the field: one ring on it, none on the input inside (the global focus outline drew a second) */
+.searchbox input:focus, .searchbox input:focus-visible { background: none; box-shadow: none; border: 0; outline: none }
 .searchbox:focus-within { box-shadow: 0 0 0 1.5px var(--brand) }
+@supports (-webkit-touch-callout: none) { .searchbox input { font-size: 16px } }
 .page-head h1 { font-size: var(--t-xl) }
 .page-head h1 .count { margin-left: 6px; font-size: var(--t-l); font-weight: 600; color: var(--ink-3); letter-spacing: 0 }
 .ev-tabs { margin-top: -4px; margin-bottom: 10px }
@@ -494,6 +496,12 @@ small.up, .indices small.up { color: var(--green); font-weight: 600 }
 .info .grow { display: flex; flex-direction: column; word-break: break-word }
 .info .val { font-size: var(--t-m); line-height: 1.35 }
 .info small { margin-top: 1px; font-size: var(--t-xs); color: var(--ink-3) }
+/* a number's label: what it is, and Main on the one called first; a tap changes either */
+.kind-btn { align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; min-height: 0; margin-top: 1px; padding: 0; background: none; border-radius: 0; color: var(--ink-3); font-size: var(--t-xs); font-weight: 500; position: relative }
+.kind-btn::after { content: ''; position: absolute; inset: -8px -10px }
+.kind-btn:active:not(:disabled) { transform: none; color: var(--ink) }
+.kind-btn b { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 1px 5px; border-radius: 4px; background: var(--brand-wash); color: var(--brand) }
+.kind-btn svg { transform: rotate(90deg) }
 .badge { width: 32px; height: 32px; border-radius: 8px; background: var(--board-2); color: var(--ink-2); display: inline-flex; align-items: center; justify-content: center; flex: none }
 .acts { display: flex; gap: 8px; flex: none }
 .act { width: 40px; height: 40px; min-height: 40px; padding: 0; border-radius: 8px; background: var(--brand-wash); display: inline-flex; align-items: center; justify-content: center; color: var(--brand); text-decoration: none }
@@ -527,8 +535,12 @@ button.add { min-height: 36px; padding: 0 2px; font-size: var(--t-s); background
 .tagchip.add { background: var(--board-2); box-shadow: none; color: var(--ink-2); padding: 0 12px 0 10px }
 .editor-box { position: relative; background: none; border-radius: 0; padding: 8px 16px; margin: 0 -16px; border-bottom: 1px solid var(--rule-soft); animation: rise .2s var(--ease) both }
 .editor-box textarea { border: 0; background: none; padding: 0 70px 0 0; min-height: 0; resize: none; line-height: 1.45; overflow: hidden; box-shadow: none }
-.editor-box textarea:focus { box-shadow: none; background: none }
-.notebox textarea { font-size: var(--t-m) }
+.editor-box textarea:focus, .editor-box textarea:focus-visible { box-shadow: none; background: none; outline: none }
+/* the note and its keys side by side, never on top of each other; two lines at least, growing with the text */
+.notebox { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 8px; padding-block: 10px }
+.notebox:focus-within { box-shadow: inset 0 -2px 0 var(--brand) }
+.notebox textarea { font-size: var(--t-m); padding: 5px 0 0; min-height: calc(2.9em + 5px); min-height: calc(2lh + 5px) }
+.notebox .editor-acts { position: static }
 @supports (-webkit-touch-callout: none) { .notebox textarea { font-size: 16px } }
 .editor-acts { position: absolute; right: 10px; top: 6px; display: flex; gap: 2px }
 .x-btn { width: 32px; height: 32px; min-height: 32px; padding: 0; background: none; color: var(--ink-3); border-radius: 50%; flex: none }
@@ -569,6 +581,13 @@ button.add { min-height: 36px; padding: 0 2px; font-size: var(--t-s); background
 .event-main strong { display: flex; align-items: center; gap: 6px; font-size: var(--t-m); font-weight: 650; letter-spacing: .01em; overflow: hidden; white-space: nowrap; text-overflow: ellipsis }
 .event-main .muted { font-size: var(--t-xs); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
 .event-main .fig b { font-size: var(--t-l) }
+.event-row.past .event-main strong { color: var(--ink-2) }
+.event-form .event-dates { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 12px }
+.event-dates .lbl { font-size: var(--t-s); color: var(--ink-3) }
+.event-hint { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 10px 0 0 }
+.live-dot { display: inline-block; width: 7px; height: 7px; margin-right: 6px; border-radius: 50%; background: var(--green); vertical-align: 1px }
+.ev-tabs .ev-more { display: inline-flex; align-items: center; gap: 2px; line-height: normal }
+.ev-more svg { color: var(--ink-3); transform: rotate(90deg) }
 .live-tag { font-style: normal; font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 1px 5px; border-radius: 4px; background: var(--brand); color: var(--brand-ink); flex: none }
 
 /* ---------- settings ---------- */
@@ -576,6 +595,10 @@ button.add { min-height: 36px; padding: 0 2px; font-size: var(--t-s); background
 .settings-head h1 { font-size: var(--t-xl) }
 .settings-glance { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 2px }
 .settings-glance b { font-size: 20px } .settings-glance b.check { color: var(--amber) }
+/* Accuracy opens its report: a cell like the others, pressable */
+.settings-glance > button { display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 1px; min-width: 0; min-height: 0; padding: 10px 12px 12px; background: none; border-radius: 0; color: var(--ink); font-weight: inherit; text-align: left; box-shadow: inset 1px 0 0 var(--rule-soft) }
+.settings-glance > button:active:not(:disabled) { transform: none; background: var(--board-2) }
+.settings-glance > button + div { box-shadow: inset 1px 0 0 var(--rule-soft) }
 .dev-panel { padding: 12px 0 4px }
 .setting-row {
   width: 100%; min-height: 52px; padding: 8px 16px; margin: 0; background: none; border-radius: 0; position: relative;

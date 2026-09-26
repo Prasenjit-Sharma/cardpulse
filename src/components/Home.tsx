@@ -2,8 +2,7 @@ import { useState } from 'react'
 import { needsAttention } from '../lib/attention'
 import { localISO } from '../lib/followups'
 import { companyList } from '../lib/companies'
-import { overall, scoreCard, sumTallies } from '../lib/score'
-import { showEvent } from '../lib/eventname'
+import { eventWhen, featuredEvents, showEvent } from '../lib/eventname'
 import { dueFigure, isToday, rowFigure, shortDate } from '../lib/watch'
 import type { CardRecord, Contact, EventRec } from '../lib/types'
 import Icon from './Icon'
@@ -34,7 +33,7 @@ function EmptyCards() {
  * Home is the day's desk: a ticker of standing numbers, three index tiles for today, a watchlist of the people who
  * need you (due, upcoming, recent, starred) with Call and WhatsApp one tap away, and the events as indices.
  */
-export default function Home({ cards, events, dupes, ready, needsKey, install, backupNudge, onBackup, onSnoozeBackup, onOpenContact, onTogglePriority, onContacts, onCompanies, onStarred, onAttention, onInsights, onAccuracy, onSetup, onSettings, onViewEvent, onEvents }: {
+export default function Home({ cards, events, dupes, ready, needsKey, install, backupNudge, onBackup, onSnoozeBackup, onOpenContact, onTogglePriority, onContacts, onCompanies, onStarred, onAttention, onInsights, onSetup, onSettings, onViewEvent, onEvents }: {
   cards: CardRecord[]
   events: EventRec[]
   dupes: Map<string, CardRecord[]>
@@ -51,7 +50,6 @@ export default function Home({ cards, events, dupes, ready, needsKey, install, b
   onStarred: () => void
   onAttention: () => void
   onInsights: () => void
-  onAccuracy: () => void
   onSetup: () => void
   onSettings: () => void
   onViewEvent: (id: string) => void
@@ -69,7 +67,6 @@ export default function Home({ cards, events, dupes, ready, needsKey, install, b
   const scannedToday = people.filter((x) => isToday(x.card.createdAt, today)).length
   const companies = companyList(cards).length
   const toCheck = cards.filter((c) => needsAttention(c, dupes.has(c.id))).length
-  const acc = overall(sumTallies(cards.filter((c) => c.opened).map(scoreCard).filter((x): x is NonNullable<typeof x> => !!x)))
 
   // Until the user picks a watchlist, show the one that matters: due, else upcoming, else recent. Chosen at render time,
   // because contacts load after the first render.
@@ -95,8 +92,8 @@ export default function Home({ cards, events, dupes, ready, needsKey, install, b
       onOpen={() => onOpenContact(x.card.id, x.i)} onStar={() => onTogglePriority(x.card.id, x.i)} />
   )
 
-  // events as indices: newest first, each with its card count and today's additions
-  const eventRows = [...events].sort((a, b) => b.createdAt - a.createdAt).slice(0, 3).map((e) => {
+  // events as indices: only the live ones, else the next or the latest two, so the desk never needs scrolling for them
+  const eventRows = featuredEvents(events, today, 2).map((e) => {
     const mine = people.filter((x) => x.card.eventId === e.id)
     return { e, n: mine.length, today: mine.filter((x) => isToday(x.card.createdAt, today)).length }
   })
@@ -115,8 +112,8 @@ export default function Home({ cards, events, dupes, ready, needsKey, install, b
       {backupNudge && (
         <div className="banner-row static check">
           <Icon name="download" size={18} />
-          <span className="grow"><strong>Back up your contacts</strong><small>They are stored only on this phone</small></span>
-          <button className="link" onClick={onBackup}>Back up</button>
+          <span className="grow"><strong>Export a copy of your contacts</strong><small>They are stored only on this phone</small></span>
+          <button className="link" onClick={onBackup}>Export</button>
           <button className="icon-btn ghost small" onClick={onSnoozeBackup} aria-label="Remind me later"><Icon name="x" size={16} /></button>
         </div>
       )}
@@ -141,7 +138,6 @@ export default function Home({ cards, events, dupes, ready, needsKey, install, b
             <button onClick={onStarred}><span>Starred</span><b className="num">{starred.length}</b></button>
             <button onClick={onCompanies}><span>Companies</span><b className="num">{companies}</b></button>
             <button className={toCheck ? 'check' : ''} onClick={onAttention}><span>To check</span><b className="num">{toCheck}</b></button>
-            <button onClick={onAccuracy}><span>Accuracy</span><b className="num">{acc == null ? '–' : `${Math.round(acc * 100)}%`}</b></button>
           </div>
 
           <div className="indices" role="group" aria-label="Today">
@@ -185,11 +181,11 @@ export default function Home({ cards, events, dupes, ready, needsKey, install, b
 
           {eventRows.length > 0 && (
             <>
-              <h3 className="group band">Events <button className="link" onClick={onEvents}>All events</button></h3>
+              <h3 className="group band">Events <button className="link" onClick={onEvents}>{events.length > eventRows.length ? `All ${events.length}` : 'All events'}</button></h3>
               <div className="plain-list">
                 {eventRows.map(({ e, n, today: t }) => (
                   <button key={e.id} className="index-row" onClick={() => onViewEvent(e.id)}>
-                    <span className="grow"><strong>{showEvent(e.name)}</strong><span className="muted">Since {shortDate(e.createdAt, now)}</span></span>
+                    <span className="grow"><strong>{showEvent(e.name)}</strong><span className="muted">{eventWhen(e, today, (t) => shortDate(t, now))}</span></span>
                     <span className="fig"><b className="num">{n}</b><small className={t ? 'up' : ''}>{t ? `+${t} today` : n === 1 ? 'contact' : 'contacts'}</small></span>
                   </button>
                 ))}

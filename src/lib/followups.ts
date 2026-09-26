@@ -1,4 +1,5 @@
 import type { Contact } from './types.ts'
+import { callNumber } from './phones.ts'
 
 /** One thing that happened with a contact: a call, a meeting or a message, what was said, and when to follow up next. */
 export type Kind = 'call' | 'meeting' | 'message'
@@ -70,7 +71,7 @@ const stamp = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}
 /** An all-day calendar event for the follow-up, so the phone's own calendar can remind them. Opens in any calendar app. */
 export function followUpIcs(c: Contact, date: string, now: Date = new Date()): string {
   const last = (c.log ?? [])[0]?.note
-  const description = [last && `Last note: ${last}`, c.phones[0], c.emails[0]].filter(Boolean).join('\n')
+  const description = [last && `Last note: ${last}`, callNumber(c), c.emails[0]].filter(Boolean).join('\n')
   const slug = c.name.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '') || 'contact'
   return [
     'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//CardPulse//Follow-up//EN', 'BEGIN:VEVENT',

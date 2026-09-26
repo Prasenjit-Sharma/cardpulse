@@ -18,6 +18,7 @@ import { confirmAsk } from './Dialog'
 import DateChip from './DateChip'
 import { showEvent } from '../lib/eventname'
 import { dueFigure, phase } from '../lib/watch'
+import { callNumber, canWhatsApp, kindLabel, PHONE_KINDS, phoneKey, prunePhoneMeta, rankedPhones, whatsAppNumber } from '../lib/phones'
 
 const SUGGESTED_TAGS = ['Customer', 'Supplier', 'Partner', 'Investor', 'Hot lead']
 const withProtocol = (w: string) => (/^https?:\/\//i.test(w) ? w : `https://${w}`)
@@ -72,13 +73,12 @@ function ListRows({ label, values, edited, placeholder, inputMode, onChange }: {
 }
 
 /* ---------- view-mode building block: icon badge, text, trailing actions ---------- */
-function Info({ icon, label, children, actions }: { icon: 'pin' | 'phone' | 'mail' | 'globe' | 'building' | 'star'; label?: string; children: ReactNode; actions?: ReactNode }) {
+function Info({ icon, label, children, actions }: { icon: 'pin' | 'phone' | 'mail' | 'globe' | 'building' | 'star'; label?: ReactNode; children: ReactNode; actions?: ReactNode }) {
   return (
     <div className="info">
       <span className="badge"><Icon name={icon} size={18} /></span>
-      <div className="grow"><span className="val">{children}</span>{label && <small>{label}</small>}</div>
+      <div className="grow"><span className="val">{children}</span>{label && (typeof label === 'string' ? <small>{label}</small> : label)}</div>
       {actions && <div className="acts">{actions}</div>}
-
     </div>
   )
 }
@@ -108,6 +108,7 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
   const [tagsOpen, setTagsOpen] = useState(false)
   const [noteOpen, setNoteOpen] = useState(false)
   const [followOpen, setFollowOpen] = useState(false)
+  const [phoneMenu, setPhoneMenu] = useState('')
   const [newTag, setNewTag] = useState('')
   const tagsRef = useRef<HTMLDivElement>(null)
   const noteRef = useRef<HTMLDivElement>(null)
@@ -183,6 +184,7 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
   }
 
   const slides = [url, backUrl].filter(Boolean)
+  const phones = c ? rankedPhones(c) : []
   const today = localISO()                                    // the phone's own day: UTC would say yesterday in India until 5:30 am
 
   return (
@@ -260,11 +262,15 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
           )}
 
           <div className="infos">
-            {c.address && <Info icon="pin" actions={<a className="act" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.address)}`} target="_blank" rel="noreferrer" aria-label="Open map"><Icon name="chevron" size={18} /></a>}>{c.address}</Info>}
-            {c.phones.map((ph) => (
-              <Info key={ph} icon="phone" label="mobile" actions={<>
-                <a className="act" href={`https://wa.me/${waNumber(ph)}`} target="_blank" rel="noreferrer" aria-label={`WhatsApp ${ph}`}><Icon name="chat" size={18} /></a>
-                <a className="act" href={telHref(ph)} aria-label={`Call ${ph}`}><Icon name="phone" size={18} /></a></>}>{ph}</Info>
+            {c.address && <Info icon="pin" actions={<a className="act" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([c.company, c.address].filter(Boolean).join(', '))}`} target="_blank" rel="noreferrer" aria-label="Open map"><Icon name="chevron" size={18} /></a>}>{c.address}</Info>}
+            {/* the main number first; its label says what the number is, and a tap on it changes that or makes it main */}
+            {phones.map((ph) => (
+              <Info key={ph.number} icon="phone" actions={<>
+                {canWhatsApp(ph.number, ph.kind) && <a className="act" href={`https://wa.me/${waNumber(ph.number)}`} target="_blank" rel="noreferrer" aria-label={`WhatsApp ${ph.number}`}><Icon name="chat" size={18} /></a>}
+                <a className="act" href={telHref(ph.number)} aria-label={`Call ${ph.number}`}><Icon name="phone" size={18} /></a></>}
+                label={<button className="kind-btn" onClick={() => setPhoneMenu(ph.number)} aria-label={`${kindLabel(ph.kind)}${ph.main && phones.length > 1 ? ', main number' : ''}. Change label`}>
+                  {kindLabel(ph.kind)}{ph.main && phones.length > 1 && <b>Main</b>}<Icon name="chevron" size={12} />
+                </button>}>{ph.number}</Info>
             ))}
             {c.emails.map((em) => <Info key={em} icon="mail" actions={<a className="act" href={`mailto:${em}`} aria-label={`Email ${em}`}><Icon name="mail" size={18} /></a>}>{em}</Info>)}
             {c.website && <Info icon="globe" actions={<a className="act" href={withProtocol(c.website)} target="_blank" rel="noreferrer" aria-label="Open website"><Icon name="chevron" size={18} /></a>}>{c.website}</Info>}
@@ -272,6 +278,17 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
             {c.gstin && <Info icon="building" label="GSTIN">{c.gstin}</Info>}
             {!c.address && !c.phones.length && !c.emails.length && !c.website && <p className="muted">No contact details yet. Tap the pencil to add some.</p>}
           </div>
+
+          <Sheet open={!!phoneMenu} onClose={() => setPhoneMenu('')} title={phoneMenu}>
+            {phoneMenu && phones.length > 1 && !phones.find((x) => x.number === phoneMenu)?.main && (
+              <SheetItem icon="star" label="Make this the main number" hint="Called first, and listed first when saved or exported"
+                onClick={() => { patch({ mainPhone: phoneKey(phoneMenu) }, false); setPhoneMenu('') }} />
+            )}
+            {PHONE_KINDS.map((k) => (
+              <SheetItem key={k.value} label={k.label} checked={phones.find((x) => x.number === phoneMenu)?.kind === k.value}
+                onClick={() => { patch({ phoneKinds: { ...c.phoneKinds, [phoneKey(phoneMenu)]: k.value } }, false); setPhoneMenu('') }} />
+            ))}
+          </Sheet>
 
           <div className="adders" role="group" aria-label="Add to this contact">
             <button data-adder className={`adder${tagsOpen || (c.tags ?? []).length ? ' on' : ''}`} aria-pressed={tagsOpen} onClick={() => setTagsOpen(!tagsOpen)}>
@@ -305,7 +322,7 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
           )}
           {(c.note || noteOpen) && (
             <div className="editor-box notebox" ref={noteRef}>
-              <textarea ref={noteInput} rows={1} autoFocus={noteOpen && !c.note} placeholder="Note, like writing on the back of a card"
+              <textarea ref={noteInput} rows={2} autoFocus={noteOpen && !c.note} placeholder="Note, like writing on the back of a card"
                 value={c.note ?? ''} onChange={(e) => patch({ note: e.target.value }, false)}
                 onBlur={(e) => { if (listening || noteRef.current?.contains(e.relatedTarget as Node | null)) return; if (!e.target.value.trim()) setNoteOpen(false) }} aria-label="Note" />
               <div className="editor-acts">
@@ -361,7 +378,7 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
             <Row label="Full name" edited={changed('name')}><input aria-label="Full name" value={c.name} onChange={(e) => patch({ name: e.target.value })} /></Row>
             <Row label="Company" edited={changed('company')}><input aria-label="Company" value={c.company} onChange={(e) => patch({ company: e.target.value })} /></Row>
             <Row label="Job title" edited={changed('title')}><input aria-label="Job title" value={c.title} onChange={(e) => patch({ title: e.target.value })} /></Row>
-            <ListRows label="Phone" values={c.phones} edited={changed('phones')} placeholder="Enter phone" inputMode="tel" onChange={(v) => patch({ phones: v })} />
+            <ListRows label="Phone" values={c.phones} edited={changed('phones')} placeholder="Enter phone" inputMode="tel" onChange={(v) => patch({ phones: v, ...prunePhoneMeta({ ...c, phones: v }) })} />
             <ListRows label="Email" values={c.emails} edited={changed('emails')} placeholder="Enter email" inputMode="email" onChange={(v) => patch({ emails: v })} />
           </div>
           <div className="panel">
@@ -381,10 +398,10 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
         <>
           {/* the trade bar: the next action is always one tap, never behind a menu */}
           <div className="trade-bar" role="group" aria-label="Contact actions">
-            {c.phones[0]
-              ? <a className="trade primary" href={telHref(c.phones[0])}><Icon name="phone" size={18} />Call</a>
+            {callNumber(c)
+              ? <a className="trade primary" href={telHref(callNumber(c)!)}><Icon name="phone" size={18} />Call</a>
               : c.emails[0] ? <a className="trade primary" href={`mailto:${c.emails[0]}`}><Icon name="mail" size={18} />Email</a> : null}
-            {c.phones[0] && <a className="trade" href={`https://wa.me/${waNumber(c.phones[0])}`} target="_blank" rel="noreferrer"><Icon name="chat" size={18} />WhatsApp</a>}
+            {whatsAppNumber(c) && <a className="trade" href={`https://wa.me/${waNumber(whatsAppNumber(c)!)}`} target="_blank" rel="noreferrer"><Icon name="chat" size={18} />WhatsApp</a>}
             <button className="trade sq" onClick={() => void run('save')} aria-label="Save to phone" title="Save to phone"><Icon name="download" size={19} /></button>
             <button className="trade sq" onClick={() => void run('share')} aria-label="Share contact" title="Share contact"><Icon name="share" size={19} /></button>
           </div>

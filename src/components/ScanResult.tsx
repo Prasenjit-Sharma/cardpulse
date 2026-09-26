@@ -5,6 +5,7 @@ import Avatar from './Avatar'
 import Icon from './Icon'
 import Picker from './Picker'
 import { showEvent } from '../lib/eventname'
+import { callNumber } from '../lib/phones'
 
 /** After a read: confirm who belongs, file them under an event, add a note, save. */
 export default function ScanResult({ card, events, onBack, onKeep, onEdit }: {
@@ -41,7 +42,7 @@ export default function ScanResult({ card, events, onBack, onKeep, onEdit }: {
             <div className="grow">
               <strong>{p.name || '(no name)'}</strong>
               <span className="muted">{[p.title, p.company].filter(Boolean).join(' | ')}</span>
-              <span className="muted sm">{[p.phones[0], p.emails[0]].filter(Boolean).join('  ·  ')}</span>
+              <span className="muted sm">{[callNumber(p), p.emails[0]].filter(Boolean).join('  ·  ')}</span>
             </div>
             <button className="link" onClick={(e) => { e.stopPropagation(); onEdit(i) }}>Edit</button>
           </div>

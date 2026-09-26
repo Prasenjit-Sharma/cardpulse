@@ -11,7 +11,7 @@ import Icon from './Icon'
 import Picker from './Picker'
 import WatchRow from './WatchRow'
 import { confirmAsk } from './Dialog'
-import { showEvent } from '../lib/eventname'
+import { eventState, featuredEvents, showEvent } from '../lib/eventname'
 import { localISO } from '../lib/followups'
 import { rowFigure } from '../lib/watch'
 
@@ -47,6 +47,9 @@ export default function Contacts({ onScan, cards: allCards, events, activeEvent,
   const today = localISO()
 
   const eventName = (id?: string) => events.find((e) => e.id === id)?.name ?? ''
+  // two event tabs at most (live ones first, else the latest), the chosen one always among them; the rest behind More
+  const tabEvents = featuredEvents(events, today, 2, activeEvent)
+  const moreEvents = events.length > tabEvents.length
   const inEvent = activeEvent ? allCards.filter((c) => c.eventId === activeEvent) : allCards
   const failed = inEvent.filter((c) => c.status === 'error')
   const reading = inEvent.filter((c) => c.status === 'pending' || c.status === 'running')
@@ -86,9 +89,15 @@ export default function Contacts({ onScan, cards: allCards, events, activeEvent,
       {events.length > 0 && (
         <div className="wl-tabs full-bleed ev-tabs" role="tablist" aria-label="Events">
           <button role="tab" aria-selected={activeEvent === ''} className={activeEvent === '' ? 'on' : ''} onClick={() => onSelectEvent('')}>All</button>
-          {events.map((e) => (
-            <button key={e.id} role="tab" aria-selected={activeEvent === e.id} className={activeEvent === e.id ? 'on' : ''} onClick={() => onSelectEvent(e.id)} title={e.name}>{showEvent(e.name)}</button>
+          {tabEvents.map((e) => (
+            <button key={e.id} role="tab" aria-selected={activeEvent === e.id} className={activeEvent === e.id ? 'on' : ''} onClick={() => onSelectEvent(e.id)} title={e.name}>
+              {eventState(e, today) === 'live' && <i className="live-dot" aria-label="Live" />}{showEvent(e.name)}
+            </button>
           ))}
+          {moreEvents && (
+            <Picker className="ev-more" title="Show event" label="More" value={activeEvent} onChange={onSelectEvent}
+              options={featuredEvents(events, today, events.length).map((e) => ({ value: e.id, label: showEvent(e.name) }))} />
+          )}
         </div>
       )}
 

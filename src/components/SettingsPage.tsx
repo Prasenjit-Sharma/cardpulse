@@ -5,6 +5,7 @@ import { buildFeedback, sendFeedback, type Diagnostics } from '../lib/feedback'
 import { clearLog, readLog, subscribe } from '../lib/debug'
 import { DEFAULT_MODEL, listModels, serverMode } from '../lib/gemini'
 import type { Settings, Theme } from '../lib/db'
+import { overall, scoreCard, sumTallies } from '../lib/score'
 import type { CardRecord } from '../lib/types'
 import { DEFAULT_NAME_FORMAT, NAME_FORMATS, type NameFormat } from '../lib/naming'
 import type { SyncControl } from '../lib/useSync'
@@ -41,7 +42,7 @@ function PickRow<T extends string>({ icon, label, value, options, onChange }: { 
   )
 }
 
-export default function SettingsPage({ cards, settings, install, sync, onChange, onWipe, onBackup, onRestore, onBack }: {
+export default function SettingsPage({ cards, settings, install, sync, onChange, onWipe, onBackup, onRestore, onAccuracy, onBack }: {
   cards: CardRecord[]
   sync: SyncControl
   settings: Settings
@@ -50,6 +51,7 @@ export default function SettingsPage({ cards, settings, install, sync, onChange,
   onWipe: () => void
   onBackup: () => Promise<string>
   onRestore: (f: File) => Promise<string>
+  onAccuracy: () => void
   onBack: () => void
 }) {
   const [lines, setLines] = useState(readLog)
@@ -75,7 +77,9 @@ export default function SettingsPage({ cards, settings, install, sync, onChange,
     if (ok) onWipe()
   }
   const accent = accentById(settings.accent)
-  const lastLabel = last ? `Last backup ${new Date(last).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}` : 'No backup yet'
+  const lastLabel = last ? `Last exported ${new Date(last).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}` : 'Not exported yet'
+  // only cards the user has opened count: an unopened card has not been checked, so it says nothing about accuracy
+  const acc = overall(sumTallies(cards.filter((c) => c.opened).map(scoreCard).filter((x): x is NonNullable<typeof x> => !!x)))
   const people = cards.filter((c) => c.status === 'done').reduce((n, c) => n + (c.corrected?.length ?? 0), 0)
 
   return (
@@ -85,10 +89,12 @@ export default function SettingsPage({ cards, settings, install, sync, onChange,
         <h1 className="grow">Settings</h1>
       </header>
 
-      {/* where this phone stands, at a glance: what it holds, when it was last backed up, whether it syncs */}
+      {/* where this phone stands, at a glance: what it holds, how well cards are read, whether it syncs */}
       <div className="holding full-bleed settings-glance" role="group" aria-label="This phone">
         <div><span>Contacts</span><b className="num">{people}</b></div>
-        <div><span>Backed up</span><b className={`num${last ? '' : ' check'}`}>{last ? new Date(last).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'Never'}</b></div>
+        <button onClick={onAccuracy} aria-label={`Accuracy ${acc == null ? 'not measured yet' : `${Math.round(acc * 100)}%`}. Open the accuracy report`}>
+          <span>Accuracy</span><b className="num">{acc == null ? '–' : `${Math.round(acc * 100)}%`}</b>
+        </button>
         <div><span>Sync</span><b>{sync.enabled ? 'On' : 'Off'}</b></div>
       </div>
 
@@ -118,11 +124,11 @@ export default function SettingsPage({ cards, settings, install, sync, onChange,
       </SettingGroup>
 
       <SettingGroup title="Your data" footer={sync.enabled
-        ? 'Contacts are on this phone and synced to your account. A backup file is the copy only you hold.'
-        : "Contacts are stored only on this phone. Clearing the app's data removes them, so keep a backup."}>
-        <SettingRow icon="download" label="Back up all contacts" hint={lastLabel} disabled={busyData} onClick={() => void runData(onBackup)} />
+        ? 'Sync keeps every phone up to date by itself. An export is a file you save yourself: a copy as of that moment, which you can restore on any phone.'
+        : "Contacts are stored only on this phone. Clearing the app's data removes them, so export a copy now and then."}>
+        <SettingRow icon="download" label="Export all contacts" hint={lastLabel} disabled={busyData} onClick={() => void runData(onBackup)} />
         <label className="setting-row">
-          <Icon name="upload" size={20} /><span className="grow"><strong>Restore from a backup</strong><small>Adds what is missing; never overwrites</small></span><Icon name="chevron" size={16} />
+          <Icon name="upload" size={20} /><span className="grow"><strong>Restore from an export</strong><small>Adds what is missing; never overwrites</small></span><Icon name="chevron" size={16} />
           <input type="file" accept=".zip,application/zip" hidden disabled={busyData} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void runData(() => onRestore(f)) }} />
         </label>
         <SettingRow icon="trash" label="Delete all data" danger onClick={() => void wipe()} />

@@ -1,4 +1,5 @@
 import type { Interaction } from './followups.ts'
+import type { PhoneKind } from './phones.ts'
 
 export interface Contact {
   name: string
@@ -17,6 +18,10 @@ export interface Contact {
   /** Why this contact matters: Customer, Supplier, Hot lead, or anything custom. */
   tags?: string[]
   priority?: boolean
+  /** Labels the user gave numbers, keyed by `phoneKey`. Unlabelled numbers are guessed from their shape (see phones.ts). */
+  phoneKinds?: Record<string, PhoneKind>
+  /** `phoneKey` of the number the user wants first: called, exported and shown at the top. */
+  mainPhone?: string
   /** Calls, meetings and messages with this person, newest first. Kept in the app only; never exported to the phone's contacts. */
   log?: Interaction[]
 }
@@ -70,6 +75,9 @@ export interface EventRec {
   id: string
   name: string
   createdAt: number
+  /** First and last day (yyyy-mm-dd). The event is live between them, both days included. Absent on undated events. */
+  start?: string
+  end?: string
   /** Last rename (ms), for sync. Absent on events from before sync. */
   updatedAt?: number
 }

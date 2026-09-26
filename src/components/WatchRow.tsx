@@ -1,4 +1,5 @@
 import { telHref, waNumber } from '../lib/actions'
+import { callNumber, whatsAppNumber } from '../lib/phones'
 import type { CardRecord, Contact } from '../lib/types'
 import type { Figure } from '../lib/watch'
 import CardThumb from './CardThumb'
@@ -25,7 +26,8 @@ export default function WatchRow({ card, p, figure, sub, note, open, onToggle, o
   selected?: boolean
   i?: number
 }) {
-  const phone = p.phones[0]
+  const phone = callNumber(p)
+  const wa = whatsAppNumber(p)
   const email = p.emails[0]
   const line = sub ?? ([p.company, p.title].filter(Boolean).join(' · ') || phone || email || '')
   const name = p.name || '(no name)'
@@ -49,7 +51,7 @@ export default function WatchRow({ card, p, figure, sub, note, open, onToggle, o
       {open && !selecting && (
         <div className="depth" role="group" aria-label={`Actions for ${name}`}>
           {phone ? <a className="depth-act" href={telHref(phone)}><Icon name="phone" size={18} /><span>Call</span></a> : <span className="depth-act off" aria-hidden="true"><Icon name="phone" size={18} /><span>Call</span></span>}
-          {phone ? <a className="depth-act" href={`https://wa.me/${waNumber(phone)}`} target="_blank" rel="noreferrer"><Icon name="chat" size={18} /><span>WhatsApp</span></a> : <span className="depth-act off" aria-hidden="true"><Icon name="chat" size={18} /><span>WhatsApp</span></span>}
+          {wa ? <a className="depth-act" href={`https://wa.me/${waNumber(wa)}`} target="_blank" rel="noreferrer"><Icon name="chat" size={18} /><span>WhatsApp</span></a> : <span className="depth-act off" aria-hidden="true"><Icon name="chat" size={18} /><span>WhatsApp</span></span>}
           {email ? <a className="depth-act" href={`mailto:${email}`}><Icon name="mail" size={18} /><span>Email</span></a> : <span className="depth-act off" aria-hidden="true"><Icon name="mail" size={18} /><span>Email</span></span>}
           {onStar && <button className={`depth-act${p.priority ? ' starred' : ''}`} onClick={onStar} aria-pressed={!!p.priority}><Icon name="star" size={18} /><span>{p.priority ? 'Starred' : 'Star'}</span></button>}
           <button className="depth-act go" onClick={onOpen}><Icon name="chevron" size={18} /><span>Open</span></button>

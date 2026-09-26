@@ -1,5 +1,6 @@
 import { displayName, type NameFormat } from './naming.ts'
 import { splitAddress } from './address.ts'
+import { rankedPhones, vcardTelType } from './phones.ts'
 import type { Contact } from './types'
 
 /** wa.me wants country code + number, digits only. Bare Indian numbers get 91. */
@@ -25,7 +26,8 @@ export function toVCard(c: Contact, note = '', fmt: NameFormat = 'name'): string
   const lines = ['BEGIN:VCARD', 'VERSION:3.0', nLine, `FN:${esc(disp)}`]
   if (c.company) lines.push(`ORG:${esc(c.company)}`)
   if (c.title) lines.push(`TITLE:${esc(c.title)}`)
-  for (const p of c.phones) lines.push(`TEL;TYPE=CELL:${p.replace(/[^\d+]/g, '')}`)
+  const phones = rankedPhones(c)
+  for (const p of phones) lines.push(`TEL;TYPE=${vcardTelType(p.kind, p.main && phones.length > 1)}:${p.number.replace(/[^\d+]/g, '')}`)
   for (const e of c.emails) lines.push(`EMAIL;TYPE=WORK:${e}`)
   if (c.website) lines.push(`URL:${c.website}`)
   if (c.address) {
@@ -49,7 +51,7 @@ export function download(name: string, text: string, type: string) {
 
 /** Plain-text version of a contact: readable in any chat, SMS or email. */
 export function contactText(c: Contact, note = ''): string {
-  return [c.name, [c.title, c.company].filter(Boolean).join(', '), ...c.phones, ...c.emails, c.website, c.address, note].filter(Boolean).join('\n')
+  return [c.name, [c.title, c.company].filter(Boolean).join(', '), ...rankedPhones(c).map((p) => p.number), ...c.emails, c.website, c.address, note].filter(Boolean).join('\n')
 }
 
 export interface ActionEnv {

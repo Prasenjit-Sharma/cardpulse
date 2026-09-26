@@ -22,7 +22,8 @@ import CardShare from './components/CardShare'
 import StallMode from './components/StallMode'
 import QrScanner from './components/QrScanner'
 import QrResult from './components/QrResult'
-import { showEvent } from './lib/eventname'
+import { eventState, openingEvent, showEvent } from './lib/eventname'
+import { localISO } from './lib/followups'
 import { deleteMyCard, emptyCard, listMyCards, MAX_CARDS, planCardRestore, putMyCard, type MyCard } from './lib/mycards'
 import Companies from './components/Companies'
 import Home from './components/Home'
@@ -36,7 +37,8 @@ import SettingsPage from './components/SettingsPage'
 import Camera from './components/Camera'
 import Icon from './components/Icon'
 import Toast, { type ToastData } from './components/Toast'
-import { confirmAsk, DialogHost, promptAsk } from './components/Dialog'
+import { confirmAsk, DialogHost } from './components/Dialog'
+import EventSheet, { type EventDraft } from './components/EventSheet'
 import { useInstall } from './lib/useInstall'
 import { useBackClose } from './lib/useBackClose'
 
@@ -61,17 +63,30 @@ export default function App() {
   const [settings, setSettings] = useState<Settings>(loadSettings)
   const [banner, setBanner] = useState('')
   const [events, setEvents] = useState<EventRec[]>(loadEvents)
+  // an event that has ended stops taking scans; one that is live today starts taking them
   const [activeEvent, setActiveEventState] = useState(() => {
     const a = loadActiveEvent()
-    return loadEvents().some((e) => e.id === a) ? a : ''
+    const id = openingEvent(loadEvents(), a, localISO())
+    if (id !== a) saveActiveEvent(id)
+    return id
   })
   const activeEventRef = useRef(activeEvent)
   activeEventRef.current = activeEvent
   const setActiveEvent = (id: string) => { setActiveEventState(id); saveActiveEvent(id) }
-  const newEvent = (name: string) => {
-    const ev: EventRec = { id: crypto.randomUUID(), name, createdAt: Date.now() }
-    const next = [ev, ...events]
-    setEvents(next); saveEvents(next); setActiveEvent(ev.id)
+  const [eventSheet, setEventSheet] = useState<{ id?: string } | null>(null)
+  /** A new event takes the scans at once unless its dates say it has not started (or is already over). */
+  const saveEvent = (d: EventDraft, id?: string) => {
+    if (id) {
+      const next = events.map((e) => (e.id === id ? { ...e, ...d } : e))
+      setEvents(next); saveEvents(next)
+    } else {
+      const ev: EventRec = { id: crypto.randomUUID(), createdAt: Date.now(), ...d }
+      const next = [ev, ...events]
+      setEvents(next); saveEvents(next)
+      const state = eventState(ev, localISO())
+      if (state === 'live' || state === 'undated') setActiveEvent(ev.id)
+    }
+    setEventSheet(null)
   }
   const dupes = useMemo(() => findDuplicates(cards), [cards])
   const [backTab, setBackTab] = useState<Tab>('home')
@@ -358,12 +373,6 @@ export default function App() {
   const openCard = open ? cards.find((c) => c.id === open.id) : undefined
   const eventLabel = events.find((e) => e.id === activeEvent)?.name ?? ''
 
-  const renameEvent = async (id: string) => {
-    const n = await promptAsk({ title: 'Rename event', value: events.find((e) => e.id === id)?.name ?? '' })
-    if (!n) return
-    const next = events.map((e) => (e.id === id ? { ...e, name: n } : e))
-    setEvents(next); saveEvents(next)
-  }
   const removeEvent = async (id: string) => {
     if (!await confirmAsk({ title: 'Delete this event?', message: 'Its contacts are kept, just no longer grouped under it.', confirmLabel: 'Delete', danger: true })) return
     const next = events.filter((e) => e.id !== id)
@@ -400,7 +409,6 @@ export default function App() {
     if (rest.length) await putCard({ ...c, corrected: rest, reviewed: false, eventId: extras.eventId || undefined }); else await deleteCard(cardId)
     await refresh()
   }
-  const newEventPrompt = async () => { const n = await promptAsk({ title: 'New event', placeholder: 'Exhibition or event name', confirmLabel: 'Create' }); if (n) newEvent(n) }
   const goto = (t: Tab, from?: Tab) => { if (from) setBackTab(from); setOpen(null); setTab(t) }
   const gotoTab = (t: Tab) => { setContactsFilter(undefined); setContactsCompany(''); goto(t) }
   /** Open Contacts pre-filtered from Home or Companies. The list spans every event, so the event tab resets to All. */
@@ -421,9 +429,9 @@ export default function App() {
   const nudgeBackup = useMemo(() => backupDue(cards.length, lastBackupAt(), backupNudgeUntil()), [cards.length, backupTick])   // eslint-disable-line react-hooks/exhaustive-deps
   const backupNow = async (): Promise<string> => {
     const all = await listCards()
-    try { await saveBackupFile(await buildBackup(all, events, Date.now(), await listMyCards()), backupFileName()) } catch (e) { if ((e as Error)?.name === 'AbortError') return 'Backup cancelled.'; throw e }
+    try { await saveBackupFile(await buildBackup(all, events, Date.now(), await listMyCards()), backupFileName()) } catch (e) { if ((e as Error)?.name === 'AbortError') return 'Export cancelled.'; throw e }
     markBackedUp(); setBackupTick((n) => n + 1)
-    return `Backed up ${all.length} ${all.length === 1 ? 'card' : 'cards'}.`
+    return `Exported ${all.length} ${all.length === 1 ? 'card' : 'cards'}.`
   }
   const restoreFrom = async (file: File): Promise<string> => {
     const parsed = await parseBackup(file)
@@ -475,9 +483,9 @@ export default function App() {
           />
         ) : tab === 'home' ? (
           <Home cards={cards} events={events} dupes={dupes} ready={readerReady(settings)} needsKey={!serverMode || !!settings.useOwnKey} install={install} backupNudge={nudgeBackup}
-            onBackup={() => void backupNow().then((m) => setBanner(m), () => setBanner('The backup could not be saved. Try again.'))} onSnoozeBackup={() => { snoozeBackupNudge(); setBackupTick((n) => n + 1) }}
+            onBackup={() => void backupNow().then((m) => setBanner(m), () => setBanner('The export could not be saved. Try again.'))} onSnoozeBackup={() => { snoozeBackupNudge(); setBackupTick((n) => n + 1) }}
             onOpenContact={(id, idx) => setOpen({ id, idx })} onTogglePriority={(id, idx) => void togglePriority(id, idx)} onContacts={() => openContacts()} onCompanies={() => goto('companies')} onStarred={() => openContacts('priority')}
-            onAttention={() => openContacts('attention')} onInsights={() => goto('insights', 'home')} onAccuracy={() => goto('accuracy', 'home')} onSetup={() => goto('settings', 'home')} onSettings={() => goto('settings', 'home')}
+            onAttention={() => openContacts('attention')} onInsights={() => goto('insights', 'home')} onSetup={() => goto('settings', 'home')} onSettings={() => goto('settings', 'home')}
             onViewEvent={(id) => { setContactsFilter(undefined); setContactsCompany(''); setActiveEvent(id); goto('contacts') }} onEvents={() => gotoTab('exhibition')} />
         ) : tab === 'mycard' ? (
           <MyCards cards={myCards} stats={cardStats} onAdd={() => myCards.length < MAX_CARDS && setEditingCard('new')} onEdit={setEditingCard} onShare={setSharingCard} onStall={setStallCard} />
@@ -487,7 +495,7 @@ export default function App() {
           <Contacts onScan={scan} cards={cards} events={events} activeEvent={activeEvent} onSelectEvent={setActiveEvent} dupes={dupes} initialFilter={contactsFilter} initialCompany={contactsCompany} onTogglePriority={(id, idx) => void togglePriority(id, idx)}
             onOpen={(id, idx) => setOpen({ id, idx })} onRetryFailed={retryFailed} onUpload={(f) => void addFiles(f)} onMoveToEvent={moveToEvent} onDeleteContacts={deleteContacts} />
         ) : tab === 'exhibition' ? (
-          <Exhibition cards={cards} events={events} activeEvent={activeEvent} onNew={newEventPrompt} onRename={renameEvent} onDelete={removeEvent}
+          <Exhibition cards={cards} events={events} activeEvent={activeEvent} onNew={() => setEventSheet({})} onEdit={(id) => setEventSheet({ id })} onDelete={removeEvent}
             onScanHere={scanHere} onView={(id) => { setActiveEvent(id); goto('contacts') }}
             onOpenContact={(id, idx) => setOpen({ id, idx })} onTogglePriority={(id, idx) => void togglePriority(id, idx)} />
         ) : tab === 'insights' ? (
@@ -502,8 +510,8 @@ export default function App() {
             sync={sync}
             onChange={(s) => { setSettings(s); saveSettings(s) }}
             onWipe={async () => { await Promise.all(cards.map((c) => deleteCard(c.id))); await refresh() }}
-            onBackup={backupNow} onRestore={restoreFrom}
-            onBack={() => setTab(backTab)}
+            onBackup={backupNow} onRestore={restoreFrom} onAccuracy={() => goto('accuracy', 'settings')}
+            onBack={() => setTab('home')}
           />
         )}
         </div>
@@ -529,6 +537,7 @@ export default function App() {
       )}
       <input ref={fallbackInput} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { if (e.target.files) void addFiles(e.target.files); e.target.value = '' }} />
       <Toast toast={toast} onDone={() => setToast(null)} />
+      <EventSheet open={!!eventSheet} event={events.find((e) => e.id === eventSheet?.id)} onSave={(d) => saveEvent(d, eventSheet?.id)} onClose={() => setEventSheet(null)} />
       <DialogHost />
       {!openCard && !editorCard && (
         <nav>

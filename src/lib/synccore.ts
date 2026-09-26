@@ -41,7 +41,7 @@ export const eventUpdatedAt = (e: EventRec) => e.updatedAt ?? e.createdAt
 /** Events that are new or changed (and so stamped `now`), and the ids that were removed. */
 export function diffEvents(prev: EventRec[], next: EventRec[], now: number): { list: EventRec[]; changed: EventRec[]; removed: string[] } {
   const before = new Map(prev.map((e) => [e.id, e]))
-  const same = (a: EventRec, b: EventRec) => a.name === b.name && a.createdAt === b.createdAt
+  const same = (a: EventRec, b: EventRec) => a.name === b.name && a.createdAt === b.createdAt && a.start === b.start && a.end === b.end
   const changed: EventRec[] = []
   const list = next.map((e) => {
     const old = before.get(e.id)
