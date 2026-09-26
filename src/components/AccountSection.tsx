@@ -66,7 +66,7 @@ export default function AccountSection({ sync }: { sync: SyncControl }) {
         </SettingGroup>
       ) : (
         <SettingGroup title="Account" footer="Everything else in the app works without an account.">
-          <SettingRow icon="user" label="Sign in with Google" hint="A shareable card link, stall leads, and sync between phones" onClick={() => void signInWithGoogle()} />
+          <SettingRow icon="user" label="Sign in with Google" hint="A shareable card link, stall leads, and sync between phones" onClick={() => void act(signInWithGoogle)} />
         </SettingGroup>
       )}
       {msg && <p className={msg.ok ? 'hint ok setting-msg' : 'hint bad setting-msg'} role="status">{msg.text}</p>}

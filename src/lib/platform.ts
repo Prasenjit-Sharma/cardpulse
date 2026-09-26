@@ -89,3 +89,14 @@ export async function saveBlob(name: string, blob: Blob): Promise<void> {
   a.click()
   setTimeout(() => URL.revokeObjectURL(a.href), 1000)
 }
+
+/* ---------- Google sign-in inside the app ---------- */
+
+/** Where Google sign-in returns inside the app. Listed in Supabase's redirect URLs; only this app answers the scheme. */
+export const APP_AUTH_REDIRECT = 'in.cardpulse.app://auth/callback'
+
+/** The sign-in code from a link the app was opened with, or null for anything that is not our own successful return. */
+export function authCodeFromUrl(url: string): string | null {
+  if (!url.startsWith(APP_AUTH_REDIRECT)) return null
+  try { return new URL(url).searchParams.get('code') } catch { return null }
+}

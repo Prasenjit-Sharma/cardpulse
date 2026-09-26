@@ -1,7 +1,7 @@
 // Run: node --test test/platform.test.mjs
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { cacheName, detectApp, makeAppNav, publicBaseFor } from '../src/lib/platform.ts'
+import { authCodeFromUrl, cacheName, detectApp, makeAppNav, publicBaseFor } from '../src/lib/platform.ts'
 
 test('the app is detected only through Capacitor', () => {
   assert.equal(detectApp(undefined), false)
@@ -56,4 +56,13 @@ test('app share: text alone goes straight to the share sheet', async () => {
 test('app share: closing the share sheet is a cancel (AbortError), like the browser', async () => {
   const { n } = fakeNative({ cancel: true })
   await assert.rejects(makeAppNav(n).share({ text: 'x' }), (e) => e.name === 'AbortError')
+})
+
+test('sign-in return: only our own callback with a code is exchanged', () => {
+  assert.equal(authCodeFromUrl('in.cardpulse.app://auth/callback?code=abc123'), 'abc123')
+  assert.equal(authCodeFromUrl('in.cardpulse.app://auth/callback?error=access_denied&error_description=cancelled'), null)
+  assert.equal(authCodeFromUrl('in.cardpulse.app://auth/callback'), null)
+  assert.equal(authCodeFromUrl('in.cardpulse.app://something-else?code=abc'), null)
+  assert.equal(authCodeFromUrl('https://evil.example/auth/callback?code=abc'), null)
+  assert.equal(authCodeFromUrl('not a url'), null)
 })
