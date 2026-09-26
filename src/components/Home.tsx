@@ -103,10 +103,12 @@ export default function Home({ cards, events, dupes, ready, needsKey, install, b
       onOpen={() => onOpenContact(x.card.id, x.i)} onStar={() => onTogglePriority(x.card.id, x.i)} />
   )
 
-  // the one event that matters now (live, else the next, else the latest), under the masthead so it never needs a scroll
-  const lead = featuredEvents(events, today, 1)[0]
-  const leadCards = lead ? people.filter((x) => x.card.eventId === lead.id) : []
-  const leadToday = leadCards.filter((x) => isToday(x.card.createdAt, today)).length
+  // only events running today, under the masthead so they never need a scroll; two at most keep the watchlist on screen.
+  // Upcoming and past events live on the Events tab.
+  const live = featuredEvents(events.filter((e) => eventState(e, today) === 'live'), today, 2).map((e) => {
+    const mine = people.filter((x) => x.card.eventId === e.id)
+    return { e, n: mine.length, added: mine.filter((x) => isToday(x.card.createdAt, today)).length }
+  })
 
   return (
     <>
@@ -170,16 +172,16 @@ export default function Home({ cards, events, dupes, ready, needsKey, install, b
         </div>
       ) : (
         <>
-          {lead && (
-            <div className={`event-strip${eventState(lead, today) === 'live' ? ' live' : ''}`}>
-              <button className="event-strip-main" onClick={() => onViewEvent(lead.id)}>
-                {eventState(lead, today) === 'live' ? <em className="live-tag">Live</em> : <Icon name="booth" size={18} />}
-                <span className="grow"><strong>{showEvent(lead.name)}</strong><span className="muted">{eventWhen(lead, today, (t) => shortDate(t, now))}</span></span>
-                <span className="fig"><b className="num">{leadCards.length}</b><small className={leadToday ? 'up' : ''}>{leadToday ? `+${leadToday} today` : leadCards.length === 1 ? 'card' : 'cards'}</small></span>
+          {live.map(({ e, n, added }, i) => (
+            <div key={e.id} className="event-strip live">
+              <button className="event-strip-main" onClick={() => onViewEvent(e.id)}>
+                <em className="live-tag">Live</em>
+                <span className="grow"><strong>{showEvent(e.name)}</strong><span className="muted">{eventWhen(e, today, (t) => shortDate(t, now))}</span></span>
+                <span className="fig"><b className="num">{n}</b><small className={added ? 'up' : ''}>{added ? `+${added} today` : n === 1 ? 'card' : 'cards'}</small></span>
               </button>
-              <button className="link" onClick={onEvents}>{events.length > 1 ? `All ${events.length}` : 'Events'}</button>
+              {i === 0 && <button className="link" onClick={onEvents}>{events.length > 1 ? `All ${events.length}` : 'Events'}</button>}
             </div>
-          )}
+          ))}
 
           <div className="wl-tabs full-bleed" role="tablist" aria-label="Watchlists">
             {lists.map((l) => (
