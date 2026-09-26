@@ -1,7 +1,8 @@
 // Run: node --test test/cloudcards.test.mjs
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { SLUG_LENGTH, buildCardPayload, conflictKind, generateSlug } from '../src/lib/cloudcards.ts'
+import { SLUG_LENGTH, buildCardPayload, conflictKind, generateSlug, publicCardUrlFrom } from '../src/lib/cloudcards.ts'
+import { publicBaseFor } from '../src/lib/platform.ts'
 import { emptyCard } from '../src/lib/mycards.ts'
 
 test('a slug is 8 characters from the unambiguous alphabet', () => {
@@ -24,4 +25,12 @@ test('a 23505 violation is classified by which unique constraint actually fired,
   assert.equal(conflictKind({ code: '23503', message: 'insert or update on table violates foreign key constraint' }), 'other')
   assert.equal(conflictKind(null), 'other')
   assert.equal(conflictKind(undefined), 'other')
+})
+
+test('a card link built in the app points at the public site, never at localhost', () => {
+  const base = publicBaseFor(true, { origin: 'https://localhost', pathname: '/' }, 'https://prasenjit-sharma.github.io/cardpulse/')
+  const u = new URL(publicCardUrlFrom(base, 'arham-t', 'e1', 'Plast India'))
+  assert.equal(u.origin + u.pathname, 'https://prasenjit-sharma.github.io/cardpulse/')
+  assert.equal(u.searchParams.get('card'), 'arham-t')
+  assert.equal(u.searchParams.get('event'), 'e1')
 })

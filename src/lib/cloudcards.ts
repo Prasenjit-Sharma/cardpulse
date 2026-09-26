@@ -1,4 +1,5 @@
 import { sanitizeCard, type MyCard } from './mycards.ts'
+import { publicBase } from './platform.ts'
 import { supabase } from './supabase.ts'
 
 /** Crockford's base32: digits and letters with the visually confusable ones (0/O, 1/I/L, U) removed. */
@@ -27,13 +28,16 @@ export function buildCardPayload(card: MyCard): CardPayload {
   }
 }
 
-export const publicCardUrl = (slug: string, eventId?: string, eventName?: string): string => {
-  const u = new URL(window.location.origin + window.location.pathname)
+/** A card's public link from a given site address (testable without a window). */
+export const publicCardUrlFrom = (base: string, slug: string, eventId?: string, eventName?: string): string => {
+  const u = new URL(base)
   u.searchParams.set('card', slug)
   if (eventId) u.searchParams.set('event', eventId)
   if (eventName) u.searchParams.set('eventName', eventName)
   return u.toString()
 }
+/** The link other people open. From the app it is the public site, never the app's own https://localhost. */
+export const publicCardUrl = (slug: string, eventId?: string, eventName?: string): string => publicCardUrlFrom(publicBase(), slug, eventId, eventName)
 
 async function uploadPhoto(ownerId: string, card: MyCard): Promise<string | undefined> {
   if (!supabase || !card.photo) return undefined
