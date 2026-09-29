@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useObjectUrl } from '../lib/useObjectUrl'
 import { attentionReasons } from '../lib/attention'
-import { dueLabel, dueStatus, followUpIcs, localISO, logInteraction, removeInteraction, type Interaction } from '../lib/followups'
-import { browserEnv, download, saveToPhone, shareContact, telHref, waNumber } from '../lib/actions'
+import { currentFollowUp, dueLabel, dueStatus, followUpIcs, localISO, logInteraction, removeInteraction, setFollowUp, type Interaction } from '../lib/followups'
+import { browserEnv, download, saveToPhone, shareContact, shareVcf, telHref, waNumber } from '../lib/actions'
 import { currentNameFormat } from '../lib/db'
 import { log } from '../lib/debug'
 import { speechSupported, startDictation } from '../lib/speech'
@@ -19,9 +19,18 @@ import DateChip from './DateChip'
 import { showEvent } from '../lib/eventname'
 import { dueFigure, phase } from '../lib/watch'
 import { callNumber, canWhatsApp, kindLabel, PHONE_KINDS, phoneKey, prunePhoneMeta, rankedPhones, whatsAppNumber } from '../lib/phones'
-import { isApp } from '../lib/platform'
+import { getNative, isApp } from '../lib/platform'
+import { addLink, canBrief, freshBrief, type Brief } from '../lib/brief'
+import { sendCardTo, type WaApp } from '../lib/sharecard'
+import { buildCardVcf } from '../lib/cardvcf'
+import { cardFileName } from '../lib/cardshare'
+import { noteShare } from '../lib/sharelog'
+import type { MyCard } from '../lib/mycards'
+import BriefPage from './BriefPage'
 
 const SUGGESTED_TAGS = ['Customer', 'Supplier', 'Partner', 'Investor', 'Hot lead']
+const WA_KEY = 'cardpulse.waApp'                // WhatsApp or WhatsApp Business, when the phone has both
+const WA_LABEL: Record<WaApp, string> = { 'com.whatsapp': 'WhatsApp', 'com.whatsapp.w4b': 'WhatsApp Business' }
 const withProtocol = (w: string) => (/^https?:\/\//i.test(w) ? w : `https://${w}`)
 const when = (t: number) => new Date(t).toLocaleString('en-IN', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
 
@@ -84,16 +93,21 @@ function Info({ icon, label, children, actions }: { icon: 'pin' | 'phone' | 'mai
   )
 }
 
-export default function ContactDetail({ card, index, events, dupes, onClose, onSave, onRetry, onDelete, onMoveEvent }: {
+export default function ContactDetail({ card, index, events, dupes, myCards, onClose, onSave, onRetry, onDelete, onMoveEvent, onBrief, onMakeCard }: {
   card: CardRecord
   index: number
   events: EventRec[]
   dupes: CardRecord[]
+  /** The user's own digital cards, for "Share my card". */
+  myCards: MyCard[]
   onClose: () => void
   onSave: (c: CardRecord) => Promise<void>
   onRetry: () => void
   onDelete: () => void
   onMoveEvent: (eventId: string) => void
+  /** Saves a Pulse Brief that finished after this page closed, to the person at `idx` if it is still `name`. */
+  onBrief: (idx: number, name: string, b: Brief) => Promise<void>
+  onMakeCard: () => void
 }) {
   const url = useObjectUrl(card.image)
   const backUrl = useObjectUrl(card.back)
@@ -116,7 +130,17 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
   const noteInput = useRef<HTMLTextAreaElement>(null)
   const followRef = useRef<HTMLDivElement>(null)
   const [flash, setFlash] = useState('')
+  const [briefOpen, setBriefOpen] = useState(false)
+  const [cardPick, setCardPick] = useState(false)
+  const [appAsk, setAppAsk] = useState<{ apps: WaApp[]; resolve: (a: WaApp | null) => void } | null>(null)
   const stopRef = useRef<(() => void) | null>(null)
+  // a brief can finish after edits or after this page closed: save it against the latest copy, or through the app
+  const contactsRef = useRef(contacts)
+  contactsRef.current = contacts
+  const cardRef = useRef(card)
+  cardRef.current = card
+  const mounted = useRef(true)
+  useEffect(() => () => { mounted.current = false }, [])
   useBackClose(!!light, () => setLight(''))
   const canRead = !!card.image && !card.thumbOnly
   const busy = card.status === 'pending' || card.status === 'running'
@@ -136,7 +160,7 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
       const within = (r: { current: HTMLElement | null }) => !!r.current?.contains(t)
       if (tagsOpen && !within(tagsRef)) setTagsOpen(false)
       if (noteOpen && !within(noteRef) && !(contacts[idx]?.note ?? '').trim()) setNoteOpen(false)
-      if (followOpen && !within(followRef) && !contacts[idx]?.followUp) setFollowOpen(false)
+      if (followOpen && !within(followRef) && !(contacts[idx] && currentFollowUp(contacts[idx]!))) setFollowOpen(false)
     }
     document.addEventListener('pointerdown', onDown)
     return () => document.removeEventListener('pointerdown', onDown)
@@ -154,6 +178,45 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
   const commit = (next: Contact[], reviewed: boolean) => { setContacts(next); void onSave({ ...card, corrected: next, reviewed }) }
   const patch = (p: Partial<Contact>, basicField = true) =>
     commit(contacts.map((x, j) => (j === idx ? { ...x, ...p } : x)), basicField ? true : card.reviewed)
+  /** Swaps in a whole new copy of this contact, for changes that also remove fields. Never counts as reviewing. */
+  const replace = (next: Contact) => commit(contacts.map((x, j) => (j === idx ? next : x)), card.reviewed)
+
+  /** A finished Pulse Brief, saved to the person it was made for, and only if they are still that person. */
+  const saveBrief = (i: number, name: string, b: Brief) => {
+    if (!mounted.current) { void onBrief(i, name, b); return }
+    const cur = contactsRef.current
+    if (cur[i]?.name !== name) return
+    const next = cur.map((x, j) => (j === i ? { ...x, brief: b } : x))
+    setContacts(next)
+    void onSave({ ...cardRef.current, corrected: next })
+  }
+  // a brief past the two years it may be kept is dropped when the contact is opened
+  useEffect(() => {
+    const p = contacts[idx]
+    if (p?.brief && !freshBrief(p)) { const { brief: _old, ...rest } = p; replace(rest) }
+  }, [idx])   // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** "Share my card": the chosen card's vCard into this person's WhatsApp chat, or the share sheet. */
+  const shareCard = async (mc: MyCard) => {
+    setCardPick(false)
+    if (!c) return
+    let result = ''
+    const out = await sendCardTo(c, mc, {
+      native: getNative(),
+      remembered: () => { try { return (localStorage.getItem(WA_KEY) as WaApp | null) ?? undefined } catch { return undefined } },
+      remember: (a) => { try { localStorage.setItem(WA_KEY, a) } catch { /* private mode: asked again next time */ } },
+      ask: (apps) => new Promise((resolve) => setAppAsk({ apps, resolve })),
+      fallback: async () => { result = (await shareVcf(cardFileName(mc, 'vcf'), buildCardVcf(mc).text, mc.name, undefined, browserEnv(log), false)).result },
+    }).catch(() => { setFlash('Could not share. Try again.'); return 'cancelled' as const })
+    if (out === 'sent' || (out === 'fallback' && result !== 'cancelled')) noteShare(mc.id, 'file')
+    if (result === 'downloaded') setFlash('Saved as a file. Open it to add the contact.')
+  }
+  const onShareCard = () => {
+    if (!myCards.length) { setFlash('Make your card first.'); onMakeCard(); return }
+    if (myCards.length === 1) void shareCard(myCards[0]!)
+    else setCardPick(true)
+  }
+  const answerApp = (a: WaApp | null) => { appAsk?.resolve(a); setAppAsk(null) }
   const reasons = attentionReasons(card, dupes.length > 0)
   const flagged = card.status === 'done' && !card.reviewed && reasons.length > 0
   const changed = (k: FieldKey) => {
@@ -187,6 +250,7 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
   const slides = [url, backUrl].filter(Boolean)
   const phones = c ? rankedPhones(c) : []
   const today = localISO()                                    // the phone's own day: UTC would say yesterday in India until 5:30 am
+  const due = c ? currentFollowUp(c, today) : undefined        // the nearest planned follow-up, from the log or set by hand
 
   return (
     <div className="page-plain">
@@ -214,7 +278,7 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
               {(c.title || c.company) && <span className="co">{[c.title, c.company].filter(Boolean).join(' · ')}</span>}
               <span className="quote-line">
                 <em className="phase">{phase(c)}</em>
-                {(() => { const f = dueFigure(c.followUp, today); return f && <b className={`num ${f.tone}`}>{f.text}</b> })()}
+                {(() => { const f = dueFigure(due, today); return f && <b className={`num ${f.tone}`}>{f.text}</b> })()}
                 {eventName && <span>{showEvent(eventName)}</span>}
               </span>
             </div>
@@ -293,6 +357,21 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
             ))}
           </Sheet>
 
+          <div className="brief-actions">
+            <button onClick={() => setBriefOpen(true)} disabled={!canBrief(c)}><Icon name="spark" size={18} /> Pulse Brief</button>
+            <button onClick={onShareCard}><Icon name="card" size={18} /> Share my card</button>
+          </div>
+          {briefOpen && (
+            <BriefPage contact={c} briefKey={`${card.id}:${idx}`} onClose={() => setBriefOpen(false)}
+              onSave={(b) => saveBrief(idx, c.name, b)} onAddLink={(l) => replace(addLink(c, l))} />
+          )}
+          <Sheet open={cardPick} onClose={() => setCardPick(false)} title="Which card?">
+            {myCards.map((mc) => <SheetItem key={mc.id} icon="card" label={mc.label || mc.name || 'My card'} hint={[mc.name, mc.company].filter(Boolean).join(' · ')} onClick={() => void shareCard(mc)} />)}
+          </Sheet>
+          <Sheet open={!!appAsk} onClose={() => answerApp(null)} title="Send with">
+            {(appAsk?.apps ?? []).map((a) => <SheetItem key={a} icon="chat" label={WA_LABEL[a]} hint="Remembered for next time" onClick={() => answerApp(a)} />)}
+          </Sheet>
+
           <div className="adders" role="group" aria-label="Add to this contact">
             <button data-adder className={`adder${tagsOpen || (c.tags ?? []).length ? ' on' : ''}`} aria-pressed={tagsOpen} onClick={() => setTagsOpen(!tagsOpen)}>
               <Icon name="tag" size={13} /> Tags{(c.tags ?? []).length > 0 && <b>{(c.tags ?? []).length}</b>}
@@ -301,8 +380,8 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
               onClick={() => (c.note ? noteInput.current?.focus() : setNoteOpen(!noteOpen))}>
               <Icon name="note" size={13} /> Notes
             </button>
-            <button data-adder className={`adder${followOpen || c.followUp ? ' on' : ''}`} aria-pressed={followOpen}
-              onClick={() => (c.followUp ? followRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }) : setFollowOpen(!followOpen))}>
+            <button data-adder className={`adder${followOpen || due ? ' on' : ''}`} aria-pressed={followOpen}
+              onClick={() => (due ? followRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }) : setFollowOpen(!followOpen))}>
               <Icon name="calendar" size={13} /> Follow-up
             </button>
           </div>
@@ -334,12 +413,12 @@ export default function ContactDetail({ card, index, events, dupes, onClose, onS
               </div>
             </div>
           )}
-          {(c.followUp || followOpen) && (
+          {(due || followOpen) && (
             <div className="editor-box followbox" ref={followRef}>
-              <DateChip value={c.followUp ?? ''} label="Follow-up date" autoOpen={followOpen} onChange={(v) => patch({ followUp: v }, false)} />
-              {c.followUp && <small className={`due${dueStatus(c.followUp, today).state === 'upcoming' ? ' soon' : ''}`}>{dueLabel(c.followUp, today)}</small>}
-              {c.followUp && <button className="x-btn cal" title="Add to calendar" aria-label="Add to calendar" onClick={() => { download(`follow-up-${(c.name || 'contact').replace(/[^\p{L}\p{N}]+/gu, '-')}.ics`, followUpIcs(c, c.followUp!), 'text/calendar'); setFlash(isApp ? 'Choose your calendar app to add it.' : 'Opens in your calendar app.') }}><Icon name="calendar" size={18} /></button>}
-              <button className="x-btn" onClick={() => { patch({ followUp: '' }, false); setFollowOpen(false) }} aria-label="Remove follow-up"><Icon name="x" size={16} /></button>
+              <DateChip value={due ?? ''} label="Follow-up date" autoOpen={followOpen} onChange={(v) => replace(setFollowUp(c, v, today))} />
+              {due && <small className={`due${dueStatus(due, today).state === 'upcoming' ? ' soon' : ''}`}>{dueLabel(due, today)}</small>}
+              {due && <button className="x-btn cal" title="Add to calendar" aria-label="Add to calendar" onClick={() => { download(`follow-up-${(c.name || 'contact').replace(/[^\p{L}\p{N}]+/gu, '-')}.ics`, followUpIcs(c, due), 'text/calendar'); setFlash(isApp ? 'Choose your calendar app to add it.' : 'Opens in your calendar app.') }}><Icon name="calendar" size={18} /></button>}
+              <button className="x-btn" onClick={() => { const next = setFollowUp(c, '', today); replace(next); if (!currentFollowUp(next, today)) setFollowOpen(false) }} aria-label="Remove follow-up"><Icon name="x" size={16} /></button>
             </div>
           )}
 

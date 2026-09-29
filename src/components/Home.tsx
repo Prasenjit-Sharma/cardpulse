@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { needsAttention } from '../lib/attention'
-import { localISO } from '../lib/followups'
+import { currentFollowUp, localISO } from '../lib/followups'
 import { companyList } from '../lib/companies'
 import { eventState, eventWhen, featuredEvents, showEvent } from '../lib/eventname'
 import { dueFigure, isToday, rowFigure, shortDate } from '../lib/watch'
@@ -88,9 +88,10 @@ export default function Home({ cards, events, dupes, ready, needsKey, install, b
   const today = localISO()
   const now = Date.now()
   const people: Person[] = cards.filter((c) => c.status === 'done').flatMap((c) => (c.corrected ?? []).map((p, i) => ({ card: c, p, i, key: `${c.id}:${i}` })))
-  const due = people.filter((x) => x.p.followUp && x.p.followUp <= today).sort((a, b) => a.p.followUp!.localeCompare(b.p.followUp!))
-  const overdue = due.filter((x) => x.p.followUp! < today).length
-  const upcoming = people.filter((x) => x.p.followUp && x.p.followUp > today).sort((a, b) => a.p.followUp!.localeCompare(b.p.followUp!))
+  const withDue = people.map((x) => ({ x, f: currentFollowUp(x.p, today) })).filter((d): d is { x: Person; f: string } => !!d.f).sort((a, b) => a.f.localeCompare(b.f))
+  const due = withDue.filter((d) => d.f <= today).map((d) => d.x)
+  const overdue = withDue.filter((d) => d.f < today).length
+  const upcoming = withDue.filter((d) => d.f > today).map((d) => d.x)
   const recent = [...people].sort((a, b) => b.card.createdAt - a.card.createdAt)
   const starred = people.filter((x) => x.p.priority)
   const week = people.filter((x) => now - x.card.createdAt < WEEK_MS).length
@@ -117,7 +118,7 @@ export default function Home({ cards, events, dupes, ready, needsKey, install, b
   const then = room >= 2 ? NEXT[list].map((id) => lists.find((l) => l.id === id)!).map((l) => ({ ...l, items: l.items.filter((x) => !seen.has(x.key)) })).find((l) => l.items.length) : undefined
   const row = (x: Person, n: number, recentFig: boolean) => (
     <WatchRow key={x.key} card={x.card} p={x.p} i={n}
-      figure={recentFig ? { text: shortDate(x.card.createdAt, now), sub: isToday(x.card.createdAt, today) ? 'Today' : 'Scanned', tone: 'muted' } : (dueFigure(x.p.followUp, today) ?? rowFigure(x.p, x.card.createdAt, today, now))}
+      figure={recentFig ? { text: shortDate(x.card.createdAt, now), sub: isToday(x.card.createdAt, today) ? 'Today' : 'Scanned', tone: 'muted' } : (dueFigure(currentFollowUp(x.p, today), today) ?? rowFigure(x.p, x.card.createdAt, today, now))}
       open={openKey === x.key} onToggle={() => setOpenKey(openKey === x.key ? '' : x.key)}
       onOpen={() => onOpenContact(x.card.id, x.i)} onStar={() => onTogglePriority(x.card.id, x.i)} />
   )

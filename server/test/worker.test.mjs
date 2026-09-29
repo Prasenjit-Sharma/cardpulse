@@ -284,6 +284,71 @@ test('quota: invalid images are refused before anything is counted', async () =>
   } finally { m.restore() }
 })
 
+// ── Pulse Brief ──
+const briefReq = (body, headers = {}) => new Request('https://api.test/v1/brief', { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: GOOD, 'cf-connecting-ip': `2.2.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}`, ...headers }, body: JSON.stringify(body) })
+const who = { name: 'Abhishek Jain', company: 'Vivacity Woven Sack Pvt. Ltd.', address: 'Surat' }
+const briefOk = { candidates: [{ content: { parts: [{ text: 'Sure. ' + JSON.stringify({ person: 'Director.', company: 'Makes sacks.', starters: ['Hi'], links: [{ kind: 'linkedin', url: 'https://www.linkedin.com/in/aj' }, { kind: 'website', url: 'https://guess.example' }] }) }] },
+  groundingMetadata: { groundingChunks: [{ web: { title: 'linkedin.com', uri: 'https://vertexaisearch.cloud.google.com/r/1' } }], searchEntryPoint: { renderedContent: '<style></style><div>chips</div>' } } }] }
+function mockBrief(consume) {
+  return mockUpstream((url, init) => (String(url).startsWith('https://supa.test') ? consume(url, init) : new Response(JSON.stringify(briefOk))))
+}
+
+test('brief: signed in, counted with consume_brief, grounded with Google Search, links checked', async () => {
+  const m = mockBrief(() => new Response(JSON.stringify([{ allowed: true, used: 1, day_limit: 10 }])))
+  try {
+    const res = await worker.fetch(briefReq({ contact: who, auth: token('b-1') }), env(SUPA))
+    assert.equal(res.status, 200)
+    const body = await res.json()
+    assert.equal(body.person, 'Director.')
+    assert.deepEqual(body.links, [{ kind: 'linkedin', url: 'https://www.linkedin.com/in/aj' }], 'the guessed site is dropped')
+    assert.equal(body.suggestions, '<style></style><div>chips</div>')
+    assert.equal(m.calls[0].url, 'https://supa.test/rest/v1/rpc/consume_brief')
+    const sent = JSON.parse(m.calls[1].init.body)
+    assert.deepEqual(sent.tools, [{ google_search: {} }])
+    assert.ok(!JSON.stringify(sent).includes('secret-key'))
+  } finally { m.restore() }
+})
+test('brief: no token is 401 sign_in, and nothing is called', async () => {
+  const m = mockBrief(() => { throw new Error('no') })
+  try {
+    const res = await worker.fetch(briefReq({ contact: who }), env(SUPA))
+    assert.equal(res.status, 401); assert.equal((await res.json()).error.code, 'sign_in'); assert.equal(m.calls.length, 0)
+  } finally { m.restore() }
+})
+test('brief: over the limit is 429 daily_limit with the brief wording', async () => {
+  const m = mockBrief(() => new Response(JSON.stringify([{ allowed: false, used: 10, day_limit: 10 }])))
+  try {
+    const res = await worker.fetch(briefReq({ contact: who, auth: token('b-2') }), env(SUPA))
+    assert.equal(res.status, 429)
+    assert.match((await res.json()).error.message, /today's 10 fresh searches/)
+    assert.equal(m.calls.length, 1)
+  } finally { m.restore() }
+})
+test('brief: a quota outage still makes the brief (per-IP brake only)', async () => {
+  const m = mockBrief(() => { throw new TypeError('fetch failed') })
+  try { assert.equal((await worker.fetch(briefReq({ contact: who, auth: token('b-3') }), env(SUPA))).status, 200) } finally { m.restore() }
+})
+test('brief: bad input is 400 before anything is counted; unusable output is 502 bad_output', async () => {
+  const m = mockBrief(() => { throw new Error('no') })
+  try {
+    for (const contact of [undefined, {}, { name: 7 }, { name: '', company: '' }]) assert.equal((await worker.fetch(briefReq({ contact, auth: token('b-4') }), env(SUPA))).status, 400)
+    assert.equal(m.calls.length, 0)
+  } finally { m.restore() }
+  const g = mockUpstream((url) => (String(url).startsWith('https://supa.test') ? new Response(JSON.stringify([{ allowed: true, used: 1, day_limit: 10 }])) : new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'no idea' }] } }] }))))
+  try {
+    const res = await worker.fetch(briefReq({ contact: who, auth: token('b-5') }), env(SUPA))
+    assert.equal(res.status, 502); assert.equal((await res.json()).error.code, 'bad_output')
+  } finally { g.restore() }
+})
+test('brief: unknown origin refused, and BRIEF_MODEL picks the model', async () => {
+  const m = mockBrief(() => new Response(JSON.stringify([{ allowed: true, used: 1, day_limit: 10 }])))
+  try {
+    assert.equal((await worker.fetch(briefReq({ contact: who, auth: token('b-6') }, { Origin: 'https://evil.example' }), env(SUPA))).status, 403)
+    await worker.fetch(briefReq({ contact: who, auth: token('b-7') }), env({ ...SUPA, BRIEF_MODEL: 'gemini-brief-x' }))
+    assert.match(m.calls.at(-1).url, /gemini-brief-x:generateContent/)
+  } finally { m.restore() }
+})
+
 test('the deployed allow-list lets the Android app (https://localhost) call the API', async () => {
   const toml = (await import('node:fs')).readFileSync(new URL('../wrangler.toml', import.meta.url), 'utf8')
   const allowed = /^ALLOWED_ORIGINS\s*=\s*"([^"]*)"/m.exec(toml)[1]

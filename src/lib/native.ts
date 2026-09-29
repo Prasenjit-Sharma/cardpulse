@@ -7,6 +7,8 @@ import { sliceRanges, type ContactFields, type Native } from './platform'
 
 /** The app's own plugin (android/app/src/main/java/in/cardpulse/app/SaveContactPlugin.java). */
 const SaveContact = registerPlugin<{ insert(f: ContactFields): Promise<void> }>('SaveContact')
+/** The app's own plugin (WhatsAppCardPlugin.java): the user's card into a contact's WhatsApp chat. */
+const WhatsAppCard = registerPlugin<{ installed(): Promise<{ apps: string[] }>; send(o: { uri: string; jid: string; pkg: string }): Promise<void> }>('WhatsAppCard')
 
 /** Base64 without the data-URL prefix, as Filesystem.writeFile expects. */
 const toBase64 = (blob: Blob) => new Promise<string>((resolve, reject) => {
@@ -35,6 +37,8 @@ export const native: Native = {
   onAppUrl: (cb) => { void App.addListener('appUrlOpen', (e) => cb(e.url)) },
   launchUrl: async () => (await App.getLaunchUrl())?.url,
   saveContact: async (f) => { await SaveContact.insert(f) },
+  waApps: async () => (await WhatsAppCard.installed()).apps,
+  waSend: async (o) => { await WhatsAppCard.send(o) },
   // SystemBarsStyle.Dark means light icons (for a dark background), as in Capacitor's docs
   setStatusBar: async (icons) => { await SystemBars.setStyle({ style: icons === 'light' ? SystemBarsStyle.Dark : SystemBarsStyle.Light }) },
 }

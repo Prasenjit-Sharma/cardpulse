@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { deleteCard, getCard, listCards, loadSettings, putCard, readerReady, saveSettings, type Settings } from './lib/db'
+import { deleteCard, deleteCardRaw, getCard, listCards, loadSettings, putCard, readerReady, saveSettings, type Settings } from './lib/db'
 import { log } from './lib/debug'
 import { extractCard, serverMode } from './lib/gemini'
 import { fitForBatch, prepareImage } from './lib/image'
 import { prepareCardImage } from './lib/cardImage'
 import type { CardRecord, Contact, EventRec } from './lib/types'
-import { loadActiveEvent, loadEvents, saveActiveEvent, saveEvents } from './lib/events'
+import { loadActiveEvent, loadEvents, saveActiveEvent, saveEvents, saveEventsRaw } from './lib/events'
 import { wipeContactData } from './lib/wipe'
 import { useSession } from './lib/auth'
 import { fetchCardStats, flushUnpublish, queueUnpublish, type CardStats } from './lib/cloudaccount'
 import { leadCardId } from './lib/synccore'
+import { keepCloudCopy } from './lib/sync'
 import { useSync } from './lib/useSync'
 import { findDuplicates } from './lib/dupes'
 import { backupDue, backupFileName, backupNudgeUntil, buildBackup, lastBackupAt, markBackedUp, mergeEvents, parseBackup, planRestore, saveBackupFile, snoozeBackupNudge } from './lib/backup'
@@ -486,6 +487,15 @@ export default function App() {
             onRetry={() => enqueue([openCard.id])}
             onDelete={async () => { await deleteCard(openCard.id); setOpen(null); await refresh() }}
             onMoveEvent={(eventId) => void moveToEvent([openCard.id], eventId)}
+            myCards={myCards}
+            onMakeCard={() => setEditingCard('new')}
+            onBrief={async (idx, name, b) => {
+              // the contact page closed while the brief was being made: save it to the latest copy, if that person is still there
+              const fresh = await getCard(openCard.id)
+              if (!fresh?.corrected?.[idx] || fresh.corrected[idx]!.name !== name) return
+              await putCard({ ...fresh, corrected: fresh.corrected.map((x, j) => (j === idx ? { ...x, brief: b } : x)) })
+              await refresh()
+            }}
           />
         ) : tab === 'home' ? (
           <Home cards={cards} events={events} dupes={dupes} ready={readerReady(settings)} needsKey={!serverMode || !!settings.useOwnKey} install={install} backupNudge={nudgeBackup}
@@ -517,7 +527,13 @@ export default function App() {
             sync={sync}
             onChange={(s) => { setSettings(s); saveSettings(s) }}
             onWipe={async () => {
-              await wipeContactData({ cardIds: () => cards.map((c) => c.id), deleteCard, saveEvents: (list) => { setEvents(list); saveEvents(list) }, setActiveEvent })
+              // syncing: every phone loses them. Otherwise only this phone does, and the account's copy returns on sign-in
+              const everywhere = sync.enabled
+              await wipeContactData({
+                cardIds: () => cards.map((c) => c.id), deleteCard: everywhere ? deleteCard : deleteCardRaw,
+                saveEvents: (list) => { setEvents(list); (everywhere ? saveEvents : saveEventsRaw)(list) }, setActiveEvent,
+              })
+              if (!everywhere) await keepCloudCopy()
               await refresh()
             }}
             onBackup={backupNow} onRestore={restoreFrom} onAccuracy={() => goto('accuracy', 'settings')} onInsights={() => goto('insights', 'settings')}

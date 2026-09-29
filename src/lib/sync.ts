@@ -2,7 +2,7 @@ import { createStore, get, set } from 'idb-keyval'
 import { deleteCardRaw, getCard, listCards, putCardRaw } from './db'
 import { loadEvents, saveEventsRaw } from './events'
 import { deleteMyCardRaw, getMyCard, listMyCards, putMyCardRaw, sanitizeCard, type MyCard } from './mycards'
-import { noteChange, readOutbox, settleOutbox } from './outbox'
+import { dropFromOutbox, noteChange, readOutbox, settleOutbox } from './outbox'
 import { supabase } from './supabase'
 import {
   cardToWire, cardUpdatedAt, chunk, eventUpdatedAt, isNewer, outboxKey, parseKey, PHOTO_SLOTS, photoKey, photoPath, wireToCard, withoutBlobs,
@@ -276,6 +276,16 @@ export async function disableSync(): Promise<void> {
   await saveState({ ...s, enabled: false })
   setStatus({ kind: 'off' })
   if (supabase) await supabase.from('consents').update({ withdrawn_at: new Date().toISOString() }).eq('purpose', 'sync').is('withdrawn_at', null)
+}
+
+/**
+ * After "Delete all data" on a phone that is not syncing (signed out, or sync off): the deletions stay on this phone and
+ * never reach the account, and the next sync reads the whole account again, so the cloud copy comes back on sign-in.
+ */
+export async function keepCloudCopy(): Promise<void> {
+  dropFromOutbox(['card', 'event'])
+  const s = await loadSyncState()
+  await saveState({ ...s, cursor: 0, retry: {} })
 }
 
 /** Forgets this phone's sync position (after the server copy is deleted), so a later "turn on" starts clean. */

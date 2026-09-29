@@ -1,7 +1,7 @@
 // Run: node --test test/followups.test.mjs
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { MAX_LOG, MAX_NOTE, dueLabel, dueStatus, followUpIcs, localISO, logInteraction, newEntry, presetDate, removeInteraction } from '../src/lib/followups.ts'
+import { MAX_LOG, MAX_NOTE, currentFollowUp, dueLabel, dueStatus, followUpIcs, localISO, logInteraction, newEntry, plannedFollowUps, presetDate, removeInteraction, setFollowUp } from '../src/lib/followups.ts'
 
 const BS = String.fromCharCode(92)                                       // a backslash
 const person = (o = {}) => ({ name: 'Rajesh Shah', title: '', company: 'ABC Polymers', phones: ['+91 98240 22893'], emails: [], website: '', address: '', gstin: '', social: [], ...o })
@@ -29,25 +29,67 @@ test('an entry keeps a trimmed, bounded note, and an outcome only for calls', ()
   assert.equal(newEntry({ kind: 'meeting', outcome: 'connected', note: 'x' }, 1, 'b').outcome, undefined)
   assert.equal(newEntry({ kind: 'call', note: 'y'.repeat(MAX_NOTE + 50) }, 1, 'c').note.length, MAX_NOTE)
 })
-test('logging puts the newest first and moves the follow-up to the new date', () => {
-  let c = person({ followUp: '2026-10-01' })
-  c = logInteraction(c, newEntry({ kind: 'call', outcome: 'no-answer', note: 'rang twice', next: '2026-10-03' }, 100, 'one'))
-  c = logInteraction(c, newEntry({ kind: 'call', outcome: 'connected', note: 'spoke', next: '2026-10-10' }, 200, 'two'))
-  assert.deepEqual(c.log.map((e) => e.id), ['two', 'one']); assert.equal(c.followUp, '2026-10-10')
+const at = (m, d, h = 12) => new Date(2026, m - 1, d, h).getTime()        // a moment on the phone's own clock
+test('logging puts the newest first and keeps every planned follow-up', () => {
+  let c = person()
+  c = logInteraction(c, newEntry({ kind: 'call', outcome: 'no-answer', note: 'rang twice', next: '2026-10-03' }, at(9, 26), 'one'))
+  c = logInteraction(c, newEntry({ kind: 'call', outcome: 'connected', note: 'spoke', next: '2026-10-10' }, at(9, 26, 13), 'two'))
+  assert.deepEqual(c.log.map((e) => e.id), ['two', 'one'])
+  assert.deepEqual(plannedFollowUps(c), ['2026-10-03', '2026-10-10'])
 })
-test('logging with no next date completes the follow-up', () => {
-  const c = logInteraction(person({ followUp: '2026-10-01' }), newEntry({ kind: 'message', note: 'sent catalogue' }, 1, 'm'))
-  assert.equal(c.followUp, undefined); assert.equal(c.log.length, 1)
+test('the nearest follow-up stands, not the newest one logged (a call for 27 Sept, then a meeting for 26 Oct)', () => {
+  let c = person()
+  c = logInteraction(c, newEntry({ kind: 'call', outcome: 'connected', note: '', next: '2026-09-27' }, at(9, 26, 22), 'call'))
+  c = logInteraction(c, newEntry({ kind: 'meeting', note: '', next: '2026-10-26' }, at(9, 26, 23), 'meet'))
+  assert.equal(currentFollowUp(c, '2026-09-26'), '2026-09-27')
+  assert.equal(currentFollowUp(c, '2026-09-27'), '2026-09-27')             // due today
+  assert.equal(currentFollowUp(c, '2026-09-28'), '2026-10-26')             // once the day has passed, the next one takes over
+})
+test('a passed follow-up with nothing planned after it stays, as overdue', () => {
+  const c = logInteraction(person(), newEntry({ kind: 'call', note: '', next: '2026-09-27' }, at(9, 26), 'x'))
+  assert.equal(currentFollowUp(c, '2026-10-02'), '2026-09-27')
+})
+test('logging on or after a follow-up day completes it; later plans stay', () => {
+  let c = person({ followUp: '2026-10-01' })
+  c = logInteraction(c, newEntry({ kind: 'call', note: 'quote', next: '2026-10-20' }, at(9, 28), 'a'))
+  assert.equal(c.followUp, '2026-10-01')                                   // logged before the day: still to do
+  c = logInteraction(c, newEntry({ kind: 'message', note: 'sent catalogue' }, at(10, 1), 'b'))
+  assert.equal(c.followUp, undefined)                                      // done on the day
+  assert.deepEqual(plannedFollowUps(c), ['2026-10-20'])
+  c = logInteraction(c, newEntry({ kind: 'call', note: 'spoke' }, at(10, 21), 'c'))
+  assert.deepEqual(plannedFollowUps(c), [])
+})
+test('a next date on the day it is logged is not completed by its own entry', () => {
+  const c = logInteraction(person(), newEntry({ kind: 'call', note: '', next: '2026-09-26' }, at(9, 26), 'x'))
+  assert.equal(currentFollowUp(c, '2026-09-26'), '2026-09-26')
+})
+test('changing the follow-up moves the one that stands, and removing it lets the next one take over', () => {
+  let c = person()
+  c = logInteraction(c, newEntry({ kind: 'call', note: '', next: '2026-09-27' }, at(9, 26), 'call'))
+  c = logInteraction(c, newEntry({ kind: 'meeting', note: '', next: '2026-10-26' }, at(9, 26, 13), 'meet'))
+  const moved = setFollowUp(c, '2026-10-05', '2026-09-26')
+  assert.equal(currentFollowUp(moved, '2026-09-26'), '2026-10-05')
+  assert.equal(moved.log.find((e) => e.id === 'call').next, '2026-10-05')
+  const removed = setFollowUp(c, '', '2026-09-26')
+  assert.equal(currentFollowUp(removed, '2026-09-26'), '2026-10-26')
+  assert.equal('next' in removed.log.find((e) => e.id === 'call'), false)
+  assert.equal(currentFollowUp(setFollowUp(removed, '', '2026-09-26'), '2026-09-26'), undefined)
+})
+test('a follow-up set by hand is kept, moved and removed like one from the log', () => {
+  const c = setFollowUp(person(), '2026-10-09', '2026-09-26')
+  assert.equal(c.followUp, '2026-10-09')
+  assert.equal(setFollowUp(c, '2026-10-12', '2026-09-26').followUp, '2026-10-12')
+  assert.equal('followUp' in setFollowUp(c, '', '2026-09-26'), false)
 })
 test('the log is capped, dropping the oldest', () => {
   let c = person()
   for (let i = 0; i < MAX_LOG + 5; i++) c = logInteraction(c, newEntry({ kind: 'call', note: String(i) }, i, `e${i}`))
   assert.equal(c.log.length, MAX_LOG); assert.equal(c.log[0].note, String(MAX_LOG + 4))
 })
-test('removing an entry leaves the follow-up alone', () => {
-  let c = logInteraction(person(), newEntry({ kind: 'call', note: 'a', next: '2026-10-09' }, 1, 'x'))
+test('removing an entry takes its planned follow-up with it, and leaves one set by hand', () => {
+  let c = logInteraction(person({ followUp: '2026-10-12' }), newEntry({ kind: 'call', note: 'a', next: '2026-10-09' }, at(9, 26), 'x'))
   c = removeInteraction(c, 'x')
-  assert.deepEqual(c.log, []); assert.equal(c.followUp, '2026-10-09')
+  assert.deepEqual(c.log, []); assert.deepEqual(plannedFollowUps(c), ['2026-10-12'])
 })
 test('the calendar file is an all-day event with the person, company and last note, and escapes special characters', () => {
   const c = logInteraction(person({ name: 'Rajesh; Shah' }), newEntry({ kind: 'call', note: 'Quote, HDPE\nsend Monday' }, 1, 'x'))

@@ -177,4 +177,20 @@ await A.runSync('u1'); await B.runSync('u1')
 assert.equal((await B.getCard('c2')).corrected[0].name, 'Late')
 ok('a card that finishes reading later syncs then')
 
+// 10. "Delete all data" while signed out clears this phone only: signing in again brings the account's copy back
+await B.runSync('u1')
+const before = (await B.listCards()).map((c) => c.id).sort()
+const eventsBefore = B.loadEvents().map((e) => e.id)
+for (const c of await B.listCards()) await B.deleteCardRaw(c.id)     // signed out: the app wipes without queuing deletions
+B.saveEventsRaw([])
+await B.keepCloudCopy()
+assert.equal((await B.listCards()).length, 0)
+assert.equal(await B.runSync('u1'), true, 'signed in again: the account is read afresh')
+assert.deepEqual((await B.listCards()).map((c) => c.id).sort(), before, 'every synced card is back')
+assert.deepEqual(B.loadEvents().map((e) => e.id), eventsBefore, 'and the events')
+assert.equal(await bytes((await B.getCard('c4')).image), 'meena-front', 'with its photo')
+await A.runSync('u1')
+assert.ok(await A.getCard('c4'), 'the other phone lost nothing')
+ok('deleting everything while not syncing leaves the account alone, and it comes back on sign-in')
+
 console.log(`\n${pass} scenarios passed`)

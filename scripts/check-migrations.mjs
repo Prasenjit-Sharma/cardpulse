@@ -25,7 +25,9 @@ await db.exec(`
 await db.exec(readFileSync(ROOT + '0001_cloud_foundation.sql', 'utf8'))
 await db.exec(readFileSync(ROOT + '0002_sync_quota_privacy.sql', 'utf8'))
 await db.exec(readFileSync(ROOT + '0002_sync_quota_privacy.sql', 'utf8'))   // re-runnable
-console.log('migrations ran (0002 twice)')
+await db.exec(readFileSync(ROOT + '0003_brief_quota.sql', 'utf8'))
+await db.exec(readFileSync(ROOT + '0003_brief_quota.sql', 'utf8'))
+console.log('migrations ran (0002 and 0003 twice)')
 
 const A = '11111111-1111-1111-1111-111111111111', B = '22222222-2222-2222-2222-222222222222'
 await db.exec(`insert into auth.users values ('${A}'), ('${B}')`)
@@ -76,6 +78,18 @@ assert.equal(r.rows[0].allowed, true); assert.equal(r.rows[0].used, 1)
 await assert.rejects(as('anon', null, 'select * from public.consume_scan()'), /permission denied/)
 await assert.rejects(as('authenticated', A, `update public.scan_usage set reads = 0`).then((x) => { if (x.affectedRows === 0) throw new Error('row-level security: no rows') }), /row-level security/)
 console.log('ok consume_scan limit per account, anon refused, count not editable')
+
+// consume_brief: its own limit of 10, separate from scans
+for (let i = 1; i <= 10; i++) {
+  r = await as('authenticated', A, 'select * from public.consume_brief()')
+  assert.equal(r.rows[0].allowed, true); assert.equal(r.rows[0].used, i)
+}
+r = await as('authenticated', A, 'select * from public.consume_brief()')
+assert.deepEqual(r.rows[0], { allowed: false, used: 10, day_limit: 10 })
+r = await as('authenticated', B, 'select * from public.consume_brief()')
+assert.equal(r.rows[0].used, 1)
+await assert.rejects(as('anon', null, 'select * from public.consume_brief()'), /permission denied/)
+console.log('ok consume_brief limit per account, anon refused')
 
 // counts, leads delete, cloud data deletion, account deletion
 await as('authenticated', A, `insert into public.cards (owner_id, local_card_id, slug, name) values ('${A}', 'm1', 'SLUGA111', 'Asha')`)

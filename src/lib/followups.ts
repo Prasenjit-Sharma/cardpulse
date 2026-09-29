@@ -56,13 +56,53 @@ export function newEntry(input: { kind: Kind; outcome?: Outcome; note: string; n
   return e
 }
 
-/** Adds an entry, newest first. The follow-up date becomes the entry's next date; with none, the follow-up is done. */
+/**
+ * Adds an entry, newest first. Its next date joins the follow-ups already planned (see `currentFollowUp`); a date set
+ * by hand that falls on or before the day of this entry has been acted on, so it is done.
+ */
 export function logInteraction(c: Contact, entry: Interaction): Contact {
-  const { followUp: _old, ...rest } = c
-  return { ...rest, log: [entry, ...(c.log ?? [])].slice(0, MAX_LOG), ...(entry.next ? { followUp: entry.next } : {}) }
+  const { followUp, ...rest } = c
+  const keep = followUp && followUp > localISO(new Date(entry.at)) ? { followUp } : {}
+  return { ...rest, log: [entry, ...(c.log ?? [])].slice(0, MAX_LOG), ...keep }
 }
 
 export const removeInteraction = (c: Contact, id: string): Contact => ({ ...c, log: (c.log ?? []).filter((e) => e.id !== id) })
+
+/**
+ * Every follow-up still planned: the date set by hand, and each logged next date that no later entry has acted on (an
+ * entry logged on or after that day). Sorted, without repeats.
+ */
+export function plannedFollowUps(c: Contact): string[] {
+  const log = c.log ?? []
+  const dates = log.filter((e) => e.next && !log.some((f) => f.at > e.at && localISO(new Date(f.at)) >= e.next!)).map((e) => e.next!)
+  if (c.followUp) dates.push(c.followUp)
+  return [...new Set(dates)].sort()
+}
+
+/**
+ * The follow-up that stands today: the nearest planned date from today on. A date that has passed gives way to the next
+ * one; only when nothing is planned ahead does the latest passed date stay, as overdue.
+ */
+export function currentFollowUp(c: Contact, today: string = localISO()): string | undefined {
+  const dates = plannedFollowUps(c)
+  return dates.find((d) => d >= today) ?? dates.at(-1)
+}
+
+/**
+ * Moves the follow-up that stands today to another day, or removes it (`to` empty). The log entries that planned it
+ * are changed with it, so the next planned date, if any, takes its place only when this one is removed.
+ */
+export function setFollowUp(c: Contact, to: string, today: string = localISO()): Contact {
+  const from = currentFollowUp(c, today)
+  const { followUp, ...rest } = c
+  const log = c.log?.map((e) => {
+    if (!from || e.next !== from) return e
+    const { next: _n, ...bare } = e
+    return to ? { ...bare, next: to } : bare
+  })
+  const manual = !from || followUp === from ? to : followUp
+  return { ...rest, ...(log ? { log } : {}), ...(manual ? { followUp: manual } : {}) }
+}
 
 const BS = String.fromCharCode(92)                                       // a backslash, built so it can never be mistyped as a lone escape
 const esc = (s: string) => s.replace(/\\/g, BS + BS).replace(/\r?\n/g, BS + 'n').replace(/[;,]/g, (m) => BS + m)

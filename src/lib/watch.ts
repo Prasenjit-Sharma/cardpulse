@@ -1,4 +1,4 @@
-import { dueStatus, localISO } from './followups.ts'
+import { currentFollowUp, dueStatus, localISO } from './followups.ts'
 import type { Contact } from './types.ts'
 
 /**
@@ -11,7 +11,7 @@ export interface Figure { text: string; sub: string; tone: Tone }
 /** Where a contact stands. Named, so the state never rests on colour alone. */
 export type Phase = 'New' | 'Contacted' | 'Follow-up'
 export function phase(p: Contact): Phase {
-  if (p.followUp) return 'Follow-up'
+  if (currentFollowUp(p)) return 'Follow-up'
   if (p.log?.length) return 'Contacted'
   return 'New'
 }
@@ -34,7 +34,7 @@ export function shortDate(t: number, now: number = Date.now()): string {
 
 /** A row's figure: the follow-up when there is one, otherwise the day the card was scanned and the contact's phase. */
 export function rowFigure(p: Contact, createdAt: number, today: string, now: number = Date.now()): Figure {
-  return dueFigure(p.followUp, today) ?? { text: shortDate(createdAt, now), sub: phase(p), tone: 'muted' }
+  return dueFigure(currentFollowUp(p, today), today) ?? { text: shortDate(createdAt, now), sub: phase(p), tone: 'muted' }
 }
 
 /** Whether a time falls on the phone's own today. */

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { localISO } from '../lib/followups'
+import { currentFollowUp, localISO } from '../lib/followups'
 import { dueFigure, rowFigure } from '../lib/watch'
 import type { CardRecord } from '../lib/types'
 import Icon from './Icon'
@@ -24,10 +24,12 @@ export default function Insights({ cards, onBack, onContacts, onAccuracy, onOpen
     byCompany.set(key, cur)
   }
   const top = [...byCompany.values()].sort((a, b) => b.n - a.n).slice(0, 5)
-  const due = people.filter((x) => x.p.followUp && x.p.followUp <= today())
-  const upcoming = people.filter((x) => x.p.followUp && x.p.followUp > today()).sort((a, b) => a.p.followUp!.localeCompare(b.p.followUp!)).slice(0, 4)
+  const t0 = today()
+  const withDue = people.map((x) => ({ x, f: currentFollowUp(x.p, t0) })).filter((d) => !!d.f).sort((a, b) => a.f!.localeCompare(b.f!))
+  const due = withDue.filter((d) => d.f! <= t0).map((d) => d.x)
+  const upcoming = withDue.filter((d) => d.f! > t0).map((d) => d.x).slice(0, 4)
   const priority = people.filter((x) => x.p.priority).length
-  const noFollow = people.filter((x) => !x.p.followUp).length
+  const noFollow = people.length - withDue.length
 
   const insight = people.length === 0
     ? 'Scan a few cards and this page will start telling you who to talk to next.'
@@ -69,7 +71,7 @@ export default function Insights({ cards, onBack, onContacts, onAccuracy, onOpen
             {[...due, ...upcoming].slice(0, 5).map(({ c, p, i }, n) => {
               const key = `${c.id}:${i}`
               return (
-                <WatchRow key={key} card={c} p={p} i={n} figure={dueFigure(p.followUp, t) ?? rowFigure(p, c.createdAt, t)}
+                <WatchRow key={key} card={c} p={p} i={n} figure={dueFigure(currentFollowUp(p, t), t) ?? rowFigure(p, c.createdAt, t)}
                   open={openKey === key} onToggle={() => setOpenKey(openKey === key ? '' : key)} onOpen={() => onOpen(c.id, i)} />
               )
             })}

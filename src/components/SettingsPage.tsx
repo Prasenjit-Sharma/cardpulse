@@ -88,7 +88,7 @@ export default function SettingsPage({ cards, events, settings, install, sync, o
       title: 'Delete all data?',
       message: sync.enabled
         ? 'Every scanned card, contact and event on this phone, and on your other synced phones, is deleted. Your own digital cards and settings stay. This cannot be undone.'
-        : 'Every scanned card, contact and event on this phone is deleted. Your own digital cards and settings stay. This cannot be undone.',
+        : 'Every scanned card, contact and event on this phone is deleted. Your own digital cards and settings stay. Anything already synced to your account stays in the cloud and comes back when you sync again.',
       confirmLabel: 'Delete all', danger: true,
     })
     if (ok) onWipe()

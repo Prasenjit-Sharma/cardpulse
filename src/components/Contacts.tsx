@@ -12,7 +12,7 @@ import Picker from './Picker'
 import WatchRow from './WatchRow'
 import { confirmAsk } from './Dialog'
 import { eventState, featuredEvents, showEvent } from '../lib/eventname'
-import { localISO } from '../lib/followups'
+import { currentFollowUp, localISO } from '../lib/followups'
 import { rowFigure } from '../lib/watch'
 
 type Sort = 'recent' | 'name' | 'company'
@@ -62,7 +62,7 @@ export default function Contacts({ onScan, cards: allCards, events, activeEvent,
     .filter((r) => matchesQuery(r.p, tokens, eventName(r.card.eventId)))
     .filter((r) => hasAllTags(r.p, tag ? [tag] : []))
     .filter((r) => !company || companyKey(r.p.company) === companyKey(company))
-    .filter((r) => flt === 'all' || (flt === 'priority' ? !!r.p.priority : flt === 'attention' ? needsAttention(r.card, dupes.has(r.card.id)) : !!r.p.followUp))
+    .filter((r) => flt === 'all' || (flt === 'priority' ? !!r.p.priority : flt === 'attention' ? needsAttention(r.card, dupes.has(r.card.id)) : !!currentFollowUp(r.p)))
   if (sort === 'name') rows = [...rows].sort((a, b) => a.p.name.localeCompare(b.p.name))
   if (sort === 'company') rows = [...rows].sort((a, b) => a.p.company.localeCompare(b.p.company))
 

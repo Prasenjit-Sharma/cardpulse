@@ -1,10 +1,13 @@
 // CardPulse API — a thin, locked-down proxy in front of Gemini.
 // The app sends card photos; the prompt, schema and API key live here, so this endpoint cannot be used as a general Gemini gateway.
 import { buildRequest, GeminiError, MAX_IMAGES, parseResponse, type ImageInput, type Layout } from '../shared/extract-core.ts'
+import { BriefError, buildBriefRequest, parseBriefResponse, validBriefInput } from '../shared/brief-core.ts'
 
 export interface Env {
   GEMINI_API_KEY: string
   GEMINI_MODEL?: string
+  /** The model for Pulse Brief (Gemini with Google Search). Falls back to GEMINI_MODEL. */
+  BRIEF_MODEL?: string
   /** Comma-separated exact origins allowed to call this API, e.g. https://you.github.io */
   ALLOWED_ORIGINS?: string
   /** "1" also allows localhost and private-LAN origins (local development only). */
@@ -91,10 +94,10 @@ export type Quota = { kind: 'account'; userId: string } | { kind: 'over'; limit:
  * Supabase secret). Anything that goes wrong — no token, a bad or expired token, Supabase slow or down, the function
  * not deployed — is `none`, and the caller falls back to the per-IP limit: a quota outage never stops a scan.
  */
-export async function checkQuota(token: unknown, env: Env): Promise<Quota> {
+export async function checkQuota(token: unknown, env: Env, fn: 'consume_scan' | 'consume_brief' = 'consume_scan'): Promise<Quota> {
   if (typeof token !== 'string' || !token || token.length > 4096 || !env.SUPABASE_URL || !env.SUPABASE_PUBLISHABLE_KEY) return { kind: 'none' }
   try {
-    const res = await fetch(`${env.SUPABASE_URL.replace(/\/$/, '')}/rest/v1/rpc/consume_scan`, {
+    const res = await fetch(`${env.SUPABASE_URL.replace(/\/$/, '')}/rest/v1/rpc/${fn}`, {
       method: 'POST',
       headers: { apikey: env.SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: '{}',
@@ -112,6 +115,45 @@ export async function checkQuota(token: unknown, env: Env): Promise<Quota> {
 
 /** A read is normally 3 to 10 s. Past this the request is stuck upstream; fail fast so the app can retry. */
 const UPSTREAM_TIMEOUT_MS = 40_000
+const BRIEF_BODY_MAX = 16_384
+
+/** Pulse Brief: a web-searched brief on one contact. Signed-in only, with its own daily limit; nothing is stored here. */
+async function brief(req: Request, env: Env, origin: string | null): Promise<Response> {
+  if (!originAllowed(origin, env)) return fail(403, 'forbidden_origin', 'This origin is not allowed.', null)
+  if (!env.GEMINI_API_KEY) return fail(500, 'not_configured', 'The service is not configured.', origin)
+  if (Number(req.headers.get('content-length') ?? 0) > BRIEF_BODY_MAX) return fail(413, 'too_large', 'Request too large.', origin)
+  let body: { contact?: unknown; auth?: unknown }
+  try { body = await req.json() } catch { return fail(400, 'bad_request', 'Invalid request.', origin) }
+  const input = validBriefInput(body?.contact)
+  if (!input) return fail(400, 'bad_contact', "Add the contact's name or company first.", origin)
+  if (typeof body.auth !== 'string' || !body.auth) return fail(401, 'sign_in', 'Sign in to use Pulse Brief.', origin)
+
+  // Each fresh brief is a paid Google search: counted per account. A quota outage falls back to the per-IP brake.
+  const quota = await checkQuota(body.auth, env, 'consume_brief')
+  if (quota.kind === 'over') return fail(429, 'daily_limit', `You've used today's ${quota.limit} fresh searches. Saved briefs still open. Resets at 5:30 am.`, origin)
+  const wait = checkRate(quota.kind === 'account' ? `brief:${quota.userId}` : `brief-ip:${req.headers.get('cf-connecting-ip') ?? 'local'}`)
+  if (wait) return fail(429, 'rate_limited', `Too many briefs. Try again in ${Math.ceil(wait / 60)} min.`, origin, { 'Retry-After': String(wait) })
+
+  const model = env.BRIEF_MODEL || env.GEMINI_MODEL || DEFAULT_MODEL
+  let upstream: Response
+  try {
+    upstream = await fetch(`${env.GEMINI_BASE ?? UPSTREAM}/models/${encodeURIComponent(model)}:generateContent`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
+      body: JSON.stringify(buildBriefRequest(input)),
+      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+    })
+  } catch {
+    return fail(502, 'upstream_unreachable', 'The service is unavailable. Try again.', origin)
+  }
+  if (upstream.status === 429) return fail(429, 'busy', 'The service is busy. Try again in a moment.', origin, { 'Retry-After': '20' })
+  if (!upstream.ok) return fail(502, 'upstream_error', "Couldn't make the brief. Try again.", origin)
+  try {
+    return json({ ...parseBriefResponse(await upstream.json()), model }, 200, origin)
+  } catch (e) {
+    return fail(502, 'bad_output', e instanceof BriefError ? "Couldn't make the brief. Try again." : 'Unexpected response.', origin)
+  }
+}
 
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
@@ -128,6 +170,7 @@ export default {
 
     if (url.pathname === '/health' && req.method === 'GET') return json({ ok: true }, 200, originAllowed(origin, env) ? origin : null)
 
+    if (url.pathname === '/v1/brief' && req.method === 'POST') return brief(req, env, origin)
     if (url.pathname !== '/v1/extract' || req.method !== 'POST') return fail(404, 'not_found', 'Not found', null)
     if (!originAllowed(origin, env)) return fail(403, 'forbidden_origin', 'This origin is not allowed.', null)
     if (!env.GEMINI_API_KEY) return fail(500, 'not_configured', 'The reading service is not configured.', origin)

@@ -1,3 +1,4 @@
+import type { Brief } from './brief.ts'
 import type { Interaction } from './followups.ts'
 import type { PhoneKind } from './phones.ts'
 
@@ -24,6 +25,8 @@ export interface Contact {
   mainPhone?: string
   /** Calls, meetings and messages with this person, newest first. Kept in the app only; never exported to the phone's contacts. */
   log?: Interaction[]
+  /** Pulse Brief: researched on the web for this user. Kept on this contact only (synced to their phones), never exported. */
+  brief?: Brief
 }
 
 export type Status = 'pending' | 'running' | 'done' | 'error'

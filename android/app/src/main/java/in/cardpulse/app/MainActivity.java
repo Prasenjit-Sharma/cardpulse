@@ -8,6 +8,7 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         // the app's own plugins are registered before the bridge starts
         registerPlugin(SaveContactPlugin.class);
+        registerPlugin(WhatsAppCardPlugin.class);
         super.onCreate(savedInstanceState);
     }
 }

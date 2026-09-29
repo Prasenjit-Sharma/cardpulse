@@ -4,6 +4,7 @@ import { log } from '../lib/debug'
 import { detectCard, isStable, type Detection } from '../lib/detect'
 import { nextGap, smooth } from '../lib/pace'
 import { useBackClose } from '../lib/useBackClose'
+import { decode } from '../lib/image'
 import { growQuad, quadSize, warpQuad, type Pt, type Quad } from '../lib/warp'
 import { useObjectUrl } from '../lib/useObjectUrl'
 import Icon from './Icon'
@@ -24,6 +25,49 @@ const PAD = 0.03            // breathing room around a detected card
 interface Shot { id: number; files: File[]; url: string }
 
 interface VideoDet extends Detection { fw: number; fh: number; progress: number } // detection in VIDEO pixels
+
+const SOURCE_MAX = 3200     // longest side a card is flattened from: a full video frame, or a still photo shrunk to this
+
+/** Flattens the card inside `quad` (in `source` pixels) into a canvas at most `cap` pixels on its long side. */
+function flatten(source: CanvasImageSource, sw: number, sh: number, quad: Quad, cap: number): HTMLCanvasElement {
+  const k = Math.min(1, SOURCE_MAX / Math.max(sw, sh))
+  const fw = Math.round(sw * k), fh = Math.round(sh * k)
+  const src = document.createElement('canvas'); src.width = fw; src.height = fh
+  const sctx = src.getContext('2d', { willReadFrequently: true })!
+  sctx.drawImage(source, 0, 0, fw, fh)
+  const q = growQuad(quad.map(([x, y]) => [x * k, y * k] as Pt) as Quad, PAD * 2)
+  const size = quadSize(q)
+  const s = Math.min(1, cap / Math.max(size.w, size.h))
+  const c = document.createElement('canvas')
+  c.width = Math.max(1, Math.round(size.w * s)); c.height = Math.max(1, Math.round(size.h * s))
+  c.getContext('2d')!.putImageData(new ImageData(warpQuad(sctx.getImageData(0, 0, fw, fh).data, fw, fh, q, c.width, c.height), c.width, c.height), 0, 0)
+  return c
+}
+
+interface Still { cap: ImageCapture; settings?: PhotoSettings }
+
+/**
+ * A video frame is small and soft: a card held at a comfortable distance comes out about 700 pixels wide. A still photo
+ * from the same camera has several times the detail, so the card is found again in it and flattened from there. Null
+ * when the photo cannot be taken or the card is not clearly the same one the video saw; the caller then uses the frame.
+ */
+async function flattenFromStill(still: Still, seen: VideoDet, cap: number): Promise<HTMLCanvasElement | null> {
+  const t0 = performance.now()
+  const blob = await still.cap.takePhoto(still.settings).catch(() => still.cap.takePhoto())
+  const { source, width, height, release } = await decode(blob)
+  try {
+    const k = ANALYSE_WIDTH / width
+    const a = document.createElement('canvas'); a.width = ANALYSE_WIDTH; a.height = Math.max(1, Math.round(height * k))
+    const actx = a.getContext('2d', { willReadFrequently: true })!
+    actx.drawImage(source, 0, 0, a.width, a.height)
+    const d = detectCard(actx.getImageData(0, 0, a.width, a.height).data, a.width, a.height)
+    const vs = quadSize(seen.quad), ss = d ? quadSize(d.quad) : null
+    const same = !!ss && Math.abs(Math.log((vs.w / vs.h) / (ss.w / ss.h))) < 0.15    // the same card shape as in the video
+    log(`still ${width}x${height} in ${Math.round(performance.now() - t0)}ms, card ${!d ? 'not found' : same ? 'found' : 'different shape'}`)
+    if (!d || !same) return null
+    return flatten(source, width, height, d.quad.map(([x, y]) => [x / k, y / k] as Pt) as Quad, cap)
+  } finally { release() }
+}
 
 /**
  * Full-screen scanner. Photos are collected in a tray of up to six; nothing is sent for reading until the user taps
@@ -47,6 +91,8 @@ export default function Camera({ onCard, onSubmit, onClose, onGallery, onQr, eve
   const video = useRef<HTMLVideoElement>(null)
   const view = useRef<HTMLDivElement>(null)
   const track = useRef<MediaStreamTrack | null>(null)
+  const still = useRef<Still | null>(null)
+  const busy = useRef(false)                                             // a still photo is being taken
   const [error, setError] = useState('')
   const [tray, setTray] = useState<Shot[]>([])
   const trayRef = useRef<Shot[]>([])
@@ -90,6 +136,17 @@ export default function Camera({ onCard, onSubmit, onClose, onGallery, onQr, eve
         setTorchOk(!!(t?.getCapabilities?.() as { torch?: boolean } | undefined)?.torch)
         const st = t?.getSettings()
         log(`camera stream ${st?.width}x${st?.height} facing=${st?.facingMode ?? '?'}`)
+        if (t && typeof ImageCapture !== 'undefined') {
+          try {
+            const ic = new ImageCapture(t)
+            still.current = { cap: ic }
+            // no flash for the still: the torch button is the user's own choice of light
+            void ic.getPhotoCapabilities().then((pc) => {
+              if (pc.fillLightMode?.includes('off')) still.current = { cap: ic, settings: { fillLightMode: 'off' } }
+              log(`photo up to ${pc.imageWidth?.max}x${pc.imageHeight?.max}`)
+            }).catch(() => {})
+          } catch { still.current = null }
+        }
         if (video.current) { video.current.srcObject = s; void video.current.play() }
       })
       .catch((e: Error) => { log(`camera error ${e.name}: ${e.message}`); setError(e.name === 'NotAllowedError' ? 'Camera permission was denied. Allow it in the browser site settings and try again.' : `Camera unavailable: ${e.message}`) })
@@ -219,39 +276,37 @@ export default function Camera({ onCard, onSubmit, onClose, onGallery, onQr, eve
     const v = video.current
     log(`shutter, video=${v?.videoWidth}x${v?.videoHeight} detected=${!!(d ?? detRef.current)}`)
     if (!v?.videoWidth) { setError('Camera not ready yet. Wait a second and try again.'); return }
-    const c = document.createElement('canvas')
-    const ctx = c.getContext('2d')!
+    if (busy.current) return
     const found = mode !== 'many' && auto ? (d ?? detRef.current) : null
     const cap = mode === 'many' ? 2560 : 1800
-    if (found) {
-      // Flatten the card using its four corners: fixes tilt AND perspective. Work from a capped-size copy of the frame.
-      const k = Math.min(1, 2200 / Math.max(v.videoWidth, v.videoHeight))
-      const fw = Math.round(v.videoWidth * k), fh = Math.round(v.videoHeight * k)
-      const src = document.createElement('canvas'); src.width = fw; src.height = fh
-      const sctx = src.getContext('2d', { willReadFrequently: true })!
-      sctx.drawImage(v, 0, 0, fw, fh)
-      const q = growQuad(found.quad.map(([x, y]) => [x * k, y * k] as Pt) as Quad, PAD * 2)
-      const size = quadSize(q)
-      const s = Math.min(1, cap / Math.max(size.w, size.h))
-      c.width = Math.max(1, Math.round(size.w * s)); c.height = Math.max(1, Math.round(size.h * s))
-      const flat = warpQuad(sctx.getImageData(0, 0, fw, fh).data, fw, fh, q, c.width, c.height)
-      ctx.putImageData(new ImageData(flat, c.width, c.height), 0, 0)
-    } else {
-      const box = view.current?.getBoundingClientRect()
-      const r = box && box.width && box.height
-        ? cropRect({ w: box.width, h: box.height }, { w: v.videoWidth, h: v.videoHeight }, mode === 'many' ? undefined : CARD_GUIDE)
-        : { x: 0, y: 0, w: v.videoWidth, h: v.videoHeight }
-      const s = Math.min(1, cap / Math.max(r.w, r.h))
-      c.width = Math.max(1, Math.round(r.w * s)); c.height = Math.max(1, Math.round(r.h * s))
-      ctx.drawImage(v, r.x, r.y, r.w, r.h, 0, 0, c.width, c.height)
-    }
-    c.toBlob((b) => {
+    const deliver = (c: HTMLCanvasElement) => c.toBlob((b) => {
       log(`captured ${c.width}x${c.height}, blob=${b ? b.size : 'null'}`)
       if (!b) return
       const file = new File([b], `card-${Date.now()}.jpg`, { type: 'image/jpeg' })
       if (sidedOnly || !sided) return finish([file])
       if (front.current) { const f = front.current; setFront(null); finish([f, file]) } else setFront(file)
     }, 'image/jpeg', 0.92)
+    // Flatten the card using its four corners: fixes tilt AND perspective. The frame is copied now, before the phone moves.
+    const fromFrame = (q: Quad) => flatten(v, v.videoWidth, v.videoHeight, q, cap)
+    if (found && still.current) {
+      busy.current = true
+      const frame = fromFrame(found.quad)
+      void flattenFromStill(still.current, found, cap)
+        .catch((e: Error) => { log(`still failed ${e.name}: ${e.message}`); return null })
+        .then((c) => deliver(c ?? frame))
+        .finally(() => { busy.current = false })
+      return
+    }
+    if (found) return deliver(fromFrame(found.quad))
+    const box = view.current?.getBoundingClientRect()
+    const r = box && box.width && box.height
+      ? cropRect({ w: box.width, h: box.height }, { w: v.videoWidth, h: v.videoHeight }, mode === 'many' ? undefined : CARD_GUIDE)
+      : { x: 0, y: 0, w: v.videoWidth, h: v.videoHeight }
+    const s = Math.min(1, cap / Math.max(r.w, r.h))
+    const c = document.createElement('canvas')
+    c.width = Math.max(1, Math.round(r.w * s)); c.height = Math.max(1, Math.round(r.h * s))
+    c.getContext('2d')!.drawImage(v, r.x, r.y, r.w, r.h, 0, 0, c.width, c.height)
+    deliver(c)
   }
   shootRef.current = shoot
 

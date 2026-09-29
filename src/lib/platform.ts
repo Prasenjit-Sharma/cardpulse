@@ -45,6 +45,10 @@ export interface Native {
   /** Opens the phone's own new-contact screen, filled in; the user picks the account (Google, Outlook, the phone) and saves. */
   saveContact?(f: ContactFields): Promise<void>
   setStatusBar(icons: 'light' | 'dark'): Promise<void>
+  /** WhatsApp apps installed: 'com.whatsapp', 'com.whatsapp.w4b'. */
+  waApps?(): Promise<string[]>
+  /** Opens the WhatsApp chat with this number (digits) with the file ready to send. Rejects when WhatsApp refuses. */
+  waSend?(o: { uri: string; jid: string; pkg: string }): Promise<void>
 }
 let native: Native | null = null
 export const setNative = (n: Native): void => { native = n }
