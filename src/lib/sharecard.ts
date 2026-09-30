@@ -27,12 +27,17 @@ export interface SendDeps {
   fallback(): Promise<void>
 }
 
+/** What "Share my card" sends: the card picture, the contact details (vCard), or both. */
+export type CardSend = 'picture' | 'contact' | 'both'
+export const CARD_SENDS: CardSend[] = ['picture', 'contact', 'both']
+
 /**
- * Puts the card picture and the vCard into the contact's chat: the picture to look at, the vCard to save. No text goes
- * with them (text beside a vCard breaks it in WhatsApp). A picture that cannot be drawn is left out. With both WhatsApp
- * and WhatsApp Business, the user picks once. Anything that stops the hand-off falls back to the share sheet.
+ * Puts the chosen files into the contact's chat: the card picture to look at, the vCard to save. No text goes with them
+ * (text beside a vCard breaks it in WhatsApp). With both, a picture that cannot be drawn is left out; asked for alone,
+ * the share sheet is tried instead. With both WhatsApp and WhatsApp Business, the user picks once. Anything that stops
+ * the hand-off falls back to the share sheet.
  */
-export async function sendCardTo(c: Contact, card: MyCard, deps: SendDeps): Promise<'sent' | 'cancelled' | 'fallback'> {
+export async function sendCardTo(c: Contact, card: MyCard, deps: SendDeps, what: CardSend = 'both'): Promise<'sent' | 'cancelled' | 'fallback'> {
   const jid = waJid(c), n = deps.native
   const fallback = async () => { await deps.fallback(); return 'fallback' as const }
   if (!jid || !n?.waApps || !n.waSend) return fallback()
@@ -46,9 +51,10 @@ export async function sendCardTo(c: Contact, card: MyCard, deps: SendDeps): Prom
     deps.remember(app)
   }
   try {
-    const png = await deps.picture().then((b) => n.writeCache(cacheName(cardFileName(card, 'png')), b)).catch(() => null)
-    const vcf = await n.writeCache(cacheName(cardFileName(card, 'vcf')), new Blob([buildCardVcf(card).text], { type: 'text/x-vcard' }))
-    await n.waSend({ uris: png ? [png, vcf] : [vcf], jid, pkg: app })
+    const png = what === 'contact' ? null : await deps.picture().then((b) => n.writeCache(cacheName(cardFileName(card, 'png')), b)).catch(() => null)
+    if (what === 'picture' && !png) return fallback()
+    const vcf = what === 'picture' ? null : await n.writeCache(cacheName(cardFileName(card, 'vcf')), new Blob([buildCardVcf(card).text], { type: 'text/x-vcard' }))
+    await n.waSend({ uris: [png, vcf].filter((u): u is string => !!u), jid, pkg: app })
     return 'sent'
   } catch { return fallback() }
 }

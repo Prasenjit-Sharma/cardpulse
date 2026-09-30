@@ -20,6 +20,19 @@ test('one WhatsApp: the card picture and the vCard go straight into the chat tog
   assert.equal(await sendCardTo(person(), card, d), 'sent')
   assert.deepEqual(calls.sent, [{ uris: ['file:///cache/Prasenjit-Sharma-card.png', 'file:///cache/Prasenjit-Sharma-card.vcf'], jid: '919974033339', pkg: 'com.whatsapp' }])
 })
+test('what to send: the picture alone, or the contact details alone', async () => {
+  let x = deps()
+  assert.equal(await sendCardTo(person(), card, x.d, 'picture'), 'sent')
+  assert.deepEqual(x.calls.sent[0].uris, ['file:///cache/Prasenjit-Sharma-card.png'])
+  x = deps()
+  assert.equal(await sendCardTo(person(), card, x.d, 'contact'), 'sent')
+  assert.deepEqual(x.calls.sent[0].uris, ['file:///cache/Prasenjit-Sharma-card.vcf'])
+})
+test('the picture alone, when it cannot be drawn, goes to the share sheet instead of sending nothing', async () => {
+  const { calls, d } = deps({ picture: async () => { throw new Error('canvas') } })
+  assert.equal(await sendCardTo(person(), card, d, 'picture'), 'fallback')
+  assert.equal(calls.sent.length, 0)
+})
 test('a picture that cannot be drawn still sends the vCard', async () => {
   const { calls, d } = deps({ picture: async () => { throw new Error('canvas') } })
   assert.equal(await sendCardTo(person(), card, d), 'sent')

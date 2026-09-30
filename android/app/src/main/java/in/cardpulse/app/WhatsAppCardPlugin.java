@@ -52,7 +52,7 @@ public class WhatsAppCardPlugin extends Plugin {
         Intent intent;
         if (content.size() == 1) {
             intent = new Intent(Intent.ACTION_SEND);
-            intent.setType("text/x-vcard");
+            intent.setType(content.get(0).getPath().endsWith(".png") ? "image/png" : "text/x-vcard");
             intent.putExtra(Intent.EXTRA_STREAM, content.get(0));
         } else {
             intent = new Intent(Intent.ACTION_SEND_MULTIPLE);

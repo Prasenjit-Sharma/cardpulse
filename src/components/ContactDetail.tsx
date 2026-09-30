@@ -19,10 +19,10 @@ import DateChip from './DateChip'
 import { showEvent } from '../lib/eventname'
 import { dueFigure, phase } from '../lib/watch'
 import { callNumber, canWhatsApp, kindLabel, PHONE_KINDS, phoneKey, prunePhoneMeta, rankedPhones, whatsAppNumber } from '../lib/phones'
-import { getNative, isApp, shareNav } from '../lib/platform'
+import { getNative, isApp, saveBlob, shareNav } from '../lib/platform'
 import { cardPng } from '../lib/cardpng'
 import { addLink, canBrief, freshBrief, type Brief } from '../lib/brief'
-import { sendCardTo, type WaApp } from '../lib/sharecard'
+import { CARD_SENDS, sendCardTo, type CardSend, type WaApp } from '../lib/sharecard'
 import { buildCardVcf } from '../lib/cardvcf'
 import { cardFileName } from '../lib/cardshare'
 import { noteShare } from '../lib/sharelog'
@@ -31,6 +31,12 @@ import BriefPage from './BriefPage'
 
 const SUGGESTED_TAGS = ['Customer', 'Supplier', 'Partner', 'Investor', 'Hot lead']
 const WA_KEY = 'cardpulse.waApp'                // WhatsApp or WhatsApp Business, when the phone has both
+const SEND_KEY = 'cardpulse.cardSend'           // what Share my card sent last time: picture, contact details or both
+const SEND_OPTIONS: { what: CardSend; icon: 'image' | 'useradd' | 'card'; label: string; hint: string }[] = [
+  { what: 'picture', icon: 'image', label: 'Digital card', hint: 'Your card as a picture' },
+  { what: 'contact', icon: 'useradd', label: 'Contact details', hint: 'A contact file they can save' },
+  { what: 'both', icon: 'card', label: 'Both', hint: 'The picture and the contact file' },
+]
 const WA_LABEL: Record<WaApp, string> = { 'com.whatsapp': 'WhatsApp', 'com.whatsapp.w4b': 'WhatsApp Business' }
 const withProtocol = (w: string) => (/^https?:\/\//i.test(w) ? w : `https://${w}`)
 const when = (t: number) => new Date(t).toLocaleString('en-IN', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
@@ -133,6 +139,7 @@ export default function ContactDetail({ card, index, events, dupes, myCards, onC
   const [flash, setFlash] = useState('')
   const [briefOpen, setBriefOpen] = useState(false)
   const [cardPick, setCardPick] = useState(false)
+  const [sendAsk, setSendAsk] = useState<MyCard | null>(null)     // the card chosen, waiting for what to send
   const [appAsk, setAppAsk] = useState<{ apps: WaApp[]; resolve: (a: WaApp | null) => void } | null>(null)
   const stopRef = useRef<(() => void) | null>(null)
   // a brief can finish after edits or after this page closed: save it against the latest copy, or through the app
@@ -197,35 +204,42 @@ export default function ContactDetail({ card, index, events, dupes, myCards, onC
     if (p?.brief && !freshBrief(p)) { const { brief: _old, ...rest } = p; replace(rest) }
   }, [idx])   // eslint-disable-line react-hooks/exhaustive-deps
 
-  /** "Share my card": the chosen card's vCard into this person's WhatsApp chat, or the share sheet. */
-  const shareCard = async (mc: MyCard) => {
-    setCardPick(false)
+  /** "Share my card": the chosen card's picture, contact details or both, into this person's WhatsApp chat or the share sheet. */
+  const shareCard = async (mc: MyCard, what: CardSend) => {
+    setSendAsk(null)
+    try { localStorage.setItem(SEND_KEY, what) } catch { /* private mode: not remembered */ }
     if (!c) return
     let result = ''
+    const vcfFile = () => new File([buildCardVcf(mc).text], cardFileName(mc, 'vcf'), { type: 'text/x-vcard' })
+    const pngFile = () => cardPng(mc).then((b) => new File([b], cardFileName(mc, 'png'), { type: 'image/png' })).catch(() => null)
     const out = await sendCardTo(c, mc, {
       native: getNative(),
       remembered: () => { try { return (localStorage.getItem(WA_KEY) as WaApp | null) ?? undefined } catch { return undefined } },
       remember: (a) => { try { localStorage.setItem(WA_KEY, a) } catch { /* private mode: asked again next time */ } },
       ask: (apps) => new Promise((resolve) => setAppAsk({ apps, resolve })),
       picture: () => cardPng(mc),
-      // the share sheet with the picture and the vCard; where two files cannot be shared, the vCard alone as before
+      // the share sheet with the chosen files; where they cannot be shared as files, the vCard's usual path (or the picture saved)
       fallback: async () => {
-        const vcf = new File([buildCardVcf(mc).text], cardFileName(mc, 'vcf'), { type: 'text/x-vcard' })
-        const png = await cardPng(mc).then((b) => new File([b], cardFileName(mc, 'png'), { type: 'image/png' })).catch(() => null)
+        const png = what === 'contact' ? null : await pngFile()
+        const files = [png, what === 'picture' ? null : vcfFile()].filter((f): f is File => !!f)
         const nav = shareNav()
-        if (png && typeof nav.share === 'function' && nav.canShare?.({ files: [png, vcf] })) {
-          try { await nav.share({ files: [png, vcf], title: mc.name }); result = 'shared'; return }
+        if (files.length && typeof nav.share === 'function' && nav.canShare?.({ files })) {
+          try { await nav.share({ files, title: mc.name }); result = 'shared'; return }
           catch (e) { if ((e as Error)?.name === 'AbortError') { result = 'cancelled'; return } }
         }
+        if (what === 'picture') { if (png) { await saveBlob(png.name, png); result = 'saved' } else result = 'failed'; return }
         result = (await shareVcf(cardFileName(mc, 'vcf'), buildCardVcf(mc).text, mc.name, undefined, browserEnv(log), false)).result
       },
-    }).catch(() => { setFlash('Could not share. Try again.'); return 'cancelled' as const })
-    if (out === 'sent' || (out === 'fallback' && result !== 'cancelled')) noteShare(mc.id, 'file')
+    }, what).catch(() => { setFlash('Could not share. Try again.'); return 'cancelled' as const })
+    if (out === 'sent' || (out === 'fallback' && result !== 'cancelled' && result !== 'failed')) noteShare(mc.id, what === 'picture' ? 'picture' : 'file')
     if (result === 'downloaded') setFlash('Saved as a file. Open it to add the contact.')
+    if (result === 'saved') setFlash('Saved as a picture.')
+    if (result === 'failed') setFlash('Could not draw the card. Try again.')
   }
+  const lastSend = (): CardSend => { try { const v = localStorage.getItem(SEND_KEY) as CardSend | null; return v && CARD_SENDS.includes(v) ? v : 'both' } catch { return 'both' } }
   const onShareCard = () => {
     if (!myCards.length) { setFlash('Make your card first.'); onMakeCard(); return }
-    if (myCards.length === 1) void shareCard(myCards[0]!)
+    if (myCards.length === 1) setSendAsk(myCards[0]!)
     else setCardPick(true)
   }
   const answerApp = (a: WaApp | null) => { appAsk?.resolve(a); setAppAsk(null) }
@@ -378,7 +392,13 @@ export default function ContactDetail({ card, index, events, dupes, myCards, onC
               onSave={(b) => saveBrief(idx, c.name, b)} onAddLink={(l) => replace(addLink(c, l))} />
           )}
           <Sheet open={cardPick} onClose={() => setCardPick(false)} title="Which card?">
-            {myCards.map((mc) => <SheetItem key={mc.id} icon="card" label={mc.label || mc.name || 'My card'} hint={[mc.name, mc.company].filter(Boolean).join(' · ')} onClick={() => void shareCard(mc)} />)}
+            {myCards.map((mc) => <SheetItem key={mc.id} icon="card" label={mc.label || mc.name || 'My card'} hint={[mc.name, mc.company].filter(Boolean).join(' · ')} onClick={() => { setCardPick(false); setSendAsk(mc) }} />)}
+          </Sheet>
+          <Sheet open={!!sendAsk} onClose={() => setSendAsk(null)} title={`Send to ${c.name.trim().split(/\s+/)[0] || c.company || 'this contact'}`}>
+            {SEND_OPTIONS.map((o) => (
+              <SheetItem key={o.what} icon={o.icon} label={o.label} hint={o.hint} checked={o.what === lastSend()}
+                onClick={() => { if (sendAsk) void shareCard(sendAsk, o.what) }} />
+            ))}
           </Sheet>
           <Sheet open={!!appAsk} onClose={() => answerApp(null)} title="Send with">
             {(appAsk?.apps ?? []).map((a) => <SheetItem key={a} icon="chat" label={WA_LABEL[a]} hint="Remembered for next time" onClick={() => answerApp(a)} />)}
