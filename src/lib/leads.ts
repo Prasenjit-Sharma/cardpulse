@@ -1,5 +1,6 @@
 import { supabase } from './supabase.ts'
 import type { Contact, EventRec } from './types.ts'
+import { readPack, type Pack } from './visitorpack.ts'
 
 export interface Lead {
   id: string; card_id: string; event_id: string | null; event_name: string | null
@@ -18,13 +19,22 @@ export function leadToContact(lead: Lead, localEvents: EventRec[]): { contact: C
   return matched ? { contact, eventId: matched.id } : { contact }
 }
 
-export async function submitLead(cardId: string, eventId: string | null, eventName: string | null, fields: { name: string; phone: string; email: string; company: string }): Promise<void> {
+/**
+ * Sends a visitor's details, answered with the event's visitor pack (null when there is none). A server without
+ * migration 0004 has no submit_lead_pack: the details still go through the older submit_lead, with no pack.
+ */
+export async function submitLead(cardId: string, eventId: string | null, eventName: string | null, fields: { name: string; phone: string; email: string; company: string }): Promise<Pack | null> {
   if (!supabase) throw new Error('Cloud features are not configured.')
-  const { error } = await supabase.rpc('submit_lead', {
+  const args = {
     p_card_id: cardId, p_event_id: eventId, p_event_name: eventName,
     p_name: fields.name.trim(), p_phone: fields.phone.trim() || null, p_email: fields.email.trim() || null, p_company: fields.company.trim() || null,
-  })
-  if (error) throw error
+  }
+  const { data, error } = await supabase.rpc('submit_lead_pack', args)
+  if (!error) return readPack((data as { pack?: unknown } | null)?.pack)
+  if (!/PGRST202|could not find the function|does not exist/i.test(`${error.code ?? ''} ${error.message}`)) throw error
+  const { error: old } = await supabase.rpc('submit_lead', args)
+  if (old) throw old
+  return null
 }
 
 export interface PulledLead { leadId: string; contact: Contact; eventId?: string }

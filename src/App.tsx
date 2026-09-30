@@ -24,6 +24,8 @@ import StallMode from './components/StallMode'
 import QrScanner from './components/QrScanner'
 import QrResult from './components/QrResult'
 import { eventState, openingEvent, showEvent } from './lib/eventname'
+import { deletePack } from './lib/visitorpack'
+import PackPage from './components/PackPage'
 import { localISO } from './lib/followups'
 import { getNative, onNotice, statusBarIcons } from './lib/platform'
 import { deleteMyCard, emptyCard, listMyCards, MAX_CARDS, planCardRestore, putMyCard, type MyCard } from './lib/mycards'
@@ -98,6 +100,7 @@ export default function App() {
   const [editingCard, setEditingCard] = useState<string | null>(null)      // a card id, or 'new'
   const [sharingCard, setSharingCard] = useState<string | null>(null)
   const [stallCard, setStallCard] = useState<string | null>(null)
+  const [packEvent, setPackEvent] = useState<string | null>(null)   // the event whose visitor pack is being edited
   const newCard = useMemo(() => (editingCard === 'new' ? emptyCard(settings.accent) : null), [editingCard])   // eslint-disable-line react-hooks/exhaustive-deps
   const editorCard = editingCard === 'new' ? newCard : myCards.find((c) => c.id === editingCard)
   const refreshMyCards = useCallback(async () => setMyCards(await listMyCards()), [])
@@ -386,6 +389,7 @@ export default function App() {
     setEvents(next); saveEvents(next)
     if (activeEvent === id) setActiveEvent('')
     await Promise.all(cards.filter((c) => c.eventId === id).map((c) => putCard({ ...c, eventId: undefined })))
+    if (userId && navigator.onLine) void deletePack(id).catch(() => {})     // best effort: its files and link go too
     await refresh()
   }
   const moveToEvent = async (ids: string[], eventId: string) => {
@@ -511,7 +515,7 @@ export default function App() {
           <Contacts onScan={scan} cards={cards} events={events} activeEvent={activeEvent} onSelectEvent={setActiveEvent} dupes={dupes} initialFilter={contactsFilter} initialCompany={contactsCompany} onTogglePriority={(id, idx) => void togglePriority(id, idx)}
             onOpen={(id, idx) => setOpen({ id, idx })} onRetryFailed={retryFailed} onUpload={(f) => void addFiles(f)} onMoveToEvent={moveToEvent} onDeleteContacts={deleteContacts} />
         ) : tab === 'exhibition' ? (
-          <Exhibition cards={cards} events={events} activeEvent={activeEvent} onNew={() => setEventSheet({})} onEdit={(id) => setEventSheet({ id })} onDelete={removeEvent}
+          <Exhibition cards={cards} events={events} activeEvent={activeEvent} onNew={() => setEventSheet({})} onEdit={(id) => setEventSheet({ id })} onDelete={removeEvent} onPack={setPackEvent}
             onScanHere={scanHere} onView={(id) => { setActiveEvent(id); goto('contacts') }}
             onOpenContact={(id, idx) => setOpen({ id, idx })} onTogglePriority={(id, idx) => void togglePriority(id, idx)} />
         ) : tab === 'insights' ? (
@@ -546,7 +550,10 @@ export default function App() {
         <CardShare card={myCards.find((c) => c.id === sharingCard)!} onClose={() => setSharingCard(null)} onStall={() => setStallCard(sharingCard)} />
       )}
       {stallCard && myCards.find((c) => c.id === stallCard) && (
-        <StallMode card={myCards.find((c) => c.id === stallCard)!} events={events} initialEventId={activeEvent || undefined} onClose={() => setStallCard(null)} />
+        <StallMode card={myCards.find((c) => c.id === stallCard)!} events={events} initialEventId={activeEvent || undefined} onClose={() => setStallCard(null)} onPack={setPackEvent} />
+      )}
+      {packEvent && (
+        <PackPage eventId={packEvent} eventName={showEvent(events.find((e) => e.id === packEvent)?.name ?? '')} userId={userId} online={online} onClose={() => setPackEvent(null)} />
       )}
       {camOpen && <Camera eventLabel={eventLabel} onQr={() => { setCamOpen(false); setQrOpen(true) }} onSubmit={(cards) => { void addBatch(cards); goto('contacts') }} onGallery={(fs) => { void addFiles(fs) }} onClose={() => setCamOpen(false)} />}
       {qrOpen && (

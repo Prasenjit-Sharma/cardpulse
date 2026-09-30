@@ -1,0 +1,30 @@
+/* ---------- Visitor pack: the app's "What visitors get" page and the public page's "More from…" ---------- */
+.pack-top-space { width: 40px; flex: none }
+.pack-intro { margin: 0 2px 4px; text-align: center; font-size: var(--t-s) }
+.pack-note-input { width: 100%; margin: 10px 0 4px; resize: vertical; min-height: 76px }
+.pack-limit { margin: 6px 2px 0; font-size: var(--t-xs) }
+.pack-link { padding: 10px 0 0 }
+.pack-save { margin-top: 18px; min-height: 50px }
+
+/* a file: type badge, name with type and size, and an action at the right edge */
+.pack-rows { display: flex; flex-direction: column }
+.pack-rows.edit { margin: 0 -16px }
+.pack-row { display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 8px 16px; border-bottom: 1px solid var(--rule-soft); color: var(--ink); text-decoration: none }
+.pack-row .badge { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: var(--r-field); background: var(--board-2); color: var(--ink-2) }
+.pack-row .grow { display: flex; flex-direction: column; min-width: 0 }
+.pack-row b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.pack-row small { color: var(--ink-3); font-size: var(--t-xs) }
+.pack-row > svg { flex: none; color: var(--ink-3) }
+.pack-rows.edit .log-add { margin: 0; width: 100% }
+
+/* the public page */
+.pack-view { display: flex; flex-direction: column; gap: 8px; margin-top: 6px }
+.pack-view .section { margin: 6px 0 0 }
+.pack-note { margin: 0; color: var(--ink-2); line-height: 1.5 }
+.pack-view .pack-rows { border-radius: var(--r-sleeve); background: var(--sleeve); box-shadow: var(--seat); overflow: hidden }
+.pack-view .pack-row:last-child { border-bottom: 0 }
+.pack-view .pack-row:active { background: var(--board-2) }
+
+/* opens over the stall's Show QR sheet too */
+.brief-page.pack-page { z-index: 35 }
+.pack-entry { align-self: flex-start; gap: 6px; font-size: var(--t-s) }

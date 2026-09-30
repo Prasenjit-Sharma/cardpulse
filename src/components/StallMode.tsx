@@ -28,7 +28,7 @@ type Step = 'setup' | 'show'
  * screen kept awake. "Just share" is the offline vCard QR (works with zero signal on either phone); "Collect leads"
  * publishes the card and encodes a link instead, so the visitor's own phone can leave their details.
  */
-export default function StallMode({ card, events, initialEventId, onClose }: { card: MyCard; events: EventRec[]; initialEventId?: string; onClose: () => void }) {
+export default function StallMode({ card, events, initialEventId, onClose, onPack }: { card: MyCard; events: EventRec[]; initialEventId?: string; onClose: () => void; /** "What visitors get" for an event. */ onPack: (eventId: string) => void }) {
   const canvas = useRef<HTMLCanvasElement>(null)
   const [step, setStep] = useState<Step>('setup')
   const photoUrl = useObjectUrl(card.photo)
@@ -102,6 +102,10 @@ export default function StallMode({ card, events, initialEventId, onClose }: { c
             <Picker className="pick wide" title="Event" value={eventChoice} onChange={setEventChoice}
               options={[{ value: '', label: 'No event' }, ...events.map((e) => ({ value: e.id, label: showEvent(e.name) }))]} />
           </div>
+
+          {mode === 'leads' && canCollect && eventChoice && (
+            <button type="button" className="link with-icon pack-entry" onClick={() => onPack(eventChoice)}><Icon name="upload" size={15} /> What visitors get after sending details</button>
+          )}
 
           <div className="log-field">
             <span className="log-label">Caption</span>

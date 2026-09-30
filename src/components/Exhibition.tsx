@@ -11,13 +11,15 @@ import { rowFigure, shortDate } from '../lib/watch'
 import { localISO } from '../lib/followups'
 import WatchRow from './WatchRow'
 
-export default function Exhibition({ cards, events, activeEvent, onNew, onEdit, onDelete, onScanHere, onView, onOpenContact, onTogglePriority }: {
+export default function Exhibition({ cards, events, activeEvent, onNew, onEdit, onDelete, onPack, onScanHere, onView, onOpenContact, onTogglePriority }: {
   cards: CardRecord[]
   events: EventRec[]
   activeEvent: string
   onNew: () => void
   onEdit: (id: string) => void
   onDelete: (id: string) => void
+  /** "What visitors get": files and a link for the event's Collect-leads page. */
+  onPack: (id: string) => void
   onScanHere: (id: string) => void
   onView: (id: string) => void
   onOpenContact: (id: string, idx: number) => void
@@ -83,6 +85,7 @@ export default function Exhibition({ cards, events, activeEvent, onNew, onEdit, 
               <Sheet open={menu === e.id} onClose={() => setMenu('')} title={showEvent(e.name)}>
                 <SheetItem icon="file" label="Export CSV" disabled={!done.length} onClick={() => { setMenu(''); download(`${fileSafe(e.name)}.csv`, buildCsv(done, eventName), 'text/csv') }} />
                 <SheetItem icon="download" label="Export vCard" disabled={!done.length} onClick={() => { setMenu(''); download(`${fileSafe(e.name)}.vcf`, buildVcf(done, eventName, currentNameFormat()), 'text/vcard') }} />
+                <SheetItem icon="upload" label="What visitors get" hint="Files and a link for your Collect-leads page" onClick={() => { setMenu(''); onPack(e.id) }} />
                 <SheetItem icon="edit" label="Edit name and dates" onClick={() => { setMenu(''); onEdit(e.id) }} />
                 <SheetItem icon="trash" danger label="Delete event" onClick={() => { setMenu(''); onDelete(e.id) }} />
               </Sheet>

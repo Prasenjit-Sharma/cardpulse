@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { removeAllPackFiles } from './visitorpack'
 
 // The account's cloud footprint: counts for published cards, taking a card down, and deleting everything on request.
 
@@ -62,6 +63,7 @@ export async function deleteCloudData(userId: string): Promise<void> {
   if (!supabase) throw new Error('Cloud features are not configured.')
   await emptyFolder('sync-photos', userId)
   await emptyFolder('card-photos', userId)
+  await removeAllPackFiles()
   const { error } = await supabase.rpc('delete_my_cloud_data')
   if (error) throw new Error('Could not delete the cloud copy. Check your connection and try again.')
 }

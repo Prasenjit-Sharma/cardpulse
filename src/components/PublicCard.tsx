@@ -8,6 +8,8 @@ import { canSendLead, formatPhone } from '../lib/leadform'
 import { submitLead } from '../lib/leads'
 import { emptyCard, type FontId, type MyCard, type TemplateId } from '../lib/mycards'
 import { withTimeout } from '../lib/withTimeout'
+import { fileSize, fileUrl, isEmptyPack, type Pack } from '../lib/visitorpack'
+import './pack.css'
 import CardCanvas from './CardCanvas'
 import Icon from './Icon'
 import Logo from './Logo'
@@ -25,6 +27,31 @@ async function fetchPhoto(url: string): Promise<Blob | undefined> {
   return withTimeout(fetch(url).then((r) => (r.ok ? r.blob() : undefined)).catch(() => undefined), 8000, undefined)
 }
 
+/** What the stall gives a visitor once they have sent their details: a note, up to 3 files and a link. */
+function PackView({ pack, from }: { pack: Pack; from: string }) {
+  const host = (u: string) => { try { return new URL(u).hostname.replace(/^www\./, '') } catch { return u } }
+  return (
+    <section className="pack-view" aria-label={`More from ${from}`}>
+      <h3 className="section">More from {from}</h3>
+      {pack.note && <p className="pack-note">{pack.note}</p>}
+      {pack.files.length > 0 && (
+        <div className="pack-rows">
+          {pack.files.map((f) => (
+            <a key={f.path} className="pack-row" href={fileUrl(f.path)} target="_blank" rel="noreferrer">
+              <span className="badge"><Icon name={f.type === 'application/pdf' ? 'file' : 'image'} size={18} /></span>
+              <span className="grow"><b>{f.name}</b><small>{f.type === 'application/pdf' ? 'PDF' : 'Picture'} · {fileSize(f.size)}</small></span>
+              <Icon name="chevron" size={18} />
+            </a>
+          ))}
+        </div>
+      )}
+      {pack.linkUrl && (
+        <a className="outline wide public-btn" href={pack.linkUrl} target="_blank" rel="noreferrer"><Icon name="globe" size={18} /> {pack.linkLabel || host(pack.linkUrl)}</a>
+      )}
+    </section>
+  )
+}
+
 /** The page a visitor lands on after scanning a stall QR. No login, no app install. */
 export default function PublicCard({ slug }: { slug: string }) {
   const params = useMemo(() => new URLSearchParams(location.search), [])
@@ -33,6 +60,7 @@ export default function PublicCard({ slug }: { slug: string }) {
   const [cardId, setCardId] = useState('')
   const [name, setName] = useState(''), [code, setCode] = useState('+91'), [phone, setPhone] = useState(''), [email, setEmail] = useState(''), [company, setCompany] = useState('')
   const [sent, setSent] = useState(false)
+  const [pack, setPack] = useState<Pack | null>(null)
   const [error, setError] = useState('')
   const [sending, setSending] = useState(false)
 
@@ -73,7 +101,7 @@ export default function PublicCard({ slug }: { slug: string }) {
     if (!check.ok) { setError(check.message); return }
     setSending(true)
     const fullPhone = phone.trim() ? formatPhone(code, phone) : ''
-    try { await submitLead(cardId, eventId, eventName, { name, phone: fullPhone, email, company }); setSent(true) }
+    try { setPack(await submitLead(cardId, eventId, eventName, { name, phone: fullPhone, email, company })); setSent(true) }
     catch { setError('Could not send. Try again.') }
     finally { setSending(false) }
   }
@@ -93,7 +121,10 @@ export default function PublicCard({ slug }: { slug: string }) {
       )}
 
       {sent ? (
-        <p className="hint ok">Thanks — they'll be in touch.</p>
+        <>
+          <p className="hint ok">Thanks — they'll be in touch.</p>
+          {pack && !isEmptyPack(pack) && <PackView pack={pack} from={card.company || card.name} />}
+        </>
       ) : (
         <div className="lead-form">
           <h3 className="section">Share your details</h3>
