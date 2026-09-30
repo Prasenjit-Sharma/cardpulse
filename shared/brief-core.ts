@@ -1,5 +1,5 @@
-// Pulse Brief: the prompt, the request to Gemini with Google Search, and the checks on what comes back. Shared by the
-// server, which makes the call, and the tests. No network and no storage here.
+// Pulse Brief: the prompt, the request to Gemini (from what it knows, or with Google Search on a paid key), and the
+// checks on what comes back. Shared by the server, which makes the call, and the tests. No network and no storage here.
 
 export interface BriefInput { name: string; title: string; company: string; address: string; website: string; domains: string[]; gstin: string }
 export type LinkKind = 'linkedin' | 'website' | 'indiamart' | 'facebook' | 'instagram' | 'justdial' | 'tradeindia' | 'other'
@@ -30,15 +30,33 @@ export function validBriefInput(v: unknown): BriefInput | null {
   return out.name || out.company ? out : null
 }
 
-/** The instructions: facts from the search only, said plainly, and a short honest line when little is public. */
-export function briefPrompt(i: BriefInput): string {
+/**
+ * The instructions. Without search (the default), the model writes only from what it already knows and says plainly
+ * when it does not know this company or person: small firms are rarely in its training, and invented facts are worse
+ * than none. With search (a paid key), facts come from the search results.
+ */
+export function briefPrompt(i: BriefInput, search = false): string {
   const card = ([
     ['Name', i.name], ['Title', i.title], ['Company', i.company], ['Address', i.address], ['Website', i.website],
     ['Email domain', i.domains.join(', ')], ['GSTIN', i.gstin],
   ] as const).filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`)
+  if (!search) return [
+    'You help a salesperson in India get ready to call or meet a business contact. You have no web access: use only what you already know.',
+    '',
+    'From their business card:',
+    ...card,
+    '',
+    'Reply with a JSON object: {"person": string, "company": string, "starters": string[]}',
+    'person: only if you genuinely know this specific person, 1 to 3 sentences about them. Otherwise write exactly: "No specific information on this person."',
+    'company: if you genuinely know this specific company (match the name with the city, website or GSTIN), 2 to 4 sentences of what you know. Otherwise start with "No specific information on this company." and add 1 or 2 sentences on what a business like this usually does, judging only from its name, title and address (for example a "Woven Sack" firm in Surat makes PP woven sacks and bags for packaging), worded as general context, not as facts about them.',
+    'starters: 2 or 3 short openers or questions the salesperson could use, based on their line of business and role.',
+    'Rules: Never invent facts about this company or person: no founding years, sizes, customers, awards, people, certifications or URLs. No praise words (renowned, leading, innovative, key player, commitment to excellence). Plain Indian English.',
+  ].join('\n')
   return [
-    'You research a business contact for a salesperson in India who is about to call or meet them. Use Google Search:',
-    'search for the company (by name with the city, the website or email domain, and the GSTIN) and for this person at that company.',
+    'You research a business contact for a salesperson in India who is about to call or meet them.',
+    'Always run Google Search before you answer, even if you think you know them; never answer from memory alone.',
+    'Search for the company (by name with the city, the website or email domain, and the GSTIN).',
+    'Search for this person using their name together with their designation, company, city and website: first on LinkedIn (for example: site:linkedin.com/in "<name>" "<company>"), then elsewhere. Prefer their LinkedIn profile, and the company\'s LinkedIn page, as sources and links.',
     '',
     'From their business card:',
     ...card,
@@ -47,13 +65,17 @@ export function briefPrompt(i: BriefInput): string {
     'person: 2 to 4 sentences of facts about this person at this company: their role, how long, anything public (interviews, associations, awards). If you find nothing specific about the person, write exactly: "Little public information found about this person."',
     'company: 2 to 5 sentences of facts: what they make or trade, where, since when, size, group companies, certifications, markets. If you find nothing, write exactly: "Little public information found about this company."',
     'starters: 2 or 3 short openers the salesperson could say, each tied to a fact you found (a product line, an expansion, a trade fair, a certification). With no facts found, 2 openers about their line of business, never invented facts.',
-    'links: at most 5 pages from the search results that belong to this person or company. kind is one of linkedin, website, indiamart, facebook, instagram, justdial, tradeindia, other. Never guess or build a URL.',
+    'links: at most 5 pages from the search results that belong to this person or company, their LinkedIn profile first when found. kind is one of linkedin, website, indiamart, facebook, instagram, justdial, tradeindia, other. Only list a LinkedIn profile whose name, company and designation match this card. Never guess or build a URL.',
     'Rules: only facts from the search results. If different companies share the name, use the one matching the city, website or GSTIN, and say so if unsure. No praise words (renowned, leading, innovative, key player, commitment to excellence). Plain Indian English.',
   ].join('\n')
 }
 
-export function buildBriefRequest(i: BriefInput) {
-  return { contents: [{ role: 'user', parts: [{ text: briefPrompt(i) }] }], tools: [{ google_search: {} }], generationConfig: { temperature: 0.2 } }
+/** Without search the answer is plain JSON; with it, Google Search is on and JSON is only asked for in the prompt. */
+export function buildBriefRequest(i: BriefInput, search = false) {
+  const contents = [{ role: 'user', parts: [{ text: briefPrompt(i, search) }] }]
+  return search
+    ? { contents, tools: [{ google_search: {} }], generationConfig: { temperature: 0.2, thinkingConfig: { thinkingLevel: 'low' } } }
+    : { contents, generationConfig: { temperature: 0.2, responseMimeType: 'application/json' } }
 }
 
 /** "in.linkedin.com" from a URL; empty when it is not an http(s) URL. */

@@ -6,8 +6,12 @@ import { BriefError, buildBriefRequest, parseBriefResponse, validBriefInput } fr
 export interface Env {
   GEMINI_API_KEY: string
   GEMINI_MODEL?: string
-  /** The model for Pulse Brief (Gemini with Google Search). Falls back to GEMINI_MODEL. */
+  /** The model for Pulse Brief. Falls back to GEMINI_MODEL. */
   BRIEF_MODEL?: string
+  /** "1" turns on Google Search for Pulse Brief. Needs a key whose plan allows Search grounding (a paid key). */
+  BRIEF_SEARCH?: string
+  /** Optional key for Pulse Brief alone (a paid project's), so card reading stays on GEMINI_API_KEY's free tier. */
+  BRIEF_API_KEY?: string
   /** Comma-separated exact origins allowed to call this API, e.g. https://you.github.io */
   ALLOWED_ORIGINS?: string
   /** "1" also allows localhost and private-LAN origins (local development only). */
@@ -117,10 +121,11 @@ export async function checkQuota(token: unknown, env: Env, fn: 'consume_scan' | 
 const UPSTREAM_TIMEOUT_MS = 40_000
 const BRIEF_BODY_MAX = 16_384
 
-/** Pulse Brief: a web-searched brief on one contact. Signed-in only, with its own daily limit; nothing is stored here. */
+/** Pulse Brief: a short brief on one contact. Signed-in only, with its own daily limit; nothing is stored here. */
 async function brief(req: Request, env: Env, origin: string | null): Promise<Response> {
   if (!originAllowed(origin, env)) return fail(403, 'forbidden_origin', 'This origin is not allowed.', null)
-  if (!env.GEMINI_API_KEY) return fail(500, 'not_configured', 'The service is not configured.', origin)
+  const key = env.BRIEF_API_KEY || env.GEMINI_API_KEY
+  if (!key) return fail(500, 'not_configured', 'The service is not configured.', origin)
   if (Number(req.headers.get('content-length') ?? 0) > BRIEF_BODY_MAX) return fail(413, 'too_large', 'Request too large.', origin)
   let body: { contact?: unknown; auth?: unknown }
   try { body = await req.json() } catch { return fail(400, 'bad_request', 'Invalid request.', origin) }
@@ -128,9 +133,10 @@ async function brief(req: Request, env: Env, origin: string | null): Promise<Res
   if (!input) return fail(400, 'bad_contact', "Add the contact's name or company first.", origin)
   if (typeof body.auth !== 'string' || !body.auth) return fail(401, 'sign_in', 'Sign in to use Pulse Brief.', origin)
 
-  // Each fresh brief is a paid Google search: counted per account. A quota outage falls back to the per-IP brake.
+  // Each fresh brief is a model call (and, with search on, a paid Google search): counted per account. A quota outage
+  // falls back to the per-IP brake.
   const quota = await checkQuota(body.auth, env, 'consume_brief')
-  if (quota.kind === 'over') return fail(429, 'daily_limit', `You've used today's ${quota.limit} fresh searches. Saved briefs still open. Resets at 5:30 am.`, origin)
+  if (quota.kind === 'over') return fail(429, 'daily_limit', `You've used today's ${quota.limit} fresh briefs. Saved briefs still open. Resets at 5:30 am.`, origin)
   const wait = checkRate(quota.kind === 'account' ? `brief:${quota.userId}` : `brief-ip:${req.headers.get('cf-connecting-ip') ?? 'local'}`)
   if (wait) return fail(429, 'rate_limited', `Too many briefs. Try again in ${Math.ceil(wait / 60)} min.`, origin, { 'Retry-After': String(wait) })
 
@@ -139,17 +145,24 @@ async function brief(req: Request, env: Env, origin: string | null): Promise<Res
   try {
     upstream = await fetch(`${env.GEMINI_BASE ?? UPSTREAM}/models/${encodeURIComponent(model)}:generateContent`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
-      body: JSON.stringify(buildBriefRequest(input)),
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+      body: JSON.stringify(buildBriefRequest(input, env.BRIEF_SEARCH === '1')),
       signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
     })
   } catch {
     return fail(502, 'upstream_unreachable', 'The service is unavailable. Try again.', origin)
   }
-  if (upstream.status === 429) return fail(429, 'busy', 'The service is busy. Try again in a moment.', origin, { 'Retry-After': '20' })
-  if (!upstream.ok) return fail(502, 'upstream_error', "Couldn't make the brief. Try again.", origin)
+  if (!upstream.ok) {
+    // Google's own reason goes to the Worker's log (wrangler tail), never to the app: it can name the key or the plan
+    console.log(`brief upstream ${upstream.status} ${model}: ${(await upstream.text().catch(() => '')).slice(0, 600)}`)
+    if (upstream.status === 429) return fail(429, 'busy', 'The service is busy. Try again in a moment.', origin, { 'Retry-After': '20' })
+    return fail(502, 'upstream_error', "Couldn't make the brief. Try again.", origin)
+  }
   try {
-    return json({ ...parseBriefResponse(await upstream.json()), model }, 200, origin)
+    const parsed = parseBriefResponse(await upstream.json())
+    // the model decides whether to search: this line in the log shows how often it does, and so what a brief costs
+    console.log(`brief ok ${model}: searched=${parsed.sources.length > 0} sources=${parsed.sources.length}`)
+    return json({ ...parsed, model }, 200, origin)
   } catch (e) {
     return fail(502, 'bad_output', e instanceof BriefError ? "Couldn't make the brief. Try again." : 'Unexpected response.', origin)
   }
@@ -202,6 +215,7 @@ export default {
       return fail(502, 'upstream_unreachable', 'The reading service is unavailable. Try again.', origin)
     }
 
+    if (!upstream.ok) console.log(`extract upstream ${upstream.status} ${model}: ${(await upstream.clone().text().catch(() => '')).slice(0, 600)}`)
     if (upstream.status === 429) return fail(429, 'busy', 'The reading service is busy. Try again in a moment.', origin, { 'Retry-After': '20' })
     // Anything else from upstream (bad key, quota, outage) is our problem, not the user's: don't leak details.
     if (!upstream.ok) return fail(502, 'upstream_error', 'The reading service had a problem. Try again.', origin)

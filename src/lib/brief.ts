@@ -59,7 +59,7 @@ export class BriefFailure extends Error {
   constructor(code: FailureCode, message: string) { super(message); this.code = code }
 }
 const MESSAGE: Record<FailureCode, string> = {
-  sign_in: 'Sign in to use Pulse Brief.', daily_limit: "You've used today's 10 fresh searches. Saved briefs still open. Resets at 5:30 am.",
+  sign_in: 'Sign in to use Pulse Brief.', daily_limit: "You've used today's 10 fresh briefs. Saved briefs still open. Resets at 5:30 am.",
   offline: 'Pulse Brief needs a connection.', failed: "Couldn't make the brief. Try again.",
 }
 

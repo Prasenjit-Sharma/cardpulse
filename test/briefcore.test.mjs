@@ -16,12 +16,24 @@ test('input: strings trimmed and bounded, name or company required, domains chec
   assert.equal(v.name, 'A'); assert.equal(v.title.length, 300); assert.deepEqual(v.domains, ['vivacity.in', 'a.in', 'b.in'])
   assert.deepEqual(validBriefInput({ company: 'Only' }).domains, [], 'missing fields default to empty')
 })
-test('the request uses Google Search and carries only the card identity', () => {
+test('by default the brief comes from what the model already knows: no web search, JSON out, honest when unknown', () => {
   const req = buildBriefRequest({ ...input, gstin: '24ABCDE1234F1Z5' })
-  assert.deepEqual(req.tools, [{ google_search: {} }])
+  assert.equal(req.tools, undefined, 'no Google Search')
+  assert.equal(req.generationConfig.responseMimeType, 'application/json')
   const text = req.contents[0].parts[0].text
-  assert.match(text, /Vivacity Woven Sack/); assert.match(text, /24ABCDE1234F1Z5/); assert.match(text, /Little public information found/)
+  assert.match(text, /Vivacity Woven Sack/); assert.match(text, /24ABCDE1234F1Z5/)
+  assert.match(text, /No specific information on this person/); assert.match(text, /No specific information on this company/)
+  assert.match(text, /Never invent/)
+  assert.ok(!/Google Search/.test(text) && !/links/.test(text), 'nothing about searching or links')
   assert.ok(!/Title:/.test(text), 'empty fields are left out')
+})
+test('with search on, the request uses Google Search and asks for found links', () => {
+  const req = buildBriefRequest(input, true)
+  assert.deepEqual(req.tools, [{ google_search: {} }])
+  assert.equal(req.generationConfig.responseMimeType, undefined, 'grounding and JSON mode are not combined')
+  assert.equal(req.generationConfig.thinkingConfig.thinkingLevel, 'low', 'default thinking took 30 to 40 s')
+  const text = req.contents[0].parts[0].text
+  assert.match(text, /Always run Google Search/); assert.match(text, /site:linkedin\.com\/in/); assert.match(text, /designation, company, city and website/); assert.match(text, /Little public information found/); assert.match(text, /links:/)
 })
 test('parse: JSON inside prose or a code fence is read', () => {
   for (const t of [JSON.stringify(answer), 'Here you go:\n```json\n' + JSON.stringify(answer) + '\n```']) {

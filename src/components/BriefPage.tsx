@@ -12,16 +12,16 @@ import Icon from './Icon'
 import Sheet, { SheetItem } from './Sheet'
 import './brief.css'
 
-const CAPTIONS = ['Searching the web…', 'Reading what we found…', 'Writing the brief…']
-const CAPTION_AT_MS = [0, 4000, 9000]           // timed: the search does not report its steps
+const CAPTIONS = ['Reading the card…', 'Recalling what is known…', 'Writing the brief…']
+const CAPTION_AT_MS = [0, 2500, 6000]           // timed: the model does not report its steps
 const TITLES: Record<Section, string> = { person: 'About the person', company: 'About the company', starters: 'Conversation starters' }
 
 const accessToken = async () => (supabase ? (await supabase.auth.getSession().catch(() => null))?.data.session?.access_token : undefined)
 const day = (t: number) => new Date(t).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
 
 /**
- * Pulse Brief: a short brief on the person and their company, found on the web with Google Search. A kept brief opens at
- * once; a new search shows a pulse while it runs, and keeps running (and is saved) if the page is closed.
+ * Pulse Brief: a short brief on the person and their company, from what Gemini knows (or a web search, when the server
+ * has it on). A kept brief opens at once; a new one shows a pulse while it is made, and is saved even if the page closes.
  */
 export default function BriefPage({ contact, briefKey, onSave, onAddLink, onClose }: {
   contact: Contact
@@ -145,7 +145,9 @@ export default function BriefPage({ contact, briefKey, onSave, onAddLink, onClos
                   </div>
                 </>
               )}
-              <p className="brief-foot">Found on the web on {day(brief.at)} with Google Search. Public information; check before relying on it.</p>
+              <p className="brief-foot">{brief.sources.length || brief.suggestions
+                ? `Found on the web on ${day(brief.at)} with Google Search. Public information; check before relying on it.`
+                : `Written on ${day(brief.at)} by Gemini from what it already knows, without a web search. It can be out of date or wrong; check before relying on it.`}</p>
             </>
           )}
         </>
@@ -154,7 +156,7 @@ export default function BriefPage({ contact, briefKey, onSave, onAddLink, onClos
       <Sheet open={menu} onClose={() => setMenu(false)} title="Pulse Brief">
         {brief && <SheetItem icon="copy" label="Copy all" onClick={() => { setMenu(false); void copy(briefText(contact, brief)) }} />}
         {brief && <SheetItem icon="share" label="Share all" onClick={() => { setMenu(false); void share(briefText(contact, brief)) }} />}
-        <SheetItem icon="refresh" label="Refresh" hint="A new web search; counts towards today's 10" disabled={busy} onClick={() => { setMenu(false); start() }} />
+        <SheetItem icon="refresh" label="Refresh" hint="A fresh brief; counts towards today's 10" disabled={busy} onClick={() => { setMenu(false); start() }} />
       </Sheet>
       {flash && <div className="flash brief-flash" role="status">{flash}</div>}
     </div>

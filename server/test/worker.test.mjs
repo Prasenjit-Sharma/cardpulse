@@ -293,10 +293,32 @@ function mockBrief(consume) {
   return mockUpstream((url, init) => (String(url).startsWith('https://supa.test') ? consume(url, init) : new Response(JSON.stringify(briefOk))))
 }
 
-test('brief: signed in, counted with consume_brief, grounded with Google Search, links checked', async () => {
+test('brief: by default, no web search: the model writes from what it knows', async () => {
   const m = mockBrief(() => new Response(JSON.stringify([{ allowed: true, used: 1, day_limit: 10 }])))
   try {
-    const res = await worker.fetch(briefReq({ contact: who, auth: token('b-1') }), env(SUPA))
+    const res = await worker.fetch(briefReq({ contact: who, auth: token('b-0') }), env(SUPA))
+    assert.equal(res.status, 200)
+    const sent = JSON.parse(m.calls[1].init.body)
+    assert.equal(sent.tools, undefined)
+    assert.equal(sent.generationConfig.responseMimeType, 'application/json')
+  } finally { m.restore() }
+})
+test('brief: BRIEF_API_KEY is used for briefs only; reading keeps GEMINI_API_KEY', async () => {
+  const m = mockBrief(() => new Response(JSON.stringify([{ allowed: true, used: 1, day_limit: 10 }])))
+  try {
+    await worker.fetch(briefReq({ contact: who, auth: token('b-k') }), env({ ...SUPA, BRIEF_API_KEY: 'paid-key' }))
+    assert.equal(m.calls[1].init.headers['x-goog-api-key'], 'paid-key')
+  } finally { m.restore() }
+  const r = mockUpstream(() => new Response(JSON.stringify(geminiOk)))
+  try {
+    await worker.fetch(post({ images: [{ mime: 'image/png', data: png }] }), env({ BRIEF_API_KEY: 'paid-key' }))
+    assert.equal(r.calls[0].init.headers['x-goog-api-key'], 'secret-key')
+  } finally { r.restore() }
+})
+test('brief: with BRIEF_SEARCH=1, counted with consume_brief, grounded with Google Search, links checked', async () => {
+  const m = mockBrief(() => new Response(JSON.stringify([{ allowed: true, used: 1, day_limit: 10 }])))
+  try {
+    const res = await worker.fetch(briefReq({ contact: who, auth: token('b-1') }), env({ ...SUPA, BRIEF_SEARCH: '1' }))
     assert.equal(res.status, 200)
     const body = await res.json()
     assert.equal(body.person, 'Director.')
@@ -320,7 +342,7 @@ test('brief: over the limit is 429 daily_limit with the brief wording', async ()
   try {
     const res = await worker.fetch(briefReq({ contact: who, auth: token('b-2') }), env(SUPA))
     assert.equal(res.status, 429)
-    assert.match((await res.json()).error.message, /today's 10 fresh searches/)
+    assert.match((await res.json()).error.message, /today's 10 fresh briefs/)
     assert.equal(m.calls.length, 1)
   } finally { m.restore() }
 })
