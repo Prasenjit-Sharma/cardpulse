@@ -19,6 +19,8 @@ export function waJid(c: Contact): string | null {
 
 export interface SendDeps {
   native: Pick<Native, 'writeCache' | 'waApps' | 'waSend'> | null
+  /** The card drawn as a picture (PNG), sent before the vCard. */
+  picture(): Promise<Blob>
   remembered(): WaApp | undefined
   remember(a: WaApp): void
   ask(apps: WaApp[]): Promise<WaApp | null>
@@ -26,8 +28,9 @@ export interface SendDeps {
 }
 
 /**
- * Puts the vCard into the contact's chat, alone (text beside a vCard breaks it in WhatsApp). With both WhatsApp and
- * WhatsApp Business, the user picks once. Anything that stops the hand-off falls back to the share sheet.
+ * Puts the card picture and the vCard into the contact's chat: the picture to look at, the vCard to save. No text goes
+ * with them (text beside a vCard breaks it in WhatsApp). A picture that cannot be drawn is left out. With both WhatsApp
+ * and WhatsApp Business, the user picks once. Anything that stops the hand-off falls back to the share sheet.
  */
 export async function sendCardTo(c: Contact, card: MyCard, deps: SendDeps): Promise<'sent' | 'cancelled' | 'fallback'> {
   const jid = waJid(c), n = deps.native
@@ -43,8 +46,9 @@ export async function sendCardTo(c: Contact, card: MyCard, deps: SendDeps): Prom
     deps.remember(app)
   }
   try {
-    const uri = await n.writeCache(cacheName(cardFileName(card, 'vcf')), new Blob([buildCardVcf(card).text], { type: 'text/x-vcard' }))
-    await n.waSend({ uri, jid, pkg: app })
+    const png = await deps.picture().then((b) => n.writeCache(cacheName(cardFileName(card, 'png')), b)).catch(() => null)
+    const vcf = await n.writeCache(cacheName(cardFileName(card, 'vcf')), new Blob([buildCardVcf(card).text], { type: 'text/x-vcard' }))
+    await n.waSend({ uris: png ? [png, vcf] : [vcf], jid, pkg: app })
     return 'sent'
   } catch { return fallback() }
 }

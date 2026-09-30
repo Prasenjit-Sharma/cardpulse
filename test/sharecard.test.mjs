@@ -8,17 +8,22 @@ const card = { id: 'm1', name: 'Prasenjit Sharma', title: '', company: 'CardPuls
 function deps(o = {}) {
   const calls = { sent: [], asked: 0, fallback: 0, remembered: [] }
   const native = { writeCache: async (name) => `file:///cache/${name}`, waApps: async () => ['com.whatsapp'], waSend: async (x) => { calls.sent.push(x) }, ...o.native }
-  return { calls, d: { native: o.native === null ? null : native, remembered: () => o.remembered, remember: (a) => calls.remembered.push(a), ask: async () => { calls.asked++; return o.pick ?? null }, fallback: async () => { calls.fallback++ } } }
+  return { calls, d: { native: o.native === null ? null : native, picture: o.picture ?? (async () => new Blob(['png'], { type: 'image/png' })), remembered: () => o.remembered, remember: (a) => calls.remembered.push(a), ask: async () => { calls.asked++; return o.pick ?? null }, fallback: async () => { calls.fallback++ } } }
 }
 
 test('the number: main WhatsApp-able number, 91 in front of ten digits; landlines have none', () => {
   assert.equal(waJid(person()), '919974033339')
   assert.equal(waJid(person({ phones: ['0261 2345678'] })), null)
 })
-test('one WhatsApp: the vCard goes straight into the chat, alone', async () => {
+test('one WhatsApp: the card picture and the vCard go straight into the chat together, picture first, no text', async () => {
   const { calls, d } = deps()
   assert.equal(await sendCardTo(person(), card, d), 'sent')
-  assert.deepEqual(calls.sent, [{ uri: 'file:///cache/Prasenjit-Sharma-card.vcf', jid: '919974033339', pkg: 'com.whatsapp' }])
+  assert.deepEqual(calls.sent, [{ uris: ['file:///cache/Prasenjit-Sharma-card.png', 'file:///cache/Prasenjit-Sharma-card.vcf'], jid: '919974033339', pkg: 'com.whatsapp' }])
+})
+test('a picture that cannot be drawn still sends the vCard', async () => {
+  const { calls, d } = deps({ picture: async () => { throw new Error('canvas') } })
+  assert.equal(await sendCardTo(person(), card, d), 'sent')
+  assert.deepEqual(calls.sent[0].uris, ['file:///cache/Prasenjit-Sharma-card.vcf'])
 })
 test('both apps: asks once and remembers; a remembered choice is used without asking', async () => {
   let x = deps({ native: { waApps: async () => ['com.whatsapp', 'com.whatsapp.w4b'] }, pick: 'com.whatsapp.w4b' })

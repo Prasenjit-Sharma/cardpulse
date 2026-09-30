@@ -8,7 +8,7 @@ import { sliceRanges, type ContactFields, type Native } from './platform'
 /** The app's own plugin (android/app/src/main/java/in/cardpulse/app/SaveContactPlugin.java). */
 const SaveContact = registerPlugin<{ insert(f: ContactFields): Promise<void> }>('SaveContact')
 /** The app's own plugin (WhatsAppCardPlugin.java): the user's card into a contact's WhatsApp chat. */
-const WhatsAppCard = registerPlugin<{ installed(): Promise<{ apps: string[] }>; send(o: { uri: string; jid: string; pkg: string }): Promise<void> }>('WhatsAppCard')
+const WhatsAppCard = registerPlugin<{ installed(): Promise<{ apps: string[] }>; send(o: { uris: string[]; jid: string; pkg: string }): Promise<void> }>('WhatsAppCard')
 
 /** Base64 without the data-URL prefix, as Filesystem.writeFile expects. */
 const toBase64 = (blob: Blob) => new Promise<string>((resolve, reject) => {

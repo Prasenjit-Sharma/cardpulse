@@ -47,8 +47,8 @@ export interface Native {
   setStatusBar(icons: 'light' | 'dark'): Promise<void>
   /** WhatsApp apps installed: 'com.whatsapp', 'com.whatsapp.w4b'. */
   waApps?(): Promise<string[]>
-  /** Opens the WhatsApp chat with this number (digits) with the file ready to send. Rejects when WhatsApp refuses. */
-  waSend?(o: { uri: string; jid: string; pkg: string }): Promise<void>
+  /** Opens the WhatsApp chat with this number (digits) with the files ready to send. Rejects when WhatsApp refuses. */
+  waSend?(o: { uris: string[]; jid: string; pkg: string }): Promise<void>
 }
 let native: Native | null = null
 export const setNative = (n: Native): void => { native = n }

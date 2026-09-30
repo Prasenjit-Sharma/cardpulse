@@ -19,7 +19,8 @@ import DateChip from './DateChip'
 import { showEvent } from '../lib/eventname'
 import { dueFigure, phase } from '../lib/watch'
 import { callNumber, canWhatsApp, kindLabel, PHONE_KINDS, phoneKey, prunePhoneMeta, rankedPhones, whatsAppNumber } from '../lib/phones'
-import { getNative, isApp } from '../lib/platform'
+import { getNative, isApp, shareNav } from '../lib/platform'
+import { cardPng } from '../lib/cardpng'
 import { addLink, canBrief, freshBrief, type Brief } from '../lib/brief'
 import { sendCardTo, type WaApp } from '../lib/sharecard'
 import { buildCardVcf } from '../lib/cardvcf'
@@ -206,7 +207,18 @@ export default function ContactDetail({ card, index, events, dupes, myCards, onC
       remembered: () => { try { return (localStorage.getItem(WA_KEY) as WaApp | null) ?? undefined } catch { return undefined } },
       remember: (a) => { try { localStorage.setItem(WA_KEY, a) } catch { /* private mode: asked again next time */ } },
       ask: (apps) => new Promise((resolve) => setAppAsk({ apps, resolve })),
-      fallback: async () => { result = (await shareVcf(cardFileName(mc, 'vcf'), buildCardVcf(mc).text, mc.name, undefined, browserEnv(log), false)).result },
+      picture: () => cardPng(mc),
+      // the share sheet with the picture and the vCard; where two files cannot be shared, the vCard alone as before
+      fallback: async () => {
+        const vcf = new File([buildCardVcf(mc).text], cardFileName(mc, 'vcf'), { type: 'text/x-vcard' })
+        const png = await cardPng(mc).then((b) => new File([b], cardFileName(mc, 'png'), { type: 'image/png' })).catch(() => null)
+        const nav = shareNav()
+        if (png && typeof nav.share === 'function' && nav.canShare?.({ files: [png, vcf] })) {
+          try { await nav.share({ files: [png, vcf], title: mc.name }); result = 'shared'; return }
+          catch (e) { if ((e as Error)?.name === 'AbortError') { result = 'cancelled'; return } }
+        }
+        result = (await shareVcf(cardFileName(mc, 'vcf'), buildCardVcf(mc).text, mc.name, undefined, browserEnv(log), false)).result
+      },
     }).catch(() => { setFlash('Could not share. Try again.'); return 'cancelled' as const })
     if (out === 'sent' || (out === 'fallback' && result !== 'cancelled')) noteShare(mc.id, 'file')
     if (result === 'downloaded') setFlash('Saved as a file. Open it to add the contact.')
