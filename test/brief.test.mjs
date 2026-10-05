@@ -71,3 +71,16 @@ test('one search per contact at a time: a second start joins the first', async (
   await Promise.resolve(); await Promise.resolve()
   assert.equal(pendingBrief('k'), undefined)
 })
+
+test('requestBrief: pro_only and no_briefs keep their codes, and the balance is handed on', async () => {
+  for (const code of ['pro_only', 'no_briefs']) {
+    let seen
+    const f = async () => new Response(JSON.stringify({ error: { code, message: 'x' }, balance: { tier: 'free' } }), { status: 402 })
+    await assert.rejects(requestBrief(person(), { url: 'https://api', token: 't', online: true, fetch: f, onBalance: (b) => { seen = b } }), (e) => e instanceof BriefFailure && e.code === code)
+    assert.deepEqual(seen, { tier: 'free' })
+  }
+  let seen
+  const ok = async () => new Response(JSON.stringify({ person: 'P', company: '', starters: [], links: [], sources: [], balance: { tier: 'pro' } }))
+  const b = await requestBrief(person(), { url: 'https://api', token: 't', online: true, fetch: ok, onBalance: (x) => { seen = x } })
+  assert.deepEqual(seen, { tier: 'pro' }); assert.equal('balance' in b, false, 'the balance is never saved on the contact')
+})

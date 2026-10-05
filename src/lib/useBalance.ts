@@ -19,3 +19,8 @@ export function useBalance(userId: string | undefined): Balance | null {
   useEffect(() => { if (userId && online) void refreshBalance(userId) }, [userId, online])
   return b
 }
+
+/** The last balance seen for this account, without asking the server (screens that open often, like a contact). */
+export function useStoredBalance(userId: string | undefined): Balance | null {
+  return useSyncExternalStore(subscribe, () => (userId ? getBalance(userId) : null))
+}

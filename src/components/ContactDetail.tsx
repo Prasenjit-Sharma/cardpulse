@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useObjectUrl } from '../lib/useObjectUrl'
+import { useSession } from '../lib/auth'
+import { briefLine } from '../lib/balance'
+import { useStoredBalance } from '../lib/useBalance'
 import { attentionReasons } from '../lib/attention'
 import { currentFollowUp, dueLabel, dueStatus, followUpIcs, localISO, logInteraction, removeInteraction, setFollowUp, type Interaction } from '../lib/followups'
 import { browserEnv, download, saveToPhone, shareContact, shareVcf, telHref, waNumber } from '../lib/actions'
@@ -100,7 +103,7 @@ function Info({ icon, label, children, actions }: { icon: 'pin' | 'phone' | 'mai
   )
 }
 
-export default function ContactDetail({ card, index, events, dupes, myCards, onClose, onSave, onRetry, onDelete, onMoveEvent, onBrief, onMakeCard }: {
+export default function ContactDetail({ card, index, events, dupes, myCards, onClose, onSave, onRetry, onDelete, onMoveEvent, onBrief, onMakeCard, onPlans }: {
   card: CardRecord
   index: number
   events: EventRec[]
@@ -115,9 +118,13 @@ export default function ContactDetail({ card, index, events, dupes, myCards, onC
   /** Saves a Pulse Brief that finished after this page closed, to the person at `idx` if it is still `name`. */
   onBrief: (idx: number, name: string, b: Brief) => Promise<void>
   onMakeCard: () => void
+  /** Plan & cards, from Pulse Brief's locked state. */
+  onPlans: () => void
 }) {
   const url = useObjectUrl(card.image)
   const backUrl = useObjectUrl(card.back)
+  const balance = useStoredBalance(useSession()?.user.id)
+  const briefNote = balance ? briefLine(balance) : ''
   const [contacts, setContacts] = useState<Contact[]>(card.corrected ?? [])
   const [idx, setIdx] = useState(Math.min(index, Math.max(0, (card.corrected?.length ?? 1) - 1)))
   const [editing, setEditing] = useState(false)
@@ -387,9 +394,10 @@ export default function ContactDetail({ card, index, events, dupes, myCards, onC
             <button onClick={() => setBriefOpen(true)} disabled={!canBrief(c)}><Icon name="spark" size={18} /> Pulse Brief</button>
             <button onClick={onShareCard}><Icon name="card" size={18} /> Share my card</button>
           </div>
+          {briefNote && <small className="brief-line">Pulse Brief: {briefNote}</small>}
           {briefOpen && (
             <BriefPage contact={c} briefKey={`${card.id}:${idx}`} onClose={() => setBriefOpen(false)}
-              onSave={(b) => saveBrief(idx, c.name, b)} onAddLink={(l) => replace(addLink(c, l))} />
+              onSave={(b) => saveBrief(idx, c.name, b)} onAddLink={(l) => replace(addLink(c, l))} onPlans={onPlans} />
           )}
           <Sheet open={cardPick} onClose={() => setCardPick(false)} title="Which card?">
             {myCards.map((mc) => <SheetItem key={mc.id} icon="card" label={mc.label || mc.name || 'My card'} hint={[mc.name, mc.company].filter(Boolean).join(' · ')} onClick={() => { setCardPick(false); setSendAsk(mc) }} />)}
