@@ -1,19 +1,19 @@
-// Run: SUPABASE_SECRET_KEY=<secret key> npm run grant -- you@example.com pro [months]
+// Run: npm run grant -- you@example.com pro [months]   (asks for the Supabase secret key, typed hidden)
 // Gives one account a plan, a pack or an Exhibition pass, for testing until Play Billing (migration 0005's grant_*
 // functions, which only the service role may call). Never shipped in the app. Prints the account's new balance.
 import { createClient } from '@supabase/supabase-js'
+import { secretKey } from './secret.mjs'
 
 const URL = 'https://xqwslvteyhfmnxcnlpsg.supabase.co'
-const SECRET = process.env.SUPABASE_SECRET_KEY
 const ITEMS = {
   plus: ['grant_plan', 'plus'], pro: ['grant_plan', 'pro'],
   pack50: ['grant_pack', 'cards', 50], pack100: ['grant_pack', 'cards', 100], pack200: ['grant_pack', 'cards', 200],
   briefs10: ['grant_pack', 'briefs', 10], pass: ['grant_pass'],
 }
 const [email, what, n] = process.argv.slice(2)
-if (!SECRET) { console.error('Set SUPABASE_SECRET_KEY in the environment before running this.'); process.exit(1) }
 if (!email || !ITEMS[what]) { console.error('Usage: npm run grant -- <email> plus|pro [months] | pack50|pack100|pack200 | briefs10 | pass'); process.exit(1) }
 
+const SECRET = await secretKey()
 const admin = createClient(URL, SECRET, { auth: { autoRefreshToken: false, persistSession: false } })
 let user
 for (let page = 1; !user; page++) {

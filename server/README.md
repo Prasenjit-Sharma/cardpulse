@@ -44,8 +44,8 @@ live in `shared/plans.ts`.
 Until Google Play Billing is added, plans and packs are given with a script run on this Mac:
 
 ```
-SUPABASE_SECRET_KEY=... npm run grant -- you@example.com pro 1     # or plus, pack50, pack100, pack200, briefs10, pass
-SUPABASE_SECRET_KEY=... npm run verify:plans                       # checks 0005 on the live project
+npm run grant -- you@example.com pro 1     # or plus, pack50, pack100, pack200, briefs10, pass; asks for the secret key
+npm run verify:plans                       # checks 0005 on the live project; asks for the secret key
 ```
 
 ## Before real users

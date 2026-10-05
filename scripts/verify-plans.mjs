@@ -1,14 +1,14 @@
-// Run: SUPABASE_SECRET_KEY=<secret key> npm run verify:plans
+// Run: npm run verify:plans   (asks for the Supabase secret key, typed hidden)
 // Checks migration 0005 on the live project: a new account's free balance, the check before a read, charging by
 // contacts, briefs, that an account cannot grant itself anything, and the service role's grants. Creates and deletes
 // one throwaway user.
 import { createClient } from '@supabase/supabase-js'
+import { secretKey } from './secret.mjs'
 
 const URL = 'https://xqwslvteyhfmnxcnlpsg.supabase.co'
 const PUBLISHABLE = 'sb_publishable_xRiJzrH9yCIo_NwHN1jNDw_zWfTAiqf'
-const SECRET = process.env.SUPABASE_SECRET_KEY
-if (!SECRET) { console.error('Set SUPABASE_SECRET_KEY in the environment before running this.'); process.exit(1) }
 
+const SECRET = await secretKey()
 const admin = createClient(URL, SECRET, { auth: { autoRefreshToken: false, persistSession: false } })
 let passed = 0, failed = 0
 function check(name, ok, detail = '') {
