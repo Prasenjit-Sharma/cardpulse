@@ -68,10 +68,11 @@ against user corrections, light and dark themes, offline app shell, Android back
 
 Constraints:
 
-- **On-device by default.** Google sign-in (Supabase) is optional; with it, sync across phones is opt-in, behind a
-  consent step. Signed out, clearing site data loses everything and export is the only backup.
-- **Gemini key lives on the server**, never in the app. Signed-in reads have a per-account daily quota; signed-out
-  reads a best-effort, in-memory per-IP limit.
+- **On-device by default.** Google sign-in (Supabase) is needed to read cards (each account gets 20 free a month,
+  then a plan, pass or packs; see `shared/plans.ts`) and is otherwise optional; with it, sync across phones is opt-in,
+  behind a consent step. Signed out, clearing site data loses everything and export is the only backup.
+- **Gemini key lives on the server**, never in the app. Each read is checked against the account's balance
+  before Gemini is called and charged after, one card per contact; a daily brake of 300 reads still applies.
 - **Free Gemini tier** may use submitted images to improve Google's products; a paid tier is required before
   real customers.
 - **No payments, no team features, no CRM integrations** yet.

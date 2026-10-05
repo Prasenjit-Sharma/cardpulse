@@ -160,8 +160,21 @@ its own commit on `main`; tag `pre-redesign` marks the app before it. Awaiting t
 
 ### Phase 4: Packs and payments (about 2 weeks)
 
-- Define the packs (see section 5), price them from measured cost, and test them with a few real users first.
-- Razorpay for India; usage meter in Settings; store billing once the app is in the stores.
+**Part 1 built 2026-10-05 on branch `pricing`, awaiting migration 0005 and the real-phone check** (spec
+`docs/superpowers/specs/2026-10-05-pricing-design.md`, plan `docs/superpowers/plans/2026-10-05-pricing.md`).
+
+- Tiers agreed 2026-10-05 (all in `shared/plans.ts`, prices still to test with about ten users): Free 20 cards a month
+  and 3 trial Pulse Briefs once; Plus ₹99 a month or ₹999 a year, 150 cards; Pro ₹399 a month or ₹3,499 a year, 400
+  cards and 20 briefs; card packs 50/100/200 at ₹59/₹99/₹179, never expire; 10 extra briefs ₹149 (Pro); Exhibition
+  pass ₹499, up to 1,000 cards over 7 days, cards only.
+- Measured basis (2026-10-05): a card read about ₹0.13–0.25 on Gemini 3.5 Flash-Lite; a brief about ₹2 in tokens plus
+  ₹1.35 per Google search beyond the free 5,000 a month. The Worker now logs tokens and searches per call to confirm.
+- Built: balances in Supabase (0005), checked before and charged after each read (one card per contact) and brief;
+  reading needs sign-in; photos wait as "Waiting for cards" or "Waiting for sign-in" instead of failing; Plan & cards
+  page; cards left on Home; Pulse Brief's trial count and locked state; `npm run grant` to give plans and packs for
+  testing; `npm run verify:plans` for the live project.
+- Part 2, next: Google Play Billing with purchases verified on the server (needs the app in Play Console's internal
+  testing track), then App Store. Razorpay only alongside Play (India's user choice billing).
 
 ### Phase 5: Admin console (about 2 to 3 weeks)
 
