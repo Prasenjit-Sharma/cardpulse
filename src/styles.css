@@ -359,7 +359,10 @@ input[inputmode='tel'], .num input { font-variant-numeric: tabular-nums }
 .mast-figs .mini { flex-direction: row; align-items: center; justify-content: space-between; gap: 8px; min-height: 40px; padding: 0 16px; border-top: 1px solid var(--on-brand-rule) }
 .mast-figs .mini span { overflow: hidden; font-size: 11px; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; white-space: nowrap; text-overflow: ellipsis }
 .mast-figs .mini b { font-size: var(--t-m); font-weight: 650; letter-spacing: 0 }
-.mast-figs .mini.check b { color: var(--on-brand-amber) }
+.mast-figs .mini.wide { grid-column: 1 / -1; box-shadow: none; justify-content: flex-start }
+.mast-figs .mini.wide em { margin-left: auto; font-style: normal; font-size: var(--t-xs); color: var(--on-brand-2); white-space: nowrap }
+.mast-figs .mini.wide b { min-width: 3ch; text-align: right }
+.mast-figs .mini.check b { color: var(--on-brand-amber) } .mast-figs .mini.wide.check em { color: var(--on-brand-amber); font-weight: 600 }
 .masthead + .banner-row, .masthead + .empty-scan { margin-top: 12px }
 
 /* first run: a sample card on the masthead inside the camera's corner frame, the read line passing over it; then one
@@ -864,6 +867,8 @@ nav button.scan-key:active:not(:disabled) .ind { transform: scale(.94) }
 .mycards-dots { margin: -14px 0 12px }
 .holding-note { margin: 6px 0 0; font-size: var(--t-xs); color: var(--ink-3) }
 .index-row.static { cursor: default }
+.contact-row .link-row { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; min-height: 0; padding: 0; background: none; border-radius: 0; color: var(--ink); font-weight: 400; text-align: left }
+.contact-row .link-row strong { color: var(--amber) }
 .lead-ico { width: 32px; height: 32px; border-radius: 8px; background: var(--board-2); color: var(--ink-2); display: inline-flex; align-items: center; justify-content: center; flex: none }
 .field-table { margin: 0 -16px; padding: 0 16px }
 .field-table > div { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 12px; align-items: baseline; padding: 11px 0; border-bottom: 1px solid var(--rule-soft) }

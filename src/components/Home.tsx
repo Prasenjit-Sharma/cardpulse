@@ -61,7 +61,7 @@ const FIRST_PROOFS: { icon: Parameters<typeof Icon>[0]['name']; title: string; t
  * Home is the day's desk: an indigo masthead carrying today's figures, the event that matters now, then a watchlist of
  * the people who need you (due, upcoming, recent, starred) with Call and WhatsApp one tap away. All of it above the fold.
  */
-export default function Home({ cards, events, dupes, ready, needsKey, install, backupNudge, onBackup, onSnoozeBackup, onOpenContact, onTogglePriority, onContacts, onCompanies, onStarred, onAttention, onInsights, onSetup, onSettings, onViewEvent, onEvents, onScan, onMyCard }: {
+export default function Home({ cards, events, dupes, ready, needsKey, install, backupNudge, onBackup, onSnoozeBackup, onOpenContact, onTogglePriority, onContacts, onCompanies, onStarred, onAttention, onInsights, onSetup, onSettings, onViewEvent, onEvents, onScan, onMyCard, cardsLeft, onPlans }: {
   cards: CardRecord[]
   events: EventRec[]
   dupes: Map<string, CardRecord[]>
@@ -84,6 +84,9 @@ export default function Home({ cards, events, dupes, ready, needsKey, install, b
   onEvents: () => void
   onScan: () => void
   onMyCard: () => void
+  /** What the account has left to read, when known (signed in); the row opens Plan & cards. */
+  cardsLeft?: { left: number; low: boolean }
+  onPlans: () => void
 }) {
   const today = localISO()
   const now = Date.now()
@@ -161,6 +164,14 @@ export default function Home({ cards, events, dupes, ready, needsKey, install, b
             <button className="mini" onClick={onStarred}><span>Starred</span><b className="num">{starred.length}</b></button>
             <button className="mini" onClick={onCompanies}><span>Companies</span><b className="num">{companies}</b></button>
             <button className={`mini${toCheck ? ' check' : ''}`} onClick={onAttention}><span>To check</span><b className="num">{toCheck}</b></button>
+            {cardsLeft && (
+              // the account's buying power, across the whole grid so the columns above stay aligned
+              <button className={`mini wide${cardsLeft.low ? ' check' : ''}`} onClick={onPlans} aria-label={`${cardsLeft.left} cards left to read. Plan and cards`}>
+                <span>Cards left</span>
+                <em>{cardsLeft.left === 0 ? 'None left · Add cards' : cardsLeft.low ? 'Running low · Add cards' : 'Plan & cards'}</em>
+                <b className="num">{cardsLeft.left}</b>
+              </button>
+            )}
           </div>
         )}
       </header>

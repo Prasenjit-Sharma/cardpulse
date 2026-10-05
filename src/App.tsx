@@ -7,7 +7,8 @@ import { prepareCardImage } from './lib/cardImage'
 import type { CardRecord, Contact, EventRec } from './lib/types'
 import { loadActiveEvent, loadEvents, saveActiveEvent, saveEvents, saveEventsRaw } from './lib/events'
 import { wipeContactData } from './lib/wipe'
-import { useSession } from './lib/auth'
+import { signInWithGoogle, useSession } from './lib/auth'
+import { cloudEnabled } from './lib/supabase'
 import { fetchCardStats, flushUnpublish, queueUnpublish, type CardStats } from './lib/cloudaccount'
 import { leadCardId } from './lib/synccore'
 import { keepCloudCopy } from './lib/sync'
@@ -15,7 +16,7 @@ import { useSync } from './lib/useSync'
 import { findDuplicates } from './lib/dupes'
 import { backupDue, backupFileName, backupNudgeUntil, buildBackup, lastBackupAt, markBackedUp, mergeEvents, parseBackup, planRestore, saveBackupFile, snoozeBackupNudge } from './lib/backup'
 import { classifyFailure } from './lib/errors'
-import { cardsLine, forgetBalance, getBalance, parseBalance, setBalance, shouldResume } from './lib/balance'
+import { cardsLine, forgetBalance, isLow, getBalance, parseBalance, setBalance, shouldResume } from './lib/balance'
 import { ALLOWANCE } from '../shared/plans'
 import PlanPage from './components/PlanPage'
 import { useBalance } from './lib/useBalance'
@@ -391,7 +392,9 @@ export default function App() {
   const addBatch = useCallback((cards: File[][]) => addGroups(cards, true), [addGroups])
 
   const hasLiveCamera = !!navigator.mediaDevices?.getUserMedia
-  const scan = () => { if (hasLiveCamera) setCamOpen(true); else fallbackInput.current?.click() }
+  // Reading needs an account (its free 20 a month, plan or packs). QR codes never do, so the sheet offers that instead.
+  const needsSignIn = serverMode && cloudEnabled && !settings.useOwnKey && !userId
+  const scan = () => { if (needsSignIn) setGate('sign_in'); else if (hasLiveCamera) setCamOpen(true); else fallbackInput.current?.click() }
   useEffect(() => {
     const params = new URLSearchParams(location.search)
     if (params.get('action') !== 'scan') return
@@ -534,7 +537,7 @@ export default function App() {
             }}
           />
         ) : tab === 'home' ? (
-          <Home cards={cards} events={events} dupes={dupes} ready={readerReady(settings)} needsKey={!serverMode || !!settings.useOwnKey} install={install} backupNudge={nudgeBackup}
+          <Home cards={cards} events={events} dupes={dupes} cardsLeft={balance ? { left: balance.cards.left, low: isLow(balance) } : undefined} onPlans={openPlans} ready={readerReady(settings)} needsKey={!serverMode || !!settings.useOwnKey} install={install} backupNudge={nudgeBackup}
             onBackup={() => void backupNow().then((m) => setBanner(m), () => setBanner('The export could not be saved. Try again.'))} onSnoozeBackup={() => { snoozeBackupNudge(); setBackupTick((n) => n + 1) }}
             onOpenContact={(id, idx) => setOpen({ id, idx })} onTogglePriority={(id, idx) => void togglePriority(id, idx)} onContacts={() => openContacts()} onCompanies={() => goto('companies')} onStarred={() => openContacts('priority')}
             onAttention={() => openContacts('attention')} onInsights={() => goto('insights', 'home')} onSetup={() => goto('settings', 'home')} onSettings={() => goto('settings', 'home')}
@@ -544,7 +547,7 @@ export default function App() {
         ) : tab === 'companies' ? (
           <Companies cards={cards} onBack={() => setTab('home')} onOpenCompany={(name) => openContacts(undefined, name)} />
         ) : tab === 'contacts' ? (
-          <Contacts onScan={scan} cards={cards} events={events} activeEvent={activeEvent} onSelectEvent={setActiveEvent} dupes={dupes} initialFilter={contactsFilter} initialCompany={contactsCompany} onTogglePriority={(id, idx) => void togglePriority(id, idx)}
+          <Contacts onScan={scan} onPlans={openPlans} cards={cards} events={events} activeEvent={activeEvent} onSelectEvent={setActiveEvent} dupes={dupes} initialFilter={contactsFilter} initialCompany={contactsCompany} onTogglePriority={(id, idx) => void togglePriority(id, idx)}
             onOpen={(id, idx) => setOpen({ id, idx })} onRetryFailed={retryFailed} onUpload={(f) => void addFiles(f)} onMoveToEvent={moveToEvent} onDeleteContacts={deleteContacts} />
         ) : tab === 'exhibition' ? (
           <Exhibition cards={cards} events={events} activeEvent={activeEvent} onNew={() => setEventSheet({})} onEdit={(id) => setEventSheet({ id })} onDelete={removeEvent} onPack={setPackEvent}
@@ -589,6 +592,16 @@ export default function App() {
       {packEvent && (
         <PackPage eventId={packEvent} eventName={showEvent(events.find((e) => e.id === packEvent)?.name ?? '')} userId={userId} online={online} onClose={() => setPackEvent(null)} />
       )}
+      <Sheet open={gate === 'sign_in'} onClose={() => setGate(null)} title="Sign in to read cards">
+        <div className="consent">
+          <p>You get <b>{ALLOWANCE.free.cards} cards free each month</b>, kept with your account on any phone you sign in on.</p>
+          <p>QR codes, your digital card and your contacts work without an account.</p>
+          <div className="consent-actions">
+            <button className="outline" onClick={() => { setGate(null); setQrOpen(true) }}>Scan a QR code</button>
+            <button className="cta" onClick={() => { setGate(null); void signInWithGoogle() }}>Sign in</button>
+          </div>
+        </div>
+      </Sheet>
       <Sheet open={gate === 'no_cards'} onClose={() => setGate(null)} title="No cards left">
         <div className="consent">
           <p>Your photos are saved as <b>Waiting for cards</b>. They are read as soon as you add cards.</p>

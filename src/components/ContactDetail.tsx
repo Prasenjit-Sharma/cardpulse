@@ -342,7 +342,7 @@ export default function ContactDetail({ card, index, events, dupes, myCards, onC
       {logOpen && c && <LogSheet name={c.name} onClose={() => setLogOpen(false)} onSave={(e) => { commit(contacts.map((x, j) => (j === idx ? logInteraction(x, e) : x)), card.reviewed); setLogOpen(false); setFlash(e.next ? 'Logged. Follow-up set.' : 'Logged.') }} />}
       {light && <div className="lightbox" onClick={() => setLight('')}><img src={light} alt="Card" /></div>}
       {card.status === 'error' && <div className="banner">{card.error} {canRead && <button className="link" onClick={onRetry}>Retry</button>}</div>}
-      {busy && <p className="muted">{card.waiting === 'offline' ? 'Saved. Waiting for signal to read this card.' : card.waiting === 'retry' ? 'The reader was busy. Trying again shortly.' : 'Reading card…'}</p>}
+      {busy && <p className="muted">{card.waiting === 'offline' ? 'Saved. Waiting for signal to read this card.' : card.waiting === 'retry' ? 'The reader was busy. Trying again shortly.' : card.waiting === 'cards' ? 'Saved. Waiting for cards: it is read once you add cards.' : card.waiting === 'sign_in' ? 'Saved. Waiting for sign-in: it is read once you sign in.' : 'Reading card…'}</p>}
 
       {card.status === 'done' && !c && (
         <div className="empty small"><p>No contacts were found on this card.</p>

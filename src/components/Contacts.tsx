@@ -21,8 +21,10 @@ interface Row { card: CardRecord; p: Contact; i: number; key: string }
 
 const monthLabel = (t: number) => new Date(t).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }).toUpperCase()
 
-export default function Contacts({ onScan, cards: allCards, events, activeEvent, onSelectEvent, dupes, initialFilter, initialCompany, onOpen, onRetryFailed, onUpload, onMoveToEvent, onDeleteContacts, onTogglePriority }: {
+export default function Contacts({ onScan, cards: allCards, events, activeEvent, onSelectEvent, dupes, initialFilter, initialCompany, onOpen, onRetryFailed, onUpload, onMoveToEvent, onDeleteContacts, onTogglePriority, onPlans }: {
   onScan: () => void
+  /** Plan & cards, from a card waiting for cards. */
+  onPlans: () => void
   cards: CardRecord[]
   events: EventRec[]
   activeEvent: string
@@ -142,6 +144,10 @@ export default function Contacts({ onScan, cards: allCards, events, activeEvent,
                   ? <div className="grow"><strong>Waiting for signal</strong><span className="muted">Saved. Will be read when you are online</span></div>
                   : c.waiting === 'retry'
                     ? <div className="grow"><strong>Trying again shortly</strong><span className="muted">The reader was busy</span></div>
+                  : c.waiting === 'cards'
+                    ? <button className="grow link-row" onClick={onPlans}><strong>Waiting for cards</strong><span className="muted">Saved. Read once you add cards</span></button>
+                  : c.waiting === 'sign_in'
+                    ? <div className="grow"><strong>Waiting for sign-in</strong><span className="muted">Saved. Read once you sign in</span></div>
                     : <div className="grow"><strong>Reading…</strong><span className="dots"><i /><i /><i /></span></div>}
               </div>
             ))}
