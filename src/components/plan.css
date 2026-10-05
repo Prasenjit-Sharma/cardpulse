@@ -1,11 +1,130 @@
-/* Plan & cards: a holding (figures in the page top, the plan's own rows) over priced rows. Flat, banded, tabular. */
-.figgrid .low b { color: var(--amber) } .figgrid .low small { color: var(--amber); font-weight: 600 }
-.plan-tag { font-style: normal; margin-left: 8px; padding: 1px 6px; border-radius: 4px; background: var(--tonal); color: var(--ink-2); font-size: 11px; font-weight: 600; vertical-align: 2px }
-.index-row .fig small { max-width: 46vw; overflow: hidden; text-overflow: ellipsis }
-.plan-cta { padding: 4px 16px 12px }
-.plan-cta .cta { width: 100% }
-.plan-foot { margin: 0 -16px; padding: 12px 16px 24px; border-top: 1px solid var(--rule-soft); font-size: var(--t-xs); line-height: 1.5; color: var(--ink-3) }
+/* Plan & cards: the app's one promotional page. Your plan held on a Deep Indigo card, then plans, packs and the pass
+   as rounded cards you could hold. Same Neel Indigo and Inter as the app; only this page may lift and round. */
+.pl-page {
+  --pl-r: 16px;
+  --pl-lift: 0 1px 2px rgba(16,24,40,.06), 0 10px 28px rgba(42,31,158,.10);
+  --pl-card: var(--sleeve);
+  padding-bottom: 8px;
+}
+:root[data-theme='dark'] .pl-page { --pl-lift: 0 1px 2px rgba(0,0,0,.5), 0 12px 30px rgba(0,0,0,.45) }
+@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) .pl-page { --pl-lift: 0 1px 2px rgba(0,0,0,.5), 0 12px 30px rgba(0,0,0,.45) } }
+
+/* the holding */
+.pl-hero {
+  position: relative; margin: 16px 0 0; padding: 18px 18px 16px; border-radius: var(--pl-r); overflow: hidden;
+  background: var(--brand-deep); color: var(--on-brand); box-shadow: var(--pl-lift);
+}
+.pl-hero::after { /* the brand's pulse line, quiet, behind the figures */
+  content: ''; position: absolute; inset: auto -10% 18px -10%; height: 44px; pointer-events: none; opacity: .10;
+  background: no-repeat center / 100% 100% url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 72' preserveAspectRatio='none'%3E%3Cpath d='M0 40 H190 L204 40 L214 18 L228 62 L240 8 L252 40 H290 L298 32 L306 40 H400' fill='none' stroke='white' stroke-width='2'/%3E%3C/svg%3E");
+}
+.pl-hero > * { position: relative; z-index: 1 }
+.pl-hero-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px }
+.pl-kicker-line { font-size: 11px; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; color: var(--on-brand-2) }
+.pl-renew { font-size: var(--t-xs); color: var(--on-brand-2); font-variant-numeric: tabular-nums }
+.pl-hero h2 { margin: 2px 0 14px; font-size: 28px; font-weight: 750; letter-spacing: -.02em; line-height: 1.15 }
+.pl-hero p { margin: 0 0 14px; font-size: var(--t-s); line-height: 1.5; color: var(--on-brand-2) }
+.pl-hero-cta { width: 100%; min-height: 48px; border-radius: 8px; background: var(--on-brand); color: var(--brand-deep); font-weight: 650; font-size: var(--t-m) }
+.pl-meters { display: grid; grid-template-columns: 1fr 1fr; gap: 16px }
+.pl-meter-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px }
+.pl-meter-top span { font-size: var(--t-xs); color: var(--on-brand-2) }
+.pl-meter-top b { font-size: 22px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums }
+.pl-meter-top b small { font-size: var(--t-xs); font-weight: 500; letter-spacing: 0; color: var(--on-brand-2) }
+.pl-bar { height: 6px; margin: 6px 0 4px; border-radius: 4px; background: var(--on-brand-rule); overflow: hidden }
+.pl-bar i { display: block; height: 100%; width: calc(var(--share) * 100%); border-radius: inherit; background: var(--on-brand); transform-origin: left; animation: pl-fill .9s var(--ease) both }
+.pl-meter-word { font-size: 11px; color: var(--on-brand-2) }
+.pl-meter-off .pl-meter-top b { font-size: var(--t-m); padding: 1px 7px; border-radius: 4px; background: var(--on-brand-rule) }
+.pl-meter-off .pl-meter-word { display: block; margin-top: 15px }
+.pl-extras { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 0; padding: 12px 0 0; list-style: none; border-top: 1px solid var(--on-brand-rule) }
+.pl-extras li { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 6px; background: rgba(255,255,255,.08); font-size: var(--t-xs); color: var(--on-brand) }
+.pl-extras svg { color: var(--on-brand-2) }
+@keyframes pl-fill { from { transform: scaleX(0) } to { transform: none } }
+
+/* the switch */
+.pl-switch-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 26px 0 12px }
+.pl-switch-row h3, .pl-section { margin: 0; font-size: var(--t-l); font-weight: 650; color: var(--ink) }
+.pl-switch { display: inline-flex; padding: 3px; border-radius: 10px; background: var(--tonal); gap: 2px }
+.pl-switch button { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; min-height: 40px; padding: 4px 14px; border-radius: 8px; background: none; color: var(--ink-2); font-size: var(--t-s); font-weight: 600; line-height: 1.2 }
+.pl-switch button:active:not(:disabled) { transform: none }
+.pl-switch button.on { background: var(--pl-card); color: var(--ink); box-shadow: 0 1px 3px rgba(16,24,40,.12) }
+.pl-switch em { font-style: normal; font-size: 11px; font-weight: 650; color: var(--green) }
+
+/* plan cards */
+.pl-plans { display: grid; gap: 12px }
+.pl-plan { padding: 18px; border-radius: var(--pl-r); background: var(--pl-card); color: var(--ink); box-shadow: var(--pl-lift), inset 0 0 0 1px var(--brand-edge) }
+.pl-plan.pl-pro { background: var(--brand); color: var(--brand-ink); box-shadow: var(--pl-lift) }
+.pl-plan-head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px }
+.pl-plan h4 { margin: 0; font-size: 20px; font-weight: 750; letter-spacing: -.01em }
+.pl-tag { padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 650; background: var(--brand-wash); color: var(--brand) }
+.pl-pro .pl-tag { background: color-mix(in srgb, var(--brand-ink) 16%, transparent); color: var(--brand-ink) }
+.pl-tag-current { background: var(--tonal); color: var(--ink-2) }
+.pl-pro .pl-tag-current { background: var(--brand-ink); color: var(--brand) }
+.pl-price { display: flex; align-items: baseline; gap: 6px; margin: 12px 0 2px; animation: pl-swap var(--dur-3) var(--ease) both }
+.pl-price b { font-size: 28px; font-weight: 750; letter-spacing: -.03em; line-height: 1.1; font-variant-numeric: tabular-nums }
+.pl-price span { font-size: var(--t-s); opacity: .78 }
+.pl-price-note { margin: 0 0 14px; font-size: var(--t-xs); opacity: .82; font-variant-numeric: tabular-nums }
+.pl-price-note strong { font-weight: 650; color: var(--green) }
+.pl-pro .pl-price-note strong { color: inherit; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px }
+.pl-gives { display: grid; gap: 8px; margin: 0 0 16px; padding: 0; list-style: none }
+.pl-gives li { display: flex; align-items: flex-start; gap: 8px; font-size: var(--t-s); line-height: 1.45 }
+.pl-gives svg { flex: none; margin-top: 2px; color: var(--brand) }
+.pl-pro .pl-gives svg { color: var(--brand-ink) }
+.pl-choose { width: 100%; min-height: 48px; border-radius: 8px; background: var(--brand-wash); color: var(--brand); font-weight: 650; font-size: var(--t-m) }
+.pl-pro .pl-choose { background: var(--brand-ink); color: var(--brand) }
+.pl-choose:disabled { background: transparent; color: inherit; box-shadow: inset 0 0 0 1px currentColor; opacity: .7 }
+.pl-free-line { margin: 2px 4px 0; font-size: var(--t-xs); line-height: 1.5; color: var(--ink-3) }
+@keyframes pl-swap { from { opacity: 0; transform: translateY(4px) } to { opacity: 1; transform: none } }
+
+/* packs */
+.pl-section { display: flex; align-items: baseline; justify-content: space-between; margin: 28px 0 12px }
+.pl-section span { font-size: var(--t-xs); font-weight: 600; color: var(--ink-3) }
+.pl-packs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px }
+.pl-pack {
+  position: relative; display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 0; min-height: 0;
+  padding: 16px 12px 12px; border-radius: 14px; background: var(--pl-card); color: var(--ink); text-align: left; font-weight: 400;
+  box-shadow: var(--pl-lift), inset 0 0 0 1px var(--rule);
+}
+.pl-pack b { font-size: 24px; font-weight: 750; letter-spacing: -.02em; line-height: 1.1 }
+.pl-pack-unit { font-size: var(--t-xs); color: var(--ink-3) }
+.pl-pack-price { margin-top: 14px; font-size: var(--t-l); font-weight: 700; color: var(--brand) }
+.pl-pack small { font-size: 11px; color: var(--ink-3) }
+.pl-pack-flag { position: absolute; top: -9px; left: 10px; right: 10px; padding: 2px 6px; border-radius: 4px; background: var(--brand); color: var(--brand-ink); font-size: 11px; font-weight: 700; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+
+/* extra briefs, Pro only */
+.pl-wide { display: flex; align-items: center; justify-content: flex-start; gap: 12px; width: 100%; margin-top: 12px; padding: 14px; border-radius: 14px; background: var(--pl-card); color: var(--ink); text-align: left; font-weight: 400; box-shadow: var(--pl-lift), inset 0 0 0 1px var(--rule) }
+.pl-wide-icon { display: grid; place-items: center; width: 40px; height: 40px; flex: none; border-radius: 10px; background: var(--brand-wash); color: var(--brand) }
+.pl-wide-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0 }
+.pl-wide-text strong { font-size: var(--t-m); font-weight: 650 }
+.pl-wide-text small { font-size: var(--t-xs); color: var(--ink-3) }
+.pl-wide > b { font-size: var(--t-l); font-weight: 700; color: var(--brand) }
+
+/* the pass: a ticket in ink */
+.pl-pass {
+  display: flex; align-items: stretch; justify-content: flex-start; gap: 0; width: 100%; min-height: 0; padding: 0; overflow: hidden;
+  border-radius: var(--pl-r); background: var(--ink); color: var(--board); text-align: left; font-weight: 400; box-shadow: var(--pl-lift);
+}
+.pl-pass-stub {
+  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; width: 84px; flex: none;
+  background: var(--brand); color: var(--brand-ink);
+}
+.pl-pass-stub::after { /* the perforation */
+  content: ''; position: absolute; top: 8px; bottom: 8px; right: -1px; width: 2px;
+  background: repeating-linear-gradient(to bottom, var(--ink) 0 5px, transparent 5px 10px);
+}
+.pl-pass-stub > span { display: flex; flex-direction: column; align-items: center; font-size: 24px; font-weight: 750; line-height: 1 }
+.pl-pass-stub small { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; margin-top: 2px }
+.pl-pass-body { display: flex; flex-direction: column; gap: 4px; padding: 16px; min-width: 0 }
+.pl-pass-body strong { font-size: var(--t-l); font-weight: 700 }
+.pl-pass-body > span { font-size: var(--t-s); line-height: 1.45; color: color-mix(in srgb, var(--board) 78%, transparent) }
+.pl-pass-body b { color: var(--board); font-weight: 700 }
+.pl-pass-price { margin-top: 6px; font-size: 22px !important; font-weight: 750; color: var(--board) !important }
+.pl-pass-price small { font-size: var(--t-xs); font-weight: 500; color: color-mix(in srgb, var(--board) 70%, transparent) }
+
+.pl-foot { margin: 22px 4px 8px; font-size: var(--t-xs); line-height: 1.5; color: var(--ink-3) }
 .consent-actions.single { grid-template-columns: 1fr }
-@media (min-width: 900px) { .plan-foot { margin-left: -28px; margin-right: -28px; padding-left: 28px; padding-right: 28px } }
+
+/* opened over a contact */
 .plan-over { position: fixed; inset: 0; z-index: 26; overflow-y: auto; max-width: 560px; margin: auto; padding: calc(8px + var(--inset-top)) 16px calc(32px + var(--inset-bottom)); background: var(--board); color: var(--ink); animation: fade-in var(--dur-2) var(--ease) both }
-@media (min-width: 900px) { .plan-over { max-width: 880px; padding-left: 28px; padding-right: 28px } }
+@media (min-width: 900px) { .plan-over { max-width: 880px; padding-left: 28px; padding-right: 28px } .pl-plans { grid-template-columns: 1fr 1fr } .pl-free-line { grid-column: 1 / -1 } }
+@media (max-width: 359px) { .pl-meters { grid-template-columns: 1fr } .pl-packs { gap: 8px } .pl-pack { padding-inline: 10px } .pl-switch button { padding-inline: 10px } }
+@media (prefers-reduced-motion: reduce) { .pl-bar i, .pl-price { animation: none } }
