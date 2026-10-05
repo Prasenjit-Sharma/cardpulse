@@ -1,7 +1,7 @@
 // Run: node --test server/test
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import worker, { checkRate } from '../worker.ts'
+import worker, { checkRate, usageLine } from '../worker.ts'
 
 const GOOD = 'https://prasenjit-sharma.github.io'
 const png = Buffer.from('fake-image-bytes').toString('base64')
@@ -376,4 +376,11 @@ test('the deployed allow-list lets the Android app (https://localhost) call the 
   const allowed = /^ALLOWED_ORIGINS\s*=\s*"([^"]*)"/m.exec(toml)[1]
   const res = await worker.fetch(new Request('https://api.test/v1/extract', { method: 'OPTIONS', headers: { Origin: 'https://localhost', 'Access-Control-Request-Method': 'POST' } }), env({ ALLOWED_ORIGINS: allowed }))
   assert.equal(res.headers.get('access-control-allow-origin'), 'https://localhost')
+})
+
+test('usageLine: tokens in and out, thinking apart, and the searches a call ran; missing fields read as 0', () => {
+  const raw = { usageMetadata: { promptTokenCount: 900, toolUsePromptTokenCount: 2100, candidatesTokenCount: 700, thoughtsTokenCount: 1200 }, candidates: [{ groundingMetadata: { webSearchQueries: ['Asha Rao Acme', 'Acme Pune'] } }] }
+  assert.equal(usageLine(raw), 'in=3000 out=700 thinking=1200 searches=2')
+  assert.equal(usageLine(geminiOk), 'in=10 out=5 thinking=0 searches=0')
+  assert.equal(usageLine(null), 'in=0 out=0 thinking=0 searches=0')
 })

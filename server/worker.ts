@@ -121,6 +121,18 @@ export async function checkQuota(token: unknown, env: Env, fn: 'consume_scan' | 
 const UPSTREAM_TIMEOUT_MS = 40_000
 const BRIEF_BODY_MAX = 16_384
 
+/**
+ * One log line of what a call is billed for: tokens in, tokens out (thinking is billed as output, so it is shown apart),
+ * and the Google searches it ran (Gemini 3 bills each query). `wrangler tail` shows it; nothing reaches the app.
+ */
+export function usageLine(json: unknown): string {
+  const r = json as { usageMetadata?: Record<string, unknown>; candidates?: { groundingMetadata?: { webSearchQueries?: unknown } }[] } | null
+  const u = r?.usageMetadata ?? {}
+  const n = (k: string) => (typeof u[k] === 'number' ? (u[k] as number) : 0)
+  const queries = r?.candidates?.[0]?.groundingMetadata?.webSearchQueries
+  return `in=${n('promptTokenCount') + n('toolUsePromptTokenCount')} out=${n('candidatesTokenCount')} thinking=${n('thoughtsTokenCount')} searches=${Array.isArray(queries) ? queries.length : 0}`
+}
+
 /** Pulse Brief: a short brief on one contact. Signed-in only, with its own daily limit; nothing is stored here. */
 async function brief(req: Request, env: Env, origin: string | null): Promise<Response> {
   if (!originAllowed(origin, env)) return fail(403, 'forbidden_origin', 'This origin is not allowed.', null)
@@ -159,9 +171,10 @@ async function brief(req: Request, env: Env, origin: string | null): Promise<Res
     return fail(502, 'upstream_error', "Couldn't make the brief. Try again.", origin)
   }
   try {
-    const parsed = parseBriefResponse(await upstream.json())
+    const raw = await upstream.json()
+    const parsed = parseBriefResponse(raw)
     // the model decides whether to search: this line in the log shows how often it does, and so what a brief costs
-    console.log(`brief ok ${model}: searched=${parsed.sources.length > 0} sources=${parsed.sources.length}`)
+    console.log(`brief ok ${model}: ${usageLine(raw)} sources=${parsed.sources.length}`)
     return json({ ...parsed, model }, 200, origin)
   } catch (e) {
     return fail(502, 'bad_output', e instanceof BriefError ? "Couldn't make the brief. Try again." : 'Unexpected response.', origin)
@@ -221,7 +234,9 @@ export default {
     if (!upstream.ok) return fail(502, 'upstream_error', 'The reading service had a problem. Try again.', origin)
 
     try {
-      const parsed = parseResponse(await upstream.json())
+      const raw = await upstream.json()
+      const parsed = parseResponse(raw)
+      console.log(`extract ok ${model} ${layout} images=${images.length} contacts=${parsed.contacts.length}: ${usageLine(raw)}`)
       return json({ ...parsed, model }, 200, origin)
     } catch (e) {
       return fail(502, 'unreadable', e instanceof GeminiError ? 'Could not read that photo. Try a clearer one.' : 'Unexpected response.', origin)
