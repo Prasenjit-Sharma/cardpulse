@@ -31,6 +31,8 @@ await db.exec(readFileSync(ROOT + '0004_visitor_packs.sql', 'utf8'))
 await db.exec(readFileSync(ROOT + '0004_visitor_packs.sql', 'utf8'))
 await db.exec(readFileSync(ROOT + '0005_plans_balances.sql', 'utf8'))
 await db.exec(readFileSync(ROOT + '0005_plans_balances.sql', 'utf8'))
+await db.exec(readFileSync(ROOT + '0006_trial_ends_on_pro.sql', 'utf8'))
+await db.exec(readFileSync(ROOT + '0006_trial_ends_on_pro.sql', 'utf8'))
 console.log('migrations ran (0002 to 0005 twice)')
 
 const A = '11111111-1111-1111-1111-111111111111', B = '22222222-2222-2222-2222-222222222222'
@@ -185,12 +187,13 @@ b = await bal(C); assert.equal(b.cards.month.used, 20, 'one minute after midnigh
 
 // Pro: 400 cards and 20 briefs; briefs go month, then extra, then trial
 await sudo(`select public.grant_plan('${D}', 'pro', 1)`)
-b = await bal(D); assert.equal(b.tier, 'pro'); assert.equal(b.cards.month.allowance, 400); assert.equal(b.briefs.left, 23)
+b = await bal(D); assert.equal(b.tier, 'pro'); assert.equal(b.cards.month.allowance, 400)
+assert.equal(b.briefs.left, 20, 'subscribing to Pro ends the trial: 20 briefs, not 23'); assert.equal(b.briefs.trial, 0)
 for (let i = 0; i < 20; i++) await as('authenticated', D, 'select public.charge_brief()')
-b = await bal(D); assert.equal(b.briefs.month.used, 20); assert.equal(b.briefs.trial, 3)
+b = await bal(D); assert.equal(b.briefs.month.used, 20); assert.equal(b.briefs.left, 0)
 await sudo(`select public.grant_pack('${D}', 'briefs', 10)`)
 await as('authenticated', D, 'select public.charge_brief()')
-b = await bal(D); assert.equal(b.briefs.extra, 9); assert.equal(b.briefs.trial, 3)
+b = await bal(D); assert.equal(b.briefs.extra, 9)
 // granting the same plan again extends it
 await sudo(`select public.grant_plan('${D}', 'pro', 1)`)
 r = await db.query(`select period_end from public.plans where owner_id = '${D}'`)
