@@ -453,8 +453,10 @@ export default function App() {
     await refresh()
   }
   const goto = (t: Tab, from?: Tab) => { if (from) setBackTab(from); setOpen(null); setTab(t) }
-  /** Plan & cards, coming back to wherever it was opened from. */
-  const openPlans = () => goto('plans', tab === 'plans' ? backTab : tab)
+  /** Plan & cards, coming back to wherever it was opened from: over an open contact (or its brief), so Back returns there. */
+  const [plansOver, setPlansOver] = useState(false)
+  useBackClose(plansOver, () => setPlansOver(false))
+  const openPlans = () => { if (open) setPlansOver(true); else goto('plans', tab === 'plans' ? backTab : tab) }
   const gotoTab = (t: Tab) => { setContactsFilter(undefined); setContactsCompany(''); goto(t) }
   /** Open Contacts pre-filtered from Home or Companies. The list spans every event, so the event tab resets to All. */
   const openContacts = (f?: Flt, company = '') => { setActiveEvent(''); setContactsFilter(f); setContactsCompany(company); goto('contacts') }
@@ -591,6 +593,11 @@ export default function App() {
       )}
       {packEvent && (
         <PackPage eventId={packEvent} eventName={showEvent(events.find((e) => e.id === packEvent)?.name ?? '')} userId={userId} online={online} onClose={() => setPackEvent(null)} />
+      )}
+      {plansOver && (
+        <div className="plan-over" role="dialog" aria-modal="true" aria-label="Plan and cards">
+          <PlanPage balance={balance} signedIn={!!userId} onBack={() => setPlansOver(false)} />
+        </div>
       )}
       <Sheet open={gate === 'sign_in'} onClose={() => setGate(null)} title="Sign in to read cards">
         <div className="consent">

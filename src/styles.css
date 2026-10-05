@@ -867,8 +867,8 @@ nav button.scan-key:active:not(:disabled) .ind { transform: scale(.94) }
 .mycards-dots { margin: -14px 0 12px }
 .holding-note { margin: 6px 0 0; font-size: var(--t-xs); color: var(--ink-3) }
 .index-row.static { cursor: default }
-.contact-row .link-row { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; min-height: 0; padding: 0; background: none; border-radius: 0; color: var(--ink); font-weight: 400; text-align: left }
-.contact-row .link-row strong { color: var(--amber) }
+.contact-row.reading.parked strong { color: var(--amber) }
+.contact-row.reading.parked:active { background: var(--band) }
 .lead-ico { width: 32px; height: 32px; border-radius: 8px; background: var(--board-2); color: var(--ink-2); display: inline-flex; align-items: center; justify-content: center; flex: none }
 .field-table { margin: 0 -16px; padding: 0 16px }
 .field-table > div { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 12px; align-items: baseline; padding: 11px 0; border-bottom: 1px solid var(--rule-soft) }

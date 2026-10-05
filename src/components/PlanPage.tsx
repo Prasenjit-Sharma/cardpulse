@@ -42,6 +42,16 @@ export default function PlanPage({ balance, signedIn, onBack }: { balance: Balan
           </div>
           <div className="plan-cta"><button className="cta" onClick={() => void signInWithGoogle()}>Sign in with Google</button></div>
         </div>
+      ) : !b ? (
+        <>
+          <h3 className="group band">Your plan</h3>
+          <div className="plain-list">
+            <div className="index-row static">
+              <span className="grow"><strong>Plan not loaded yet</strong><span className="muted wrap">Shown when you are online</span></span>
+              <span className="fig"><b className="num">–</b><small>cards left</small></span>
+            </div>
+          </div>
+        </>
       ) : (
         <>
           <h3 className="group band">Your plan<span className="band-count">{TIER_NAME[tier]}</span></h3>
@@ -73,8 +83,8 @@ export default function PlanPage({ balance, signedIn, onBack }: { balance: Balan
       <div className="plain-list">
         {PLANS.map((p) => (
           <button key={p.tier} className="index-row" onClick={() => setItem({ name: p.name, gives: p.gives, price: `${rupees(p.monthly)} a month, or ${rupees(p.yearly)} a year` })}>
-            <span className="grow"><strong>{p.name}{tier === p.tier && <em className="plan-tag">Current</em>}</strong><span className="muted">{p.gives}</span></span>
-            <span className="fig"><b className="num">{rupees(p.monthly)}</b><small>a month · {rupees(p.yearly)} a year</small></span>
+            <span className="grow"><strong>{p.name}{b && tier === p.tier && <em className="plan-tag">Current</em>}</strong><span className="muted wrap">{p.gives}, or {rupees(p.yearly)} a year</span></span>
+            <span className="fig"><b className="num">{rupees(p.monthly)}</b><small>a month</small></span>
             <Icon name="chevron" size={18} />
           </button>
         ))}
@@ -113,7 +123,7 @@ export default function PlanPage({ balance, signedIn, onBack }: { balance: Balan
       <Sheet open={!!item} onClose={() => setItem(null)} title={item?.name}>
         <div className="consent">
           <p>{item?.gives}. <b>{item?.price}</b>.</p>
-          <p>Payments open with the Play Store release. Until then, plans are added for testing only.</p>
+          <p>Payments open with the Play Store release. Until then nothing can be bought here; your free cards still arrive each month.</p>
           <div className="consent-actions single"><button className="outline" onClick={() => setItem(null)}>OK</button></div>
         </div>
       </Sheet>
