@@ -5,14 +5,19 @@ import { APP_AUTH_REDIRECT, finishAppSignIn, getNative, isApp, notify } from './
 
 /** The current session, kept live. `null` whether signed out or cloud is not configured at all. */
 export function useSession(): Session | null {
-  const [session, setSession] = useState<Session | null>(null)
+  return useSessionState().session
+}
+
+/** The session, and whether it is known yet (false for a moment at app start, while the saved session loads). */
+export function useSessionState(): { session: Session | null; known: boolean } {
+  const [state, setState] = useState<{ session: Session | null; known: boolean }>({ session: null, known: !supabase })
   useEffect(() => {
     if (!supabase) return
-    void supabase.auth.getSession().then(({ data }) => setSession(data.session))
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => setSession(s))
+    void supabase.auth.getSession().then(({ data }) => setState({ session: data.session, known: true }))
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => setState({ session: s, known: true }))
     return () => sub.subscription.unsubscribe()
   }, [])
-  return session
+  return state
 }
 
 export async function signInWithGoogle(): Promise<void> {

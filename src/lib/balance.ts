@@ -43,6 +43,15 @@ export function shouldResume(w: Waiting, s: { signedIn: boolean; balance: Balanc
   return true
 }
 
+/**
+ * What the Scan key does: open the camera, ask to sign in (reading needs an account), or wait while the session is
+ * still loading at app start, so a signed-in user is never asked to sign in.
+ */
+export function scanGate(s: { accounts: boolean; ownKey: boolean; sessionKnown: boolean; signedIn: boolean }): 'open' | 'sign_in' | 'wait' {
+  if (!s.accounts || s.ownKey || s.signedIn) return 'open'
+  return s.sessionKnown ? 'sign_in' : 'wait'
+}
+
 /* ---------- the store ---------- */
 
 const KEY = 'cardpulse.balance'

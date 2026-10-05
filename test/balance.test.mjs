@@ -45,3 +45,13 @@ test('a balance saved for one account is never shown for another', () => {
   forgetBalance()
   assert.equal(getBalance('user-a'), null)
 })
+
+test('scanGate: ask to sign in only once the session is known to be empty', async () => {
+  const { scanGate } = await import('../src/lib/balance.ts')
+  const base = { accounts: true, ownKey: false, sessionKnown: true, signedIn: false }
+  assert.equal(scanGate(base), 'sign_in')
+  assert.equal(scanGate({ ...base, sessionKnown: false }), 'wait', 'still loading: a signed-in user must not be asked to sign in')
+  assert.equal(scanGate({ ...base, signedIn: true }), 'open')
+  assert.equal(scanGate({ ...base, accounts: false }), 'open')
+  assert.equal(scanGate({ ...base, ownKey: true }), 'open')
+})

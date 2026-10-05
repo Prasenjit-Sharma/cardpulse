@@ -7,7 +7,7 @@ import { prepareCardImage } from './lib/cardImage'
 import type { CardRecord, Contact, EventRec } from './lib/types'
 import { loadActiveEvent, loadEvents, saveActiveEvent, saveEvents, saveEventsRaw } from './lib/events'
 import { wipeContactData } from './lib/wipe'
-import { signInWithGoogle, useSession } from './lib/auth'
+import { signInWithGoogle, useSessionState } from './lib/auth'
 import { cloudEnabled } from './lib/supabase'
 import { fetchCardStats, flushUnpublish, queueUnpublish, type CardStats } from './lib/cloudaccount'
 import { leadCardId } from './lib/synccore'
@@ -16,10 +16,11 @@ import { useSync } from './lib/useSync'
 import { findDuplicates } from './lib/dupes'
 import { backupDue, backupFileName, backupNudgeUntil, buildBackup, lastBackupAt, markBackedUp, mergeEvents, parseBackup, planRestore, saveBackupFile, snoozeBackupNudge } from './lib/backup'
 import { classifyFailure } from './lib/errors'
-import { cardsLine, forgetBalance, isLow, getBalance, parseBalance, setBalance, shouldResume } from './lib/balance'
+import { cardsLine, forgetBalance, isLow, scanGate, getBalance, parseBalance, setBalance, shouldResume } from './lib/balance'
 import { ALLOWANCE } from '../shared/plans'
 import PlanPage from './components/PlanPage'
 import { useBalance } from './lib/useBalance'
+import { claim, readable } from './lib/queue'
 import { applyPulledLeads, markLeadsPulled, pullNewLeads } from './lib/leads'
 import { useOnline } from './lib/useOnline'
 import MyCards from './components/MyCards'
@@ -176,7 +177,7 @@ export default function App() {
   const enqueueRef = useRef<(ids: string[]) => Promise<void>>(async () => {})
   const runJob = useCallback(async (ids: string[]): Promise<void> => {
     const { apiKey, model, keepPhotos, useOwnKey } = settingsRef.current
-    const found = (await Promise.all(ids.map((id) => getCard(id)))).filter((c): c is CardRecord => !!c)
+    const found = (await Promise.all(ids.map((id) => getCard(id)))).filter((c): c is CardRecord => !!c && readable(c))
     const cards: CardRecord[] = []
     for (const c of found) {
       if (!c.image || c.thumbOnly) await putCard({ ...c, status: 'error', error: 'The full photo was not kept, so this card cannot be re-read.' })
@@ -279,16 +280,19 @@ export default function App() {
    * With no connection the photos simply stay saved and marked as waiting; they are picked up when signal returns.
    */
   const enqueue = useCallback(async (ids: string[]) => {
-    const fresh = ids.filter((id) => !inFlight.current.has(id))
+    // claimed before the first await, so two overlapping calls (app start, back online) never read a card twice
+    const fresh = claim(inFlight.current, ids)
     if (!fresh.length) return
     const recs = await Promise.all(fresh.map((id) => getCard(id)))
+    const release = (id: string) => inFlight.current.delete(id)
     if (!navigator.onLine) {
-      await Promise.all(recs.filter((c): c is CardRecord => !!c).map((c) => putCard({ ...c, status: 'pending', waiting: 'offline' })))
+      fresh.forEach(release)
+      await Promise.all(recs.filter((c): c is CardRecord => !!c && readable(c)).map((c) => putCard({ ...c, status: 'pending', waiting: 'offline' })))
       await refresh()
       return
     }
     const singles: string[] = [], jobs: string[][] = []
-    recs.forEach((c, i) => { if (!c) return; if (c.back) jobs.push([fresh[i]!]); else singles.push(fresh[i]!) })
+    recs.forEach((c, i) => { if (!c || !readable(c)) { release(fresh[i]!); return } if (c.back) jobs.push([fresh[i]!]); else singles.push(fresh[i]!) })
     for (let i = 0; i < singles.length; i += BATCH_MAX) jobs.push(singles.slice(i, i + BATCH_MAX))
     for (const j of jobs) j.forEach((id) => inFlight.current.add(id))
     queue.current.push(...jobs)
@@ -331,7 +335,7 @@ export default function App() {
     await refresh()
     setToast({ id: Date.now(), title: `${added} new ${added === 1 ? 'lead' : 'leads'} from your stall`, sub: 'Ready to call, message or save' })
   }
-  const session = useSession()
+  const { session, known: sessionKnown } = useSessionState()
   const userId = session?.user.id
   userIdRef.current = userId
   const balance = useBalance(userId)
@@ -393,8 +397,16 @@ export default function App() {
 
   const hasLiveCamera = !!navigator.mediaDevices?.getUserMedia
   // Reading needs an account (its free 20 a month, plan or packs). QR codes never do, so the sheet offers that instead.
-  const needsSignIn = serverMode && cloudEnabled && !settings.useOwnKey && !userId
-  const scan = () => { if (needsSignIn) setGate('sign_in'); else if (hasLiveCamera) setCamOpen(true); else fallbackInput.current?.click() }
+  // At app start the saved session takes a moment to load: a Scan in that moment waits for it rather than asking a
+  // signed-in user to sign in.
+  const scanWaiting = useRef(false)
+  const scan = () => {
+    const g = scanGate({ accounts: serverMode && cloudEnabled, ownKey: !!settings.useOwnKey, sessionKnown, signedIn: !!userId })
+    scanWaiting.current = g === 'wait'
+    if (g === 'sign_in') setGate('sign_in')
+    else if (g === 'open') { if (hasLiveCamera) setCamOpen(true); else fallbackInput.current?.click() }
+  }
+  useEffect(() => { if (sessionKnown && scanWaiting.current) scan() }, [sessionKnown])   // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     const params = new URLSearchParams(location.search)
     if (params.get('action') !== 'scan') return
