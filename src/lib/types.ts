@@ -60,8 +60,8 @@ export interface CardRecord {
   corrected?: Contact[]
   /** The user has dealt with anything flagged on this card: edited a basic field, or said "Looks fine". */
   reviewed: boolean
-  /** Why a pending card is not being read right now: no signal, or a retry is coming. */
-  waiting?: 'offline' | 'retry'
+  /** Why a pending card is not being read right now: no signal, a retry is coming, no cards left, or not signed in. */
+  waiting?: 'offline' | 'retry' | 'cards' | 'sign_in'
   /** Automatic retries used so far. */
   attempts?: number
   /** The contact page was opened at least once. Only opened cards count towards accuracy. */

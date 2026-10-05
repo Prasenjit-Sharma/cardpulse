@@ -22,3 +22,10 @@ test('the daily scan limit is shown as the server says it and never retried by i
   const f = classifyFailure(err("You have reached today's limit of 300 scans. It resets at midnight UTC.", 429))
   assert.equal(f.transient, false); assert.match(f.message, /today's limit of 300 scans/)
 })
+
+test('no cards and signed out park the card instead of failing it', () => {
+  const e1 = Object.assign(new Error('No cards left.'), { status: 402, code: 'no_cards' })
+  assert.deepEqual(classifyFailure(e1), { message: 'Waiting for cards', transient: false, waiting: 'cards' })
+  const e2 = Object.assign(new Error('Sign in to read cards.'), { status: 401, code: 'sign_in' })
+  assert.deepEqual(classifyFailure(e2), { message: 'Waiting for sign-in', transient: false, waiting: 'sign_in' })
+})

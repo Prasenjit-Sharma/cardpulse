@@ -67,9 +67,14 @@ export interface Parsed {
 
 export class GeminiError extends Error {
   status?: number
-  constructor(message: string, status?: number) {
+  /** Our server's error code (no_cards, sign_in, daily_limit…) and, with no_cards, the balance it sent. */
+  code?: string
+  balance?: unknown
+  constructor(message: string, status?: number, extra?: { code?: string; balance?: unknown }) {
     super(message)
     this.status = status
+    this.code = extra?.code
+    this.balance = extra?.balance
   }
 }
 

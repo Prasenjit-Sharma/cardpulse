@@ -13,6 +13,8 @@ export const serverMode = API_URL !== ''
 export interface ExtractionResult extends Parsed {
   latencyMs: number
   model?: string
+  /** What the account has left after this read (our server only; null when it could not be counted). */
+  balance?: unknown
 }
 
 export interface ReadOptions { apiKey: string; model: string; useOwnKey: boolean }
@@ -51,8 +53,9 @@ async function withRetry(send: (signal: AbortSignal) => Promise<Response>): Prom
     const json = await res.json().catch(() => ({}))
     const ms = Math.round(performance.now() - t0)
     if (res.ok) return { res, json, ms }
-    lastErr = new GeminiError(json?.error?.message ?? `HTTP ${res.status}`, res.status)
+    lastErr = new GeminiError(json?.error?.message ?? `HTTP ${res.status}`, res.status, { code: json?.error?.code, balance: json?.balance })
     if (json?.error?.code === 'daily_limit') throw lastErr            // waiting seconds will not help; it resets tomorrow
+    if (json?.error?.code === 'no_cards' || json?.error?.code === 'sign_in') throw lastErr   // nor here: it needs cards or a sign-in
     if (res.status === 429 || res.status >= 500) continue
     throw lastErr
   }
@@ -69,7 +72,7 @@ export async function extractCard(blobs: Blob[], opts: ReadOptions, layout: Layo
     const auth = supabase ? (await supabase.auth.getSession().catch(() => null))?.data.session?.access_token : undefined
     const { json, ms } = await withRetry((signal) =>
       fetch(`${API_URL}/v1/extract`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ images, layout, ...(auth ? { auth } : {}) }), signal }))
-    return { ...(json as Parsed), latencyMs: ms, model: json.model }
+    return { ...(json as Parsed), latencyMs: ms, model: json.model, balance: json.balance }
   }
 
   const { json, ms } = await withRetry((signal) =>

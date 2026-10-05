@@ -15,6 +15,8 @@ import { useSync } from './lib/useSync'
 import { findDuplicates } from './lib/dupes'
 import { backupDue, backupFileName, backupNudgeUntil, buildBackup, lastBackupAt, markBackedUp, mergeEvents, parseBackup, planRestore, saveBackupFile, snoozeBackupNudge } from './lib/backup'
 import { classifyFailure } from './lib/errors'
+import { forgetBalance, getBalance, parseBalance, setBalance, shouldResume } from './lib/balance'
+import { useBalance } from './lib/useBalance'
 import { applyPulledLeads, markLeadsPulled, pullNewLeads } from './lib/leads'
 import { useOnline } from './lib/useOnline'
 import MyCards from './components/MyCards'
@@ -40,6 +42,7 @@ import Report from './components/Report'
 import SettingsPage from './components/SettingsPage'
 import Camera from './components/Camera'
 import Icon from './components/Icon'
+import Sheet from './components/Sheet'
 import Toast, { type ToastData } from './components/Toast'
 import { confirmAsk, DialogHost } from './components/Dialog'
 import EventSheet, { type EventDraft } from './components/EventSheet'
@@ -134,6 +137,13 @@ export default function App() {
   const active = useRef(0)
   const settingsRef = useRef(settings)
   settingsRef.current = settings
+  /** The signed-in account, for the read queue (set where the session is read, below). */
+  const userIdRef = useRef<string | undefined>(undefined)
+  /** A sheet asked for by the read queue or the Scan key: sign in first, or no cards left (shown once per session). */
+  const [gate, setGate] = useState<'sign_in' | 'no_cards' | null>(null)
+  const outOfCardsShown = useRef(false)
+  /** Every read answer carries what the account has left; keep the newest. */
+  const noteBalance = (x: unknown) => { const b = parseBalance(x); if (b) setBalance(b, userIdRef.current) }
 
   const refresh = useCallback(async () => { const l = await listCards(); log(`refresh: ${l.length} cards`); setCards(l) }, [])
   useEffect(() => { void refresh() }, [refresh])
@@ -193,6 +203,7 @@ export default function App() {
       if (cards.length === 1) {
         const c = cards[0]!
         const r = await extractCard(c.back ? [c.image!, c.back] : [c.image!], opts)
+        noteBalance(r.balance)
         const contacts = r.contacts.map(stripImage)
         await finish(c, contacts, { model: r.model ?? model, latencyMs: r.latencyMs, tokensIn: r.tokensIn, tokensOut: r.tokensOut, languages: r.languages, notes: r.notes, batchSize: 1 })
         notifyAdded(contacts.length, c.id)
@@ -201,6 +212,7 @@ export default function App() {
         const blobs = await Promise.all(cards.map((c) => fitForBatch(c.image!, n)))
         log(`batch of ${n}: ${blobs.map((b) => Math.round(b.size / 1024) + 'KB').join(' ')} in one call`)
         const r = await extractCard(blobs, opts, 'batch')
+        noteBalance(r.balance)
         // Which card does each person belong to? Gemini numbers the photos. If any person has no valid number we
         // cannot attribute them safely, so read those cards one by one instead of guessing.
         const valid = r.contacts.every((c) => Number.isInteger(c.image) && c.image! >= 1 && c.image! <= n)
@@ -226,6 +238,13 @@ export default function App() {
     } catch (e) {
       log(`extract failed: ${e instanceof Error ? e.message : e}`)
       const failure = classifyFailure(e)
+      if (failure.waiting) {
+        // No cards left, or signed out: the photos are kept and read once cards or a sign-in arrive (see resumePending).
+        noteBalance((e as { balance?: unknown }).balance)
+        for (const c of cards) await putCard({ ...((await getCard(c.id)) ?? c), status: 'pending', error: undefined, waiting: failure.waiting })
+        if (failure.waiting === 'cards' && !outOfCardsShown.current) { outOfCardsShown.current = true; setGate('no_cards') }
+        return refresh()
+      }
       const later: string[] = []
       for (const c of cards) {
         const cur = (await getCard(c.id)) ?? c
@@ -276,7 +295,9 @@ export default function App() {
 
   /** Anything saved but not yet read (the app was closed mid-read, or there was no signal) goes back in the queue. */
   const resumePending = useCallback(async () => {
-    const waiting = (await listCards()).filter((c) => (c.status === 'pending' || c.status === 'running') && !inFlight.current.has(c.id))
+    const signedIn = !!userIdRef.current, balance = getBalance(userIdRef.current)
+    const waiting = (await listCards()).filter((c) => (c.status === 'pending' || c.status === 'running') && !inFlight.current.has(c.id)
+      && shouldResume(c.waiting, { signedIn, balance }))
     if (waiting.length) void enqueue(waiting.map((c) => c.id))
   }, [enqueue])
   const online = useOnline()
@@ -309,6 +330,12 @@ export default function App() {
   }
   const session = useSession()
   const userId = session?.user.id
+  userIdRef.current = userId
+  const balance = useBalance(userId)
+  // Signing out forgets the balance; signing in, or cards arriving, sends parked cards back to the reader.
+  const lastUser = useRef(userId)
+  useEffect(() => { if (lastUser.current && !userId) forgetBalance(); lastUser.current = userId }, [userId])
+  useEffect(() => { if (online) void resumePending() }, [userId, balance?.cards.left])   // eslint-disable-line react-hooks/exhaustive-deps
   // New leads come in whenever the app is online (and on sign-in). A deleted digital card's link is taken down only
   // after that, so leads still waiting on it are received first.
   useEffect(() => { if (online) void pullLeads().finally(() => { if (userId) void flushUnpublish(userId) }) }, [online, pullLeads, userId])
@@ -555,6 +582,15 @@ export default function App() {
       {packEvent && (
         <PackPage eventId={packEvent} eventName={showEvent(events.find((e) => e.id === packEvent)?.name ?? '')} userId={userId} online={online} onClose={() => setPackEvent(null)} />
       )}
+      <Sheet open={gate === 'no_cards'} onClose={() => setGate(null)} title="No cards left">
+        <div className="consent">
+          <p>Your photos are saved as <b>Waiting for cards</b>. They are read as soon as you add cards.</p>
+          <div className="consent-actions">
+            <button className="outline" onClick={() => setGate(null)}>Later</button>
+            <button className="cta" onClick={() => { setGate(null); setTab('settings') }}>See plans</button>
+          </div>
+        </div>
+      </Sheet>
       {camOpen && <Camera eventLabel={eventLabel} onQr={() => { setCamOpen(false); setQrOpen(true) }} onSubmit={(cards) => { void addBatch(cards); goto('contacts') }} onGallery={(fs) => { void addFiles(fs) }} onClose={() => setCamOpen(false)} />}
       {qrOpen && (
         <QrScanner paused={!!qrText} eventLabel={eventLabel ? showEvent(eventLabel) : ''} onFound={setQrText} onClose={() => { setQrOpen(false); setQrText('') }}
