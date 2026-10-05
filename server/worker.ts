@@ -95,9 +95,14 @@ export type Use =
   | { kind: 'account'; userId: string; balance: unknown }
   | { kind: 'over'; reason: string; limit: number; balance: unknown }
   | { kind: 'none' }
+  /** Supabase refused the token (made up, expired): the caller is not signed in. */
+  | { kind: 'refused' }
+
+/** Supabase answered 401 or 403: the token is not a valid sign-in. Kept apart from an outage, which reads uncharged. */
+const REFUSED = Symbol('refused')
 
 /** One Supabase function, called with the user's own token (the Worker holds no Supabase secret). null on any failure. */
-async function rpc(fn: string, token: string, env: Env, args: Record<string, unknown> = {}): Promise<unknown> {
+async function rpc(fn: string, token: string, env: Env, args: Record<string, unknown> = {}): Promise<unknown | typeof REFUSED> {
   try {
     const res = await fetch(`${env.SUPABASE_URL!.replace(/\/$/, '')}/rest/v1/rpc/${fn}`, {
       method: 'POST',
@@ -105,6 +110,7 @@ async function rpc(fn: string, token: string, env: Env, args: Record<string, unk
       body: JSON.stringify(args),
       signal: AbortSignal.timeout(QUOTA_TIMEOUT_MS),
     })
+    if (res.status === 401 || res.status === 403) return REFUSED
     return res.ok ? await res.json() : null
   } catch { return null }
 }
@@ -120,6 +126,7 @@ const usable = (token: unknown, env: Env): token is string =>
 export async function beginUse(token: unknown, env: Env, what: 'read' | 'brief'): Promise<Use> {
   if (!usable(token, env)) return { kind: 'none' }
   const body = await rpc(what === 'read' ? 'begin_read' : 'begin_brief', token, env)
+  if (body === REFUSED) return { kind: 'refused' }
   const row = (Array.isArray(body) ? body[0] : body) as { allowed?: unknown; reason?: unknown; day_limit?: unknown; balance?: unknown } | null | undefined
   if (!row || typeof row.allowed !== 'boolean') return { kind: 'none' }
   if (!row.allowed) return { kind: 'over', reason: typeof row.reason === 'string' ? row.reason : 'daily_limit', limit: Number(row.day_limit) || 0, balance: row.balance ?? null }
@@ -130,6 +137,7 @@ export async function beginUse(token: unknown, env: Env, what: 'read' | 'brief')
 /** After a good answer: the new balance, or null if the charge did not land (logged; the answer still goes back). */
 async function charge(token: string, env: Env, fn: 'charge_reads' | 'charge_brief', args: Record<string, unknown> = {}): Promise<unknown> {
   const b = await rpc(fn, token, env, args)
+  if (b === REFUSED) { console.log(`${fn} refused: the token expired during the call, not charged`); return null }
   if (b == null) console.log(`${fn} failed: not charged`)
   return b
 }
@@ -168,6 +176,7 @@ async function brief(req: Request, env: Env, origin: string | null): Promise<Res
   // Each fresh brief is a model call (and, with search on, paid Google searches): checked against the account's briefs
   // (Pro's month, extra, trial) and its daily brake. A balance outage falls back to the per-IP brake, uncharged.
   const use = await beginUse(body.auth, env, 'brief')
+  if (use.kind === 'refused') return fail(401, 'sign_in', 'Sign in to use Pulse Brief.', origin)
   if (use.kind === 'over') {
     if (use.reason === 'pro_only') return json({ error: { code: 'pro_only', message: 'Pulse Brief is part of Pro.' }, balance: use.balance }, 402, origin)
     if (use.reason === 'no_briefs') return json({ error: { code: 'no_briefs', message: 'No briefs left this month.' }, balance: use.balance }, 402, origin)
@@ -239,6 +248,7 @@ export default {
     const auth = typeof body.auth === 'string' && body.auth ? body.auth : null
     if (env.SUPABASE_URL && !auth) return fail(401, 'sign_in', 'Sign in to read cards. You get 20 free each month.', origin)
     const use = await beginUse(auth, env, 'read')
+    if (use.kind === 'refused') return fail(401, 'sign_in', 'Sign in to read cards. You get 20 free each month.', origin)
     if (use.kind === 'over') {
       if (use.reason === 'no_cards') return json({ error: { code: 'no_cards', message: 'No cards left. Add a pack or a plan to keep reading.' }, balance: use.balance }, 402, origin)
       return fail(429, 'daily_limit', `You have reached today's limit of ${use.limit} scans. It resets at midnight UTC.`, origin)
@@ -269,7 +279,10 @@ export default {
       const parsed = parseResponse(raw)
       console.log(`extract ok ${model} ${layout} images=${images.length} contacts=${parsed.contacts.length}: ${usageLine(raw)}`)
       let balance: unknown = use.kind === 'account' ? use.balance : null
-      if (use.kind === 'account' && parsed.contacts.length) balance = (await charge(auth!, env, 'charge_reads', { n: Math.min(parsed.contacts.length, MAX_CHARGE) })) ?? balance
+      // A batch whose people cannot all be matched to a photo is thrown away by the app and read again card by card,
+      // so it is not charged here; the re-reads are.
+      const usable = layout !== 'batch' || parsed.contacts.every((c) => Number.isInteger(c.image) && c.image! >= 1 && c.image! <= images.length)
+      if (use.kind === 'account' && parsed.contacts.length && usable) balance = (await charge(auth!, env, 'charge_reads', { n: Math.min(parsed.contacts.length, MAX_CHARGE) })) ?? balance
       else if (use.kind === 'none' && auth) console.log('extract uncharged: balance service unavailable')
       return json({ ...parsed, model, balance }, 200, origin)
     } catch (e) {

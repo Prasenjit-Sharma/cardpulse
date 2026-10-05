@@ -235,10 +235,10 @@ test('quota: over today\'s limit is a 429 daily_limit with a plain message, and 
   } finally { m.restore() }
 })
 
-test('quota: a bad token, Supabase down, a missing function or no config all fall back to the per-IP limit and still read', async () => {
+test('quota: Supabase down, a missing function or no config all fall back to the per-IP limit and still read', async () => {
   const cases = [
-    [() => new Response('{"message":"JWT expired"}', { status: 401 }), SUPA],
     [() => { throw new TypeError('fetch failed') }, SUPA],
+    [() => new Response('{"message":"upstream"}', { status: 503 }), SUPA],
     [() => new Response('{"code":"PGRST202"}', { status: 404 }), SUPA],
     [() => new Response('not json'), SUPA],
     [() => { throw new Error('should not be called') }, {}],
@@ -483,4 +483,34 @@ test('pricing: briefs are checked with begin_brief, charged with charge_brief; p
       assert.equal(m.calls.filter((c) => !c.url.startsWith('https://supa.test')).length, 0)
     } finally { m.restore() }
   }
+})
+
+test('pricing: a token Supabase refuses (made up, expired) is 401 sign_in, for reads and briefs, and nothing is read', async () => {
+  for (const refuse of [() => new Response('{"message":"JWT expired"}', { status: 401 }), () => new Response('{"message":"invalid JWT"}', { status: 403 })]) {
+    const m = mockUpstream((url) => (String(url).startsWith('https://supa.test') ? refuse() : new Response(JSON.stringify(geminiOk))))
+    try {
+      let res = await worker.fetch(post({ images: [{ mime: 'image/png', data: png }], auth: 'x' }), env(SUPA))
+      assert.equal(res.status, 401); assert.equal((await res.json()).error.code, 'sign_in')
+      res = await worker.fetch(briefReq({ contact: who, auth: 'x' }), env(SUPA))
+      assert.equal(res.status, 401)
+      assert.equal(m.calls.filter((c) => !c.url.startsWith('https://supa.test')).length, 0, 'Gemini is never called')
+    } finally { m.restore() }
+  }
+})
+
+test('pricing: a batch whose people cannot all be matched to a photo is not charged (the app reads those cards again, one by one)', async () => {
+  const unmatched = { candidates: [{ content: { parts: [{ text: JSON.stringify({ languages: [], notes: '', contacts: [{ name: 'A', image: 1, phones: [], emails: [], social: [] }, { name: 'B', phones: [], emails: [], social: [] }] }) }] } }] }
+  const matched = { candidates: [{ content: { parts: [{ text: JSON.stringify({ languages: [], notes: '', contacts: [{ name: 'A', image: 1, phones: [], emails: [], social: [] }, { name: 'B', image: 2, phones: [], emails: [], social: [] }] }) }] } }] }
+  const two = [{ mime: 'image/png', data: png }, { mime: 'image/png', data: png }]
+  let m = mockSupa({ gemini: unmatched })
+  try {
+    const res = await worker.fetch(post({ images: two, layout: 'batch', auth: token('p-8') }), env(SUPA))
+    assert.equal(res.status, 200)
+    assert.equal(m.calls.filter((c) => c.url.includes('/rpc/charge_')).length, 0)
+  } finally { m.restore() }
+  m = mockSupa({ gemini: matched })
+  try {
+    await worker.fetch(post({ images: two, layout: 'batch', auth: token('p-9') }), env(SUPA))
+    assert.deepEqual(JSON.parse(m.calls.find((c) => c.url.endsWith('/rpc/charge_reads')).init.body), { n: 2 })
+  } finally { m.restore() }
 })
