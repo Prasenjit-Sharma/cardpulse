@@ -15,7 +15,9 @@ import { useSync } from './lib/useSync'
 import { findDuplicates } from './lib/dupes'
 import { backupDue, backupFileName, backupNudgeUntil, buildBackup, lastBackupAt, markBackedUp, mergeEvents, parseBackup, planRestore, saveBackupFile, snoozeBackupNudge } from './lib/backup'
 import { classifyFailure } from './lib/errors'
-import { forgetBalance, getBalance, parseBalance, setBalance, shouldResume } from './lib/balance'
+import { cardsLine, forgetBalance, getBalance, parseBalance, setBalance, shouldResume } from './lib/balance'
+import { ALLOWANCE } from '../shared/plans'
+import PlanPage from './components/PlanPage'
 import { useBalance } from './lib/useBalance'
 import { applyPulledLeads, markLeadsPulled, pullNewLeads } from './lib/leads'
 import { useOnline } from './lib/useOnline'
@@ -49,8 +51,8 @@ import EventSheet, { type EventDraft } from './components/EventSheet'
 import { useInstall } from './lib/useInstall'
 import { useBackClose } from './lib/useBackClose'
 
-type Tab = 'home' | 'companies' | 'mycard' | 'contacts' | 'exhibition' | 'insights' | 'settings' | 'accuracy'
-const TABS: Tab[] = ['home', 'companies', 'mycard', 'contacts', 'exhibition', 'insights', 'settings', 'accuracy']
+type Tab = 'home' | 'companies' | 'mycard' | 'contacts' | 'exhibition' | 'insights' | 'settings' | 'accuracy' | 'plans'
+const TABS: Tab[] = ['home', 'companies', 'mycard', 'contacts', 'exhibition', 'insights', 'settings', 'accuracy', 'plans']
 const CONCURRENCY = 2
 /** A read that failed for a passing reason (busy reader, weak signal) is tried again by itself this many times. */
 const MAX_ATTEMPTS = 3
@@ -406,7 +408,7 @@ export default function App() {
   }, [cards, open])
   // Android back: close the camera, then the open contact/review, then go back to the Scan tab, before ever leaving the app.
   useBackClose(!!open, () => setOpen(null))
-  useBackClose(tab !== 'home' && !open && !camOpen, () => setTab(tab === 'accuracy' || tab === 'insights' ? backTab : 'home'))
+  useBackClose(tab !== 'home' && !open && !camOpen, () => setTab(tab === 'accuracy' || tab === 'insights' || tab === 'plans' ? backTab : 'home'))
   const openCard = open ? cards.find((c) => c.id === open.id) : undefined
   const eventLabel = events.find((e) => e.id === activeEvent)?.name ?? ''
 
@@ -448,6 +450,8 @@ export default function App() {
     await refresh()
   }
   const goto = (t: Tab, from?: Tab) => { if (from) setBackTab(from); setOpen(null); setTab(t) }
+  /** Plan & cards, coming back to wherever it was opened from. */
+  const openPlans = () => goto('plans', tab === 'plans' ? backTab : tab)
   const gotoTab = (t: Tab) => { setContactsFilter(undefined); setContactsCompany(''); goto(t) }
   /** Open Contacts pre-filtered from Home or Companies. The list spans every event, so the event tab resets to All. */
   const openContacts = (f?: Flt, company = '') => { setActiveEvent(''); setContactsFilter(f); setContactsCompany(company); goto('contacts') }
@@ -486,7 +490,7 @@ export default function App() {
   }
   const retryFailed = () => enqueue(cards.filter((c) => c.status === 'error').map((c) => c.id))
   // Settings, Accuracy, Insights and Companies open from Home, so Home stays lit under them.
-  const navActive: Tab = tab === 'accuracy' || tab === 'insights' || tab === 'settings' || tab === 'companies' ? 'home' : tab
+  const navActive: Tab = tab === 'accuracy' || tab === 'insights' || tab === 'settings' || tab === 'companies' || tab === 'plans' ? 'home' : tab
 
   return (
     <div className="app">
@@ -514,6 +518,7 @@ export default function App() {
             events={events}
             dupes={dupes.get(openCard.id) ?? []}
             onClose={() => setOpen(null)}
+            onPlans={openPlans}
             onSave={async (c) => { await putCard(c); await refresh() }}
             onRetry={() => enqueue([openCard.id])}
             onDelete={async () => { await deleteCard(openCard.id); setOpen(null); await refresh() }}
@@ -547,6 +552,8 @@ export default function App() {
             onOpenContact={(id, idx) => setOpen({ id, idx })} onTogglePriority={(id, idx) => void togglePriority(id, idx)} />
         ) : tab === 'insights' ? (
           <Insights cards={cards} onBack={() => setTab(backTab)} onContacts={() => goto('contacts')} onAccuracy={() => goto('accuracy', 'insights')} onOpen={(id, idx) => setOpen({ id, idx })} />
+        ) : tab === 'plans' ? (
+          <PlanPage balance={balance} signedIn={!!userId} onBack={() => setTab(backTab)} />
         ) : tab === 'accuracy' ? (
           <Report cards={cards} events={events} dupes={dupes} onBack={() => setTab(backTab)} />
         ) : (
@@ -567,7 +574,7 @@ export default function App() {
               if (!everywhere) await keepCloudCopy()
               await refresh()
             }}
-            onBackup={backupNow} onRestore={restoreFrom} onAccuracy={() => goto('accuracy', 'settings')} onInsights={() => goto('insights', 'settings')}
+            onBackup={backupNow} onRestore={restoreFrom} onAccuracy={() => goto('accuracy', 'settings')} onInsights={() => goto('insights', 'settings')} onPlans={() => goto('plans', 'settings')} plansHint={balance ? cardsLine(balance) : userId ? 'What you have left, and what to add' : `Free: ${ALLOWANCE.free.cards} cards a month`}
             onBack={() => setTab('home')}
           />
         )}
@@ -587,7 +594,7 @@ export default function App() {
           <p>Your photos are saved as <b>Waiting for cards</b>. They are read as soon as you add cards.</p>
           <div className="consent-actions">
             <button className="outline" onClick={() => setGate(null)}>Later</button>
-            <button className="cta" onClick={() => { setGate(null); setTab('settings') }}>See plans</button>
+            <button className="cta" onClick={() => { setGate(null); openPlans() }}>See plans</button>
           </div>
         </div>
       </Sheet>

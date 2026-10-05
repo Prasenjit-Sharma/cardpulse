@@ -53,7 +53,7 @@ type Sub = 'account' | 'prefs' | 'help'
  * Settings is a hub, not one long list: who you are and what this phone holds at the top, the tools you reach for as four
  * keys, and the rest (preferences, account, help) each on a page of its own, so nothing is more than one tap deep.
  */
-export default function SettingsPage({ cards, events, settings, install, sync, onChange, onWipe, onBackup, onRestore, onAccuracy, onInsights, onBack }: {
+export default function SettingsPage({ cards, events, settings, install, sync, onChange, onWipe, onBackup, onRestore, onAccuracy, onInsights, onPlans, plansHint, onBack }: {
   cards: CardRecord[]
   events: EventRec[]
   sync: SyncControl
@@ -65,6 +65,9 @@ export default function SettingsPage({ cards, events, settings, install, sync, o
   onRestore: (f: File) => Promise<string>
   onAccuracy: () => void
   onInsights: () => void
+  /** Plan & cards, and what the row says under it (cards left, or the free offer when signed out). */
+  onPlans: () => void
+  plansHint: string
   onBack: () => void
 }) {
   const [lines, setLines] = useState(readLog)
@@ -192,6 +195,7 @@ export default function SettingsPage({ cards, events, settings, install, sync, o
 
       <h3 className="group band">More</h3>
       <section className="setting-group">
+        {serverMode && <SettingRow icon="card" label="Plan & cards" hint={plansHint} onClick={onPlans} />}
         <SettingRow icon="sliders" label="Preferences" hint="Contact names, card photos, theme" onClick={() => setSub('prefs')} />
         {cloudEnabled && <SettingRow icon="cloud" label="Account and sync" hint={session ? session.user.email : 'Not signed in'} onClick={() => setSub('account')} />}
         <SettingRow icon="chat" label="Help & support" hint="Feedback, privacy, diagnostics" onClick={() => setSub('help')} />
