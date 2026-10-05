@@ -173,8 +173,13 @@ its own commit on `main`; tag `pre-redesign` marks the app before it. Awaiting t
   reading needs sign-in; photos wait as "Waiting for cards" or "Waiting for sign-in" instead of failing; Plan & cards
   page; cards left on Home; Pulse Brief's trial count and locked state; `npm run grant` to give plans and packs for
   testing; `npm run verify:plans` for the live project.
-- Part 2, next: Google Play Billing with purchases verified on the server (needs the app in Play Console's internal
-  testing track), then App Store. Razorpay only alongside Play (India's user choice billing).
+- Part 2, next: native in-app purchases only (decided 2026-10-05: no Razorpay). Google Play Billing on Android and
+  Apple in-app purchase on iPhone; packs and the pass as one-time products, Plus and Pro as monthly and yearly
+  subscriptions. Recommended route: RevenueCat (one Capacitor plugin for both stores, receipts checked on its servers,
+  a webhook to the Worker that calls the existing grant_* functions). Needs the app in Play Console's internal testing
+  track first.
+- Publishing as a solo developer (individual accounts, no D-U-N-S or GST needed): a personal Play Console account must
+  run a closed test with at least 12 testers for 14 days before production, so recruit testers early.
 
 ### Phase 5: Admin console (about 2 to 3 weeks)
 
