@@ -18,7 +18,7 @@ export interface Env {
   ALLOW_LAN?: string
   /** Override the upstream, used by tests. */
   GEMINI_BASE?: string
-  /** With both set, a signed-in user's reads are counted per account (see consume_scan in migration 0002). */
+  /** With both set, reading needs sign-in, and reads and briefs are checked and charged against the account (migration 0005). */
   SUPABASE_URL?: string
   SUPABASE_PUBLISHABLE_KEY?: string
 }
@@ -79,7 +79,7 @@ function validImages(v: unknown, layout: Layout): ImageInput[] | null {
   return total <= MAX_BASE64_CHARS[layout] ? out : null
 }
 
-/** The quota check must never hold up a scan for long: past this, fall back to the per-IP limit. */
+/** The balance check must never hold up a scan for long: past this, go ahead uncharged under the per-IP limit. */
 const QUOTA_TIMEOUT_MS = 3000
 
 /** The account id inside a token Supabase has just accepted. Only read after Supabase validated the token. */
@@ -91,31 +91,51 @@ function tokenSubject(token: string): string | null {
   } catch { return null }
 }
 
-export type Quota = { kind: 'account'; userId: string } | { kind: 'over'; limit: number } | { kind: 'none' }
+export type Use =
+  | { kind: 'account'; userId: string; balance: unknown }
+  | { kind: 'over'; reason: string; limit: number; balance: unknown }
+  | { kind: 'none' }
 
-/**
- * Counts one read against the signed-in user's daily quota, using the user's own token (the Worker holds no
- * Supabase secret). Anything that goes wrong — no token, a bad or expired token, Supabase slow or down, the function
- * not deployed — is `none`, and the caller falls back to the per-IP limit: a quota outage never stops a scan.
- */
-export async function checkQuota(token: unknown, env: Env, fn: 'consume_scan' | 'consume_brief' = 'consume_scan'): Promise<Quota> {
-  if (typeof token !== 'string' || !token || token.length > 4096 || !env.SUPABASE_URL || !env.SUPABASE_PUBLISHABLE_KEY) return { kind: 'none' }
+/** One Supabase function, called with the user's own token (the Worker holds no Supabase secret). null on any failure. */
+async function rpc(fn: string, token: string, env: Env, args: Record<string, unknown> = {}): Promise<unknown> {
   try {
-    const res = await fetch(`${env.SUPABASE_URL.replace(/\/$/, '')}/rest/v1/rpc/${fn}`, {
+    const res = await fetch(`${env.SUPABASE_URL!.replace(/\/$/, '')}/rest/v1/rpc/${fn}`, {
       method: 'POST',
-      headers: { apikey: env.SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: '{}',
+      headers: { apikey: env.SUPABASE_PUBLISHABLE_KEY!, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(args),
       signal: AbortSignal.timeout(QUOTA_TIMEOUT_MS),
     })
-    if (!res.ok) return { kind: 'none' }
-    const body = await res.json() as unknown
-    const row = (Array.isArray(body) ? body[0] : body) as { allowed?: unknown; day_limit?: unknown } | undefined
-    if (!row || typeof row.allowed !== 'boolean') return { kind: 'none' }
-    if (!row.allowed) return { kind: 'over', limit: Number(row.day_limit) || 0 }
-    const userId = tokenSubject(token)
-    return userId ? { kind: 'account', userId } : { kind: 'none' }
-  } catch { return { kind: 'none' } }
+    return res.ok ? await res.json() : null
+  } catch { return null }
 }
+
+const usable = (token: unknown, env: Env): token is string =>
+  typeof token === 'string' && !!token && token.length <= 4096 && !!env.SUPABASE_URL && !!env.SUPABASE_PUBLISHABLE_KEY
+
+/**
+ * Before a read or a brief (migration 0005's begin_read / begin_brief): is a card or brief left, and is the account
+ * under today's brake? Anything that goes wrong — no token, a bad or expired token, Supabase slow or down, 0005 not
+ * applied — is `none`: the caller goes ahead uncharged under the per-IP brake. Losing a card at a stall is worse.
+ */
+export async function beginUse(token: unknown, env: Env, what: 'read' | 'brief'): Promise<Use> {
+  if (!usable(token, env)) return { kind: 'none' }
+  const body = await rpc(what === 'read' ? 'begin_read' : 'begin_brief', token, env)
+  const row = (Array.isArray(body) ? body[0] : body) as { allowed?: unknown; reason?: unknown; day_limit?: unknown; balance?: unknown } | null | undefined
+  if (!row || typeof row.allowed !== 'boolean') return { kind: 'none' }
+  if (!row.allowed) return { kind: 'over', reason: typeof row.reason === 'string' ? row.reason : 'daily_limit', limit: Number(row.day_limit) || 0, balance: row.balance ?? null }
+  const userId = tokenSubject(token)
+  return userId ? { kind: 'account', userId, balance: row.balance ?? null } : { kind: 'none' }
+}
+
+/** After a good answer: the new balance, or null if the charge did not land (logged; the answer still goes back). */
+async function charge(token: string, env: Env, fn: 'charge_reads' | 'charge_brief', args: Record<string, unknown> = {}): Promise<unknown> {
+  const b = await rpc(fn, token, env, args)
+  if (b == null) console.log(`${fn} failed: not charged`)
+  return b
+}
+
+/** charge_reads refuses more than this in one call. */
+const MAX_CHARGE = 200
 
 /** A read is normally 3 to 10 s. Past this the request is stuck upstream; fail fast so the app can retry. */
 const UPSTREAM_TIMEOUT_MS = 40_000
@@ -145,11 +165,15 @@ async function brief(req: Request, env: Env, origin: string | null): Promise<Res
   if (!input) return fail(400, 'bad_contact', "Add the contact's name or company first.", origin)
   if (typeof body.auth !== 'string' || !body.auth) return fail(401, 'sign_in', 'Sign in to use Pulse Brief.', origin)
 
-  // Each fresh brief is a model call (and, with search on, a paid Google search): counted per account. A quota outage
-  // falls back to the per-IP brake.
-  const quota = await checkQuota(body.auth, env, 'consume_brief')
-  if (quota.kind === 'over') return fail(429, 'daily_limit', `You've used today's ${quota.limit} fresh briefs. Saved briefs still open. Resets at 5:30 am.`, origin)
-  const wait = checkRate(quota.kind === 'account' ? `brief:${quota.userId}` : `brief-ip:${req.headers.get('cf-connecting-ip') ?? 'local'}`)
+  // Each fresh brief is a model call (and, with search on, paid Google searches): checked against the account's briefs
+  // (Pro's month, extra, trial) and its daily brake. A balance outage falls back to the per-IP brake, uncharged.
+  const use = await beginUse(body.auth, env, 'brief')
+  if (use.kind === 'over') {
+    if (use.reason === 'pro_only') return json({ error: { code: 'pro_only', message: 'Pulse Brief is part of Pro.' }, balance: use.balance }, 402, origin)
+    if (use.reason === 'no_briefs') return json({ error: { code: 'no_briefs', message: 'No briefs left this month.' }, balance: use.balance }, 402, origin)
+    return fail(429, 'daily_limit', `You've used today's ${use.limit} fresh briefs. Saved briefs still open. Resets at 5:30 am.`, origin)
+  }
+  const wait = checkRate(use.kind === 'account' ? `brief:${use.userId}` : `brief-ip:${req.headers.get('cf-connecting-ip') ?? 'local'}`)
   if (wait) return fail(429, 'rate_limited', `Too many briefs. Try again in ${Math.ceil(wait / 60)} min.`, origin, { 'Retry-After': String(wait) })
 
   const model = env.BRIEF_MODEL || env.GEMINI_MODEL || DEFAULT_MODEL
@@ -175,7 +199,8 @@ async function brief(req: Request, env: Env, origin: string | null): Promise<Res
     const parsed = parseBriefResponse(raw)
     // the model decides whether to search: this line in the log shows how often it does, and so what a brief costs
     console.log(`brief ok ${model}: ${usageLine(raw)} sources=${parsed.sources.length}`)
-    return json({ ...parsed, model }, 200, origin)
+    const balance = use.kind === 'account' ? (await charge(body.auth as string, env, 'charge_brief')) ?? use.balance : null
+    return json({ ...parsed, model, balance }, 200, origin)
   } catch (e) {
     return fail(502, 'bad_output', e instanceof BriefError ? "Couldn't make the brief. Try again." : 'Unexpected response.', origin)
   }
@@ -209,10 +234,16 @@ export default {
     const images = validImages(body.images, layout)
     if (!images) return fail(400, 'bad_images', layout === 'batch' ? 'Send 1 to 6 JPEG, PNG or WebP photos, under 3 MB in total.' : 'Send 1 or 2 JPEG, PNG or WebP photos, under 6 MB in total.', origin)
 
-    // Signed in: counted per account (so a stall's reps on one hall Wi-Fi don't share one limit). Otherwise per IP.
-    const quota = await checkQuota(body.auth, env)
-    if (quota.kind === 'over') return fail(429, 'daily_limit', `You have reached today's limit of ${quota.limit} scans. It resets at midnight UTC.`, origin)
-    const wait = checkRate(quota.kind === 'account' ? `account:${quota.userId}` : req.headers.get('cf-connecting-ip') ?? 'local')
+    // Reading needs an account once accounts are configured: each contact read uses one card from its plan, pass or
+    // packs. Checked here, charged after a good read. The burst limit follows the account, not the hall Wi-Fi.
+    const auth = typeof body.auth === 'string' && body.auth ? body.auth : null
+    if (env.SUPABASE_URL && !auth) return fail(401, 'sign_in', 'Sign in to read cards. You get 20 free each month.', origin)
+    const use = await beginUse(auth, env, 'read')
+    if (use.kind === 'over') {
+      if (use.reason === 'no_cards') return json({ error: { code: 'no_cards', message: 'No cards left. Add a pack or a plan to keep reading.' }, balance: use.balance }, 402, origin)
+      return fail(429, 'daily_limit', `You have reached today's limit of ${use.limit} scans. It resets at midnight UTC.`, origin)
+    }
+    const wait = checkRate(use.kind === 'account' ? `account:${use.userId}` : req.headers.get('cf-connecting-ip') ?? 'local')
     if (wait) return fail(429, 'rate_limited', `Too many scans. Try again in ${Math.ceil(wait / 60)} min.`, origin, { 'Retry-After': String(wait) })
 
     const model = env.GEMINI_MODEL || DEFAULT_MODEL
@@ -237,7 +268,10 @@ export default {
       const raw = await upstream.json()
       const parsed = parseResponse(raw)
       console.log(`extract ok ${model} ${layout} images=${images.length} contacts=${parsed.contacts.length}: ${usageLine(raw)}`)
-      return json({ ...parsed, model }, 200, origin)
+      let balance: unknown = use.kind === 'account' ? use.balance : null
+      if (use.kind === 'account' && parsed.contacts.length) balance = (await charge(auth!, env, 'charge_reads', { n: Math.min(parsed.contacts.length, MAX_CHARGE) })) ?? balance
+      else if (use.kind === 'none' && auth) console.log('extract uncharged: balance service unavailable')
+      return json({ ...parsed, model, balance }, 200, origin)
     } catch (e) {
       return fail(502, 'unreadable', e instanceof GeminiError ? 'Could not read that photo. Try a clearer one.' : 'Unexpected response.', origin)
     }

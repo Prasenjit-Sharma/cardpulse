@@ -216,10 +216,10 @@ test('quota: a signed-in read is counted with the user\'s own token, never a sec
     const res = await worker.fetch(post({ images: [{ mime: 'image/png', data: png }], auth: token('user-1') }), env(SUPA))
     assert.equal(res.status, 200)
     const q = m.calls.find((c) => c.url.startsWith('https://supa.test'))
-    assert.equal(q.url, 'https://supa.test/rest/v1/rpc/consume_scan')
+    assert.equal(q.url, 'https://supa.test/rest/v1/rpc/begin_read')
     assert.equal(q.init.headers.Authorization, `Bearer ${token('user-1')}`)
     assert.equal(q.init.headers.apikey, 'sb_publishable_x')
-    assert.equal(m.calls.length, 2, 'one quota call, one read')
+    assert.equal(m.calls.length, 3, 'a check, the read, and the charge for its one contact')
   } finally { m.restore() }
 })
 
@@ -252,10 +252,10 @@ test('quota: a bad token, Supabase down, a missing function or no config all fal
   }
 })
 
-test('quota: no token means no quota call at all (signed-out use is unchanged)', async () => {
+test('quota: with no accounts configured (local development), signed-out reading still works and nothing is counted', async () => {
   const m = mockBoth(() => { throw new Error('should not be called') })
   try {
-    const res = await worker.fetch(post({ images: [{ mime: 'image/png', data: png }] }), env(SUPA))
+    const res = await worker.fetch(post({ images: [{ mime: 'image/png', data: png }] }), env())
     assert.equal(res.status, 200)
     assert.equal(m.calls.length, 1)
   } finally { m.restore() }
@@ -315,7 +315,7 @@ test('brief: BRIEF_API_KEY is used for briefs only; reading keeps GEMINI_API_KEY
     assert.equal(r.calls[0].init.headers['x-goog-api-key'], 'secret-key')
   } finally { r.restore() }
 })
-test('brief: with BRIEF_SEARCH=1, counted with consume_brief, grounded with Google Search, links checked', async () => {
+test('brief: with BRIEF_SEARCH=1, checked with begin_brief, grounded with Google Search, links checked', async () => {
   const m = mockBrief(() => new Response(JSON.stringify([{ allowed: true, used: 1, day_limit: 10 }])))
   try {
     const res = await worker.fetch(briefReq({ contact: who, auth: token('b-1') }), env({ ...SUPA, BRIEF_SEARCH: '1' }))
@@ -324,7 +324,7 @@ test('brief: with BRIEF_SEARCH=1, counted with consume_brief, grounded with Goog
     assert.equal(body.person, 'Director.')
     assert.deepEqual(body.links, [{ kind: 'linkedin', url: 'https://www.linkedin.com/in/aj' }], 'the guessed site is dropped')
     assert.equal(body.suggestions, '<style></style><div>chips</div>')
-    assert.equal(m.calls[0].url, 'https://supa.test/rest/v1/rpc/consume_brief')
+    assert.equal(m.calls[0].url, 'https://supa.test/rest/v1/rpc/begin_brief')
     const sent = JSON.parse(m.calls[1].init.body)
     assert.deepEqual(sent.tools, [{ google_search: {} }])
     assert.ok(!JSON.stringify(sent).includes('secret-key'))
@@ -367,7 +367,7 @@ test('brief: unknown origin refused, and BRIEF_MODEL picks the model', async () 
   try {
     assert.equal((await worker.fetch(briefReq({ contact: who, auth: token('b-6') }, { Origin: 'https://evil.example' }), env(SUPA))).status, 403)
     await worker.fetch(briefReq({ contact: who, auth: token('b-7') }), env({ ...SUPA, BRIEF_MODEL: 'gemini-brief-x' }))
-    assert.match(m.calls.at(-1).url, /gemini-brief-x:generateContent/)
+    assert.match(m.calls.find((c) => c.url.includes(':generateContent')).url, /gemini-brief-x:generateContent/)
   } finally { m.restore() }
 })
 
@@ -383,4 +383,104 @@ test('usageLine: tokens in and out, thinking apart, and the searches a call ran;
   assert.equal(usageLine(raw), 'in=3000 out=700 thinking=1200 searches=2')
   assert.equal(usageLine(geminiOk), 'in=10 out=5 thinking=0 searches=0')
   assert.equal(usageLine(null), 'in=0 out=0 thinking=0 searches=0')
+})
+
+// ── Pricing: sign-in, balances, charges ──
+const BAL = { tier: 'free', periodEnd: '2026-11-01T00:00:00+05:30', cards: { month: { used: 2, allowance: 20 }, pass: null, pack: 0, left: 18 }, briefs: { month: { used: 0, allowance: 0 }, extra: 0, trial: 3, left: 3 } }
+/** Supabase: begin_* answers `begin`, charge_* answers `charged`; Gemini answers everything else. */
+function mockSupa({ begin = () => [{ allowed: true, reason: null, day_limit: 300, balance: BAL }], charged = () => ({ ...BAL, cards: { ...BAL.cards, left: 17 } }), gemini = geminiOk } = {}) {
+  return mockUpstream((url, init) => {
+    const u = String(url)
+    if (u.includes('/rpc/begin_')) return new Response(JSON.stringify(begin(u, init)))
+    if (u.includes('/rpc/charge_')) return new Response(JSON.stringify(charged(u, init)))
+    return new Response(JSON.stringify(gemini))
+  })
+}
+
+test('pricing: signed out is 401 sign_in when accounts are configured, and nothing is called', async () => {
+  const m = mockSupa()
+  try {
+    const res = await worker.fetch(post({ images: [{ mime: 'image/png', data: png }] }), env(SUPA))
+    assert.equal(res.status, 401)
+    assert.equal((await res.json()).error.code, 'sign_in')
+    assert.equal(m.calls.length, 0)
+  } finally { m.restore() }
+})
+
+test('pricing: a read is checked, then charged one card per contact, and the balance comes back', async () => {
+  const two = { candidates: [{ content: { parts: [{ text: JSON.stringify({ languages: [], notes: '', contacts: [{ name: 'A', phones: [], emails: [], social: [] }, { name: 'B', phones: [], emails: [], social: [] }] }) }] } }] }
+  const m = mockSupa({ gemini: two })
+  try {
+    const res = await worker.fetch(post({ images: [{ mime: 'image/png', data: png }], auth: token('p-1') }), env(SUPA))
+    assert.equal(res.status, 200)
+    assert.equal((await res.json()).balance.cards.left, 17)
+    const charge = m.calls.find((c) => c.url.endsWith('/rpc/charge_reads'))
+    assert.deepEqual(JSON.parse(charge.init.body), { n: 2 })
+    assert.equal(charge.init.headers.Authorization, `Bearer ${token('p-1')}`)
+  } finally { m.restore() }
+})
+
+test('pricing: no cards left is 402 no_cards with the balance, and Gemini is never called', async () => {
+  const m = mockSupa({ begin: () => [{ allowed: false, reason: 'no_cards', day_limit: 300, balance: { ...BAL, cards: { ...BAL.cards, left: 0 } } }] })
+  try {
+    const res = await worker.fetch(post({ images: [{ mime: 'image/png', data: png }], auth: token('p-2') }), env(SUPA))
+    assert.equal(res.status, 402)
+    const body = await res.json()
+    assert.equal(body.error.code, 'no_cards'); assert.equal(body.balance.cards.left, 0)
+    assert.equal(m.calls.filter((c) => !c.url.startsWith('https://supa.test')).length, 0)
+  } finally { m.restore() }
+})
+
+test('pricing: an empty read or a failed read is never charged', async () => {
+  const empty = { candidates: [{ content: { parts: [{ text: JSON.stringify({ languages: [], notes: '', contacts: [] }) }] } }] }
+  for (const gemini of [empty, { candidates: [] }]) {
+    const m = mockSupa({ gemini })
+    try {
+      await worker.fetch(post({ images: [{ mime: 'image/png', data: png }], auth: token('p-3') }), env(SUPA))
+      assert.equal(m.calls.filter((c) => c.url.includes('/rpc/charge_')).length, 0)
+    } finally { m.restore() }
+  }
+})
+
+test('pricing: Supabase down or 0005 missing still reads, uncharged, with balance null', async () => {
+  for (const begin of [() => { throw new TypeError('fetch failed') }, () => ({ code: 'PGRST202' })]) {
+    const m = mockSupa({ begin })
+    try {
+      const res = await worker.fetch(post({ images: [{ mime: 'image/png', data: png }], auth: token('p-4') }), env(SUPA))
+      assert.equal(res.status, 200)
+      assert.equal((await res.json()).balance, null)
+      assert.equal(m.calls.filter((c) => c.url.includes('/rpc/charge_')).length, 0)
+    } finally { m.restore() }
+  }
+})
+
+test('pricing: a charge that fails still returns the read, with the balance from before', async () => {
+  const m = mockSupa({ charged: () => { throw new TypeError('fetch failed') } })
+  try {
+    const res = await worker.fetch(post({ images: [{ mime: 'image/png', data: png }], auth: token('p-7') }), env(SUPA))
+    assert.equal(res.status, 200)
+    const body = await res.json()
+    assert.equal(body.contacts.length, 1); assert.equal(body.balance.cards.left, 18)
+  } finally { m.restore() }
+})
+
+test('pricing: briefs are checked with begin_brief, charged with charge_brief; pro_only and no_briefs are 402', async () => {
+  let m = mockSupa({ gemini: briefOk, begin: () => [{ allowed: true, reason: null, day_limit: 10, balance: BAL }] })
+  try {
+    const res = await worker.fetch(briefReq({ contact: who, auth: token('p-5') }), env(SUPA))
+    assert.equal(res.status, 200)
+    assert.ok(m.calls.some((c) => c.url.endsWith('/rpc/begin_brief')))
+    assert.ok(m.calls.some((c) => c.url.endsWith('/rpc/charge_brief')))
+    assert.ok((await res.json()).balance)
+  } finally { m.restore() }
+  for (const reason of ['pro_only', 'no_briefs']) {
+    m = mockSupa({ begin: () => [{ allowed: false, reason, day_limit: 10, balance: BAL }] })
+    try {
+      const res = await worker.fetch(briefReq({ contact: who, auth: token('p-6') }), env(SUPA))
+      assert.equal(res.status, 402)
+      const body = await res.json()
+      assert.equal(body.error.code, reason); assert.ok(body.balance)
+      assert.equal(m.calls.filter((c) => !c.url.startsWith('https://supa.test')).length, 0)
+    } finally { m.restore() }
+  }
 })
