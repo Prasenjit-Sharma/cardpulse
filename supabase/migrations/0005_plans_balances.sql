@@ -48,13 +48,25 @@ drop policy if exists "owner reads own usage" on public.usage;
 create policy "owner reads own usage" on public.usage for select using (auth.uid() = owner_id);
 -- No insert/update/delete policy: only the functions below change these rows.
 
--- The plan in force and its month. Free months are calendar months in India time.
-create or replace function public._period(v_uid uuid, out tier text, out p_start timestamptz, out p_end timestamptz)
+-- The plan in force and its month at `v_now`. Free months are calendar months in India time (1st 00:00 IST to the next
+-- 1st). A paid plan's months run from its start, one at a time, so a yearly plan or a renewal refills every month; the
+-- last one stops where the plan ends.
+drop function if exists public._period(uuid);
+create or replace function public._period(v_uid uuid, v_now timestamptz default now(), out tier text, out p_start timestamptz, out p_end timestamptz)
 language plpgsql stable security definer set search_path = public as $$
-declare v_month timestamptz := date_trunc('month', now() at time zone 'Asia/Kolkata') at time zone 'Asia/Kolkata';
+declare v_from timestamptz; v_to timestamptz; v_local timestamp := v_now at time zone 'Asia/Kolkata'; v_k integer;
 begin
-  select p.tier, p.period_start, p.period_end into tier, p_start, p_end from public.plans p where p.owner_id = v_uid and p.period_end > now();
-  if tier is null then tier := 'free'; p_start := v_month; p_end := v_month + interval '1 month'; end if;
+  select p.tier, p.period_start, p.period_end into tier, v_from, v_to from public.plans p where p.owner_id = v_uid and p.period_start <= v_now and p.period_end > v_now;
+  if tier is null then
+    tier := 'free';
+    p_start := date_trunc('month', v_local) at time zone 'Asia/Kolkata';
+    p_end := (date_trunc('month', v_local) + interval '1 month') at time zone 'Asia/Kolkata';
+    return;
+  end if;
+  v_k := (extract(year from age(v_now, v_from)) * 12 + extract(month from age(v_now, v_from)))::integer;
+  p_start := v_from + make_interval(months => v_k);
+  if p_start > v_now then v_k := v_k - 1; p_start := v_from + make_interval(months => v_k); end if;
+  p_end := least(v_from + make_interval(months => v_k + 1), v_to);
 end $$;
 
 create or replace function public._allow(p_tier text, out v_cards integer, out v_briefs integer)
@@ -230,7 +242,7 @@ begin
   return public._balance(p_user);
 end $$;
 
-revoke execute on function public._period(uuid), public._allow(text), public._ensure_credits(uuid), public._active_pass(uuid), public._balance(uuid) from public, anon, authenticated;
+revoke execute on function public._period(uuid, timestamptz), public._allow(text), public._ensure_credits(uuid), public._active_pass(uuid), public._balance(uuid) from public, anon, authenticated;
 revoke execute on function public.my_balance(), public.begin_read(), public.charge_reads(integer), public.begin_brief(), public.charge_brief() from public, anon;
 grant execute on function public.my_balance(), public.begin_read(), public.charge_reads(integer), public.begin_brief(), public.charge_brief() to authenticated;
 revoke execute on function public.grant_plan(uuid, text, integer), public.grant_pack(uuid, text, integer), public.grant_pass(uuid) from public, anon, authenticated;

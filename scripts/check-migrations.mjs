@@ -192,8 +192,10 @@ await sudo(`select public.grant_pack('${D}', 'briefs', 10)`)
 await as('authenticated', D, 'select public.charge_brief()')
 b = await bal(D); assert.equal(b.briefs.extra, 9); assert.equal(b.briefs.trial, 3)
 // granting the same plan again extends it
-b = (await sudo(`select public.grant_plan('${D}', 'pro', 1) as b`)).rows[0].b
-assert.ok(new Date(b.periodEnd) > new Date(Date.now() + 45 * 864e5), 'a second month is added to the first')
+await sudo(`select public.grant_plan('${D}', 'pro', 1)`)
+r = await db.query(`select period_end from public.plans where owner_id = '${D}'`)
+assert.ok(r.rows[0].period_end > new Date(Date.now() + 45 * 864e5), 'a second month is added to the first')
+b = await bal(D); assert.ok(new Date(b.periodEnd) < new Date(Date.now() + 32 * 864e5), 'the balance shows when this month renews, not when the plan ends')
 // a paid period that ended: back to Free
 await db.exec(`update public.plans set period_end = now() - interval '1 minute' where owner_id = '${D}'`)
 b = await bal(D); assert.equal(b.tier, 'free'); assert.equal(b.cards.month.allowance, 20)
@@ -223,4 +225,26 @@ await assert.rejects(chargeReads(C, 0), /1 to 200/)
 await as('authenticated', C, 'select public.delete_my_cloud_data()')
 b = await bal(C); assert.equal(b.cards.pack, 48, 'Delete cloud data keeps what was bought')
 console.log('ok 0005 plans, packs, pass, briefs, month in India time, brakes, isolation, grants')
+// the Free month ends at midnight IST on the 1st of the next month, whatever the month's length (review C1)
+const F = '66666666-6666-6666-6666-666666666666', G = '77777777-7777-7777-7777-777777777777'
+await db.exec(`insert into auth.users values ('${F}'), ('${G}')`)
+const period = async (uid, at) => (await db.query(`select p_start, p_end, tier from public._period($1, $2::timestamptz)`, [uid, at])).rows[0]
+let pp = await period(F, '2026-10-31T17:30:00Z')      // 31 Oct, 23:00 IST
+assert.equal(pp.p_start.toISOString(), '2026-09-30T18:30:00.000Z'); assert.equal(pp.p_end.toISOString(), '2026-10-31T18:30:00.000Z', '31 Oct IST is still October')
+pp = await period(F, '2027-03-31T12:00:00Z')
+assert.equal(pp.p_end.toISOString(), '2027-03-31T18:30:00.000Z', 'March ends on the 31st, not the 28th')
+
+// a paid plan's month runs from its start, month by month, inside a longer period (review C2)
+await db.exec(`insert into public.plans (owner_id, tier, period_start, period_end) values ('${G}', 'pro', '2026-01-15T06:00:00Z', '2027-01-15T06:00:00Z')`)
+pp = await period(G, '2026-03-20T00:00:00Z')
+assert.equal(pp.tier, 'pro')
+assert.equal(pp.p_start.toISOString(), '2026-03-15T06:00:00.000Z'); assert.equal(pp.p_end.toISOString(), '2026-04-15T06:00:00.000Z', 'a yearly plan gives its allowance every month')
+pp = await period(G, '2027-01-10T00:00:00Z')
+assert.equal(pp.p_end.toISOString(), '2027-01-15T06:00:00.000Z', 'the last month stops where the plan ends')
+// renewal: last month's use does not count against the next month
+await db.exec(`update public.plans set period_start = now() - interval '40 days', period_end = now() + interval '20 days' where owner_id = '${G}'`)
+await db.exec(`insert into public.usage (owner_id, at, kind, source, qty) values ('${G}', now() - interval '35 days', 'card', 'month', 400)`)
+b = await bal(G); assert.equal(b.cards.month.used, 0, 'the second month starts fresh'); assert.equal(b.cards.month.allowance, 400)
+console.log('ok month ends in India time; paid plans count month by month')
+
 console.log('ALL OK')
