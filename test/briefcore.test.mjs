@@ -93,7 +93,7 @@ test('companyEntry keeps only the company: no person text, no LinkedIn sources, 
   const r = { person: 'Director, 20 years.', company: 'Makes PP woven sacks.', starters: ['Hi'], suggestions: '<div/>',
     sources: [{ title: 'linkedin.com', uri: 'https://v/1' }, { title: 'vivacity.in', uri: 'https://v/2' }],
     links: [{ kind: 'linkedin', url: 'https://www.linkedin.com/in/aj' }, { kind: 'linkedin', url: 'https://www.linkedin.com/company/vivacity' }, { kind: 'website', url: 'https://vivacity.in' }] }
-  assert.deepEqual(companyEntry(r, input), { name: 'vivacity woven sack', company: 'Makes PP woven sacks.', sources: [{ title: 'vivacity.in', uri: 'https://v/2' }],
+  assert.deepEqual(companyEntry(r, input, 5), { at: 5, name: 'vivacity woven sack', company: 'Makes PP woven sacks.', sources: [{ title: 'vivacity.in', uri: 'https://v/2' }],
     links: [{ kind: 'linkedin', url: 'https://www.linkedin.com/company/vivacity' }, { kind: 'website', url: 'https://vivacity.in' }] })
 })
 

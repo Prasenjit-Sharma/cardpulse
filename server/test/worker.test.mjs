@@ -573,7 +573,20 @@ test('company store: a sister firm on the same domain is not reused', async () =
   } finally { m.restore() }
 })
 
-test('company store: Refresh skips the store and writes the new company; no strong match, no store; a failing store never stops a brief', async () => {
+test('company store: Refresh reuses company research under 7 days old, and researches again once it is older', async () => {
+  const day = 86400000
+  for (const [age, reused] of [[2 * day, true], [8 * day, false]]) {
+    const kv = kvMock({ [KEY]: { name: 'vivacity woven sack', company: 'Kept.', sources: [], links: [], at: Date.now() - age } })
+    const m = mockSupa({ gemini: searched(), begin: okBegin })
+    try {
+      const body = await (await worker.fetch(briefReq({ contact: pinned, auth: token(`f-${age}`), fresh: true }), env({ ...SUPA, BRIEF_SEARCH: '1', BRIEF_CACHE: kv }))).json()
+      assert.equal(body.company, reused ? 'Kept.' : 'Makes sacks.')
+      if (!reused) assert.ok(JSON.parse(kv.m.get(KEY)).at > Date.now() - 60000, 'the new research is kept with its date')
+    } finally { m.restore() }
+  }
+})
+
+test('company store: an entry without a date counts as old on Refresh; no strong match, no store; a failing store never stops a brief', async () => {
   let kv = kvMock({ [KEY]: { name: 'vivacity woven sack', company: 'Old.', sources: [], links: [] } })
   let m = mockSupa({ gemini: searched(), begin: okBegin })
   try {

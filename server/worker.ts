@@ -168,6 +168,8 @@ export function usageLine(json: unknown): string {
 /** Pulse Brief: a short brief on one contact. Signed-in only, with its own daily limit; nothing is stored here. */
 const COMPANY_TTL = 30 * 86400
 const COMPANY_TTL_NOTHING = 7 * 86400        // "nothing found" is kept a shorter while: a new website may appear
+/** Refresh reuses company research younger than this; older research is done again (company facts change slowly). */
+const REFRESH_REUSE_MS = 7 * 86_400_000
 
 /** The saved research for this card's company, when one of its keys holds the same company; null otherwise or on error. */
 async function findCompany(kv: NonNullable<Env['BRIEF_CACHE']>, keys: string[], i: BriefInput): Promise<CompanyEntry | null> {
@@ -218,10 +220,12 @@ async function brief(req: Request, env: Env, origin: string | null, ctx?: { wait
   const model = env.BRIEF_MODEL || env.GEMINI_MODEL || DEFAULT_MODEL
   const search = env.BRIEF_SEARCH === '1'
   const thinking: Thinking = THINKING.includes(env.BRIEF_THINKING as Thinking) ? env.BRIEF_THINKING as Thinking : 'low'
-  // Company research already done for this company (any account) is reused: only the person is searched. Refresh skips it.
+  // Company research already done for this company (any account) is reused: only the person is searched. Refresh reuses
+  // it only while it is under a week old, so refreshing several people at one company searches the company once.
   const kv = search ? env.BRIEF_CACHE : undefined
   const keys = kv ? companyKeys(input) : []
-  const saved = kv && keys.length && body.fresh !== true ? await findCompany(kv, keys, input) : null
+  const found = kv && keys.length ? await findCompany(kv, keys, input) : null
+  const saved = found && (body.fresh !== true || (typeof found.at === 'number' && Date.now() - found.at < REFRESH_REUSE_MS)) ? found : null
   const request = saved ? buildPersonRequest(input, saved.company, thinking) : buildBriefRequest(input, search, thinking)
   const call = (body: unknown) => fetch(`${env.GEMINI_BASE ?? UPSTREAM}/models/${encodeURIComponent(model)}:generateContent`, {
     method: 'POST',

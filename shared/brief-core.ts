@@ -108,11 +108,13 @@ export function companyKeys(i: BriefInput): string[] {
   return [...new Set(keys)].map((k) => `co1:${k}`)
 }
 
-export interface CompanyEntry { name: string; company: string; sources: BriefSource[]; links: BriefLink[] }
+/** `at`: when the research was done (ms), so a Refresh can tell recent research from old. */
+export interface CompanyEntry { name: string; company: string; sources: BriefSource[]; links: BriefLink[]; at?: number }
 
 /** The part of a finished brief that is about the company only, for the store, with the company's name as on the card. */
-export function companyEntry(r: BriefResult, i: BriefInput): CompanyEntry {
+export function companyEntry(r: BriefResult, i: BriefInput, at = Date.now()): CompanyEntry {
   return {
+    at,
     name: companyName(i.company),
     company: r.company,
     sources: r.sources.filter((x) => !onHost(x.title.toLowerCase().replace(/^www\./, ''), 'linkedin.com')),
