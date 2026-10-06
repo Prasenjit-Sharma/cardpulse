@@ -108,15 +108,29 @@ export function companyKeys(i: BriefInput): string[] {
   return [...new Set(keys)].map((k) => `co1:${k}`)
 }
 
-export interface CompanyEntry { company: string; sources: BriefSource[]; links: BriefLink[] }
+export interface CompanyEntry { name: string; company: string; sources: BriefSource[]; links: BriefLink[] }
 
-/** The part of a finished brief that is about the company only, for the store. */
-export function companyEntry(r: BriefResult): CompanyEntry {
+/** The part of a finished brief that is about the company only, for the store, with the company's name as on the card. */
+export function companyEntry(r: BriefResult, i: BriefInput): CompanyEntry {
   return {
+    name: companyName(i.company),
     company: r.company,
     sources: r.sources.filter((x) => !onHost(x.title.toLowerCase().replace(/^www\./, ''), 'linkedin.com')),
     links: r.links.filter((l) => !(l.kind === 'linkedin' && /linkedin\.com\/in\//i.test(l.url))),
   }
+}
+
+/**
+ * Is a saved company this card's company? A GSTIN names one registered business, so it is enough. A domain can be shared
+ * by sister firms of a group, and a pincode by neighbours, so those also need the same company name (one may be a
+ * shortened form of the other, such as "Vivacity Woven Sack" and "Vivacity Woven Sack Industries").
+ */
+export function entryMatches(e: CompanyEntry, i: BriefInput, key: string): boolean {
+  if (key.startsWith('co1:gst:')) return true
+  const a = companyName(i.company), b = e.name
+  if (!a || !b) return false
+  const shorter = a.length < b.length ? a : b
+  return a === b || (shorter.split(' ').length >= 2 && (a.startsWith(b + ' ') || b.startsWith(a + ' ')))
 }
 
 /** The request when the company is already known: research only the person, in one search. */

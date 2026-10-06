@@ -525,3 +525,92 @@ test('BRIEF_THINKING sets the thinking level of a searched brief (low when unset
     } finally { m.restore() }
   }
 })
+
+// ── the shared company store, and the retry when a brief ran no search ──
+function kvMock(seed = {}) {
+  const m = new Map(Object.entries(seed).map(([k, v]) => [k, JSON.stringify(v)]))
+  return { m, puts: [], get: async (k, t) => (m.has(k) ? (t === 'json' ? JSON.parse(m.get(k)) : m.get(k)) : null), put: async function (k, v, o) { this.puts.push([k, o]); m.set(k, v) } }
+}
+const pinned = { name: 'Abhishek Jain', company: 'Vivacity Woven Sack Pvt. Ltd.', address: 'Tantithaiya, Surat 394305' }
+const KEY = 'co1:name:vivacity woven sack|394305'
+const okBegin = () => [{ allowed: true, reason: null, day_limit: 10, balance: BAL }]
+/** briefOk with one Google search recorded, so no retry is triggered. */
+const searched = (b = briefOk) => ({ ...b, candidates: [{ ...b.candidates[0], groundingMetadata: { ...b.candidates[0].groundingMetadata, webSearchQueries: ['q'] } }] })
+const geminiCalls = (m) => m.calls.filter((c) => c.url.includes(':generateContent')).map((c) => JSON.parse(c.init.body))
+
+test('company store: a miss runs the full brief and keeps the company part, with its name, never the person, for 30 days', async () => {
+  const kv = kvMock()
+  const m = mockSupa({ gemini: searched(), begin: okBegin })
+  try {
+    const res = await worker.fetch(briefReq({ contact: pinned, auth: token('c-1') }), env({ ...SUPA, BRIEF_SEARCH: '1', BRIEF_CACHE: kv }))
+    assert.equal(res.status, 200)
+    assert.match(geminiCalls(m)[0].contents[0].parts[0].text, /Search for the company/)
+    const kept = JSON.parse(kv.m.get(KEY))
+    assert.equal(kept.company, 'Makes sacks.'); assert.equal(kept.name, 'vivacity woven sack'); assert.equal('person' in kept, false)
+    assert.equal(kv.puts[0][1].expirationTtl, 30 * 86400)
+  } finally { m.restore() }
+})
+
+test('company store: a hit for the same company researches only the person and returns the kept company', async () => {
+  const kv = kvMock({ [KEY]: { name: 'vivacity woven sack', company: 'Kept: makes PP sacks in Surat.', sources: [{ title: 'vivacity.in', uri: 'https://v/2' }], links: [] } })
+  const m = mockSupa({ gemini: searched(), begin: okBegin })
+  try {
+    const body = await (await worker.fetch(briefReq({ contact: pinned, auth: token('c-2') }), env({ ...SUPA, BRIEF_SEARCH: '1', BRIEF_CACHE: kv }))).json()
+    assert.equal(body.company, 'Kept: makes PP sacks in Surat.'); assert.equal(body.person, 'Director.')
+    assert.match(geminiCalls(m)[0].contents[0].parts[0].text, /already been researched/)
+    assert.ok(m.calls.some((c) => c.url.endsWith('/rpc/charge_brief')), 'a brief from the store is still a brief')
+  } finally { m.restore() }
+})
+
+test('company store: a sister firm on the same domain is not reused', async () => {
+  const kv = kvMock({ 'co1:dom:vivacitygroup.com': { name: 'vivacity polymers', company: 'Makes polymers.', sources: [], links: [] } })
+  const m = mockSupa({ gemini: searched(), begin: okBegin })
+  try {
+    const body = await (await worker.fetch(briefReq({ contact: { ...pinned, address: 'Surat', domains: ['vivacitygroup.com'] }, auth: token('c-7') }), env({ ...SUPA, BRIEF_SEARCH: '1', BRIEF_CACHE: kv }))).json()
+    assert.equal(body.company, 'Makes sacks.')
+    assert.match(geminiCalls(m)[0].contents[0].parts[0].text, /Search for the company/)
+  } finally { m.restore() }
+})
+
+test('company store: Refresh skips the store and writes the new company; no strong match, no store; a failing store never stops a brief', async () => {
+  let kv = kvMock({ [KEY]: { name: 'vivacity woven sack', company: 'Old.', sources: [], links: [] } })
+  let m = mockSupa({ gemini: searched(), begin: okBegin })
+  try {
+    const body = await (await worker.fetch(briefReq({ contact: pinned, auth: token('c-3'), fresh: true }), env({ ...SUPA, BRIEF_SEARCH: '1', BRIEF_CACHE: kv }))).json()
+    assert.equal(body.company, 'Makes sacks.'); assert.equal(JSON.parse(kv.m.get(KEY)).company, 'Makes sacks.')
+  } finally { m.restore() }
+  kv = kvMock(); m = mockSupa({ gemini: searched(), begin: okBegin })
+  try {
+    await worker.fetch(briefReq({ contact: who, auth: token('c-4') }), env({ ...SUPA, BRIEF_SEARCH: '1', BRIEF_CACHE: kv }))
+    assert.equal(kv.puts.length, 0, 'Surat without a pincode is too weak to share')
+  } finally { m.restore() }
+  const broken = { get: async () => { throw new Error('kv down') }, put: async () => { throw new Error('kv down') } }
+  m = mockSupa({ gemini: searched(), begin: okBegin })
+  try {
+    assert.equal((await worker.fetch(briefReq({ contact: pinned, auth: token('c-5') }), env({ ...SUPA, BRIEF_SEARCH: '1', BRIEF_CACHE: broken }))).status, 200)
+  } finally { m.restore() }
+})
+
+test('a brief that ran no search is tried once more on low thinking, and that answer is kept; one that searched is not', async () => {
+  let n = 0
+  let m = mockUpstream((url, init) => {
+    const u = String(url)
+    if (u.includes('/rpc/begin_')) return new Response(JSON.stringify(okBegin()))
+    if (u.includes('/rpc/charge_')) return new Response(JSON.stringify(BAL))
+    n++
+    return new Response(JSON.stringify(n === 1 ? briefOk : searched({ ...briefOk, candidates: [{ ...briefOk.candidates[0], content: { parts: [{ text: JSON.stringify({ person: 'Second.', company: 'Second co.', starters: [], links: [] }) }] } }] })))
+  })
+  try {
+    const body = await (await worker.fetch(briefReq({ contact: who, auth: token('r-1') }), env({ ...SUPA, BRIEF_SEARCH: '1', BRIEF_THINKING: 'minimal' }))).json()
+    const calls = geminiCalls(m)
+    assert.equal(calls.length, 2)
+    assert.equal(calls[0].generationConfig.thinkingConfig.thinkingLevel, 'minimal'); assert.equal(calls[1].generationConfig.thinkingConfig.thinkingLevel, 'low')
+    assert.equal(body.person, 'Second.')
+    assert.equal(m.calls.filter((c) => c.url.endsWith('/rpc/charge_brief')).length, 1, 'charged once')
+  } finally { m.restore() }
+  m = mockSupa({ gemini: searched(), begin: okBegin })
+  try {
+    await worker.fetch(briefReq({ contact: who, auth: token('r-2') }), env({ ...SUPA, BRIEF_SEARCH: '1', BRIEF_THINKING: 'minimal' }))
+    assert.equal(geminiCalls(m).length, 1)
+  } finally { m.restore() }
+})

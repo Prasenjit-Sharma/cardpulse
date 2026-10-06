@@ -1,7 +1,7 @@
 // CardPulse API — a thin, locked-down proxy in front of Gemini.
 // The app sends card photos; the prompt, schema and API key live here, so this endpoint cannot be used as a general Gemini gateway.
 import { buildRequest, GeminiError, MAX_IMAGES, parseResponse, type ImageInput, type Layout } from '../shared/extract-core.ts'
-import { BriefError, buildBriefRequest, parseBriefResponse, THINKING, validBriefInput, type Thinking } from '../shared/brief-core.ts'
+import { BriefError, buildBriefRequest, buildPersonRequest, companyEntry, companyKeys, entryMatches, mergeCompany, parseBriefResponse, THINKING, validBriefInput, type BriefInput, type CompanyEntry, type Thinking } from '../shared/brief-core.ts'
 
 export interface Env {
   GEMINI_API_KEY: string
@@ -12,6 +12,8 @@ export interface Env {
   BRIEF_SEARCH?: string
   /** Thinking level for a searched brief: minimal, low (default), medium or high. Thinking is billed as output. */
   BRIEF_THINKING?: string
+  /** Cloudflare KV: company research shared between briefs at the same company (never anything about a person). */
+  BRIEF_CACHE?: { get(key: string, type: 'json'): Promise<unknown>; put(key: string, value: string, options?: { expirationTtl?: number }): Promise<void> }
   /** Optional key for Pulse Brief alone (a paid project's), so card reading stays on GEMINI_API_KEY's free tier. */
   BRIEF_API_KEY?: string
   /** Comma-separated exact origins allowed to call this API, e.g. https://you.github.io */
@@ -164,12 +166,36 @@ export function usageLine(json: unknown): string {
 }
 
 /** Pulse Brief: a short brief on one contact. Signed-in only, with its own daily limit; nothing is stored here. */
-async function brief(req: Request, env: Env, origin: string | null): Promise<Response> {
+const COMPANY_TTL = 30 * 86400
+const COMPANY_TTL_NOTHING = 7 * 86400        // "nothing found" is kept a shorter while: a new website may appear
+
+/** The saved research for this card's company, when one of its keys holds the same company; null otherwise or on error. */
+async function findCompany(kv: NonNullable<Env['BRIEF_CACHE']>, keys: string[], i: BriefInput): Promise<CompanyEntry | null> {
+  for (const k of keys) {
+    try {
+      const e = await kv.get(k, 'json') as CompanyEntry | null
+      if (e && typeof e.company === 'string' && entryMatches(e, i, k)) return e
+    } catch { return null }
+  }
+  return null
+}
+
+async function keepCompany(kv: NonNullable<Env['BRIEF_CACHE']>, keys: string[], e: CompanyEntry): Promise<void> {
+  const ttl = /^Little public information found/.test(e.company) ? COMPANY_TTL_NOTHING : COMPANY_TTL
+  await Promise.all(keys.map((k) => kv.put(k, JSON.stringify(e), { expirationTtl: ttl }).catch(() => {})))
+}
+
+const searchesRun = (raw: unknown) => {
+  const q = (raw as { candidates?: { groundingMetadata?: { webSearchQueries?: unknown } }[] } | null)?.candidates?.[0]?.groundingMetadata?.webSearchQueries
+  return Array.isArray(q) ? q.length : 0
+}
+
+async function brief(req: Request, env: Env, origin: string | null, ctx?: { waitUntil(p: Promise<unknown>): void }): Promise<Response> {
   if (!originAllowed(origin, env)) return fail(403, 'forbidden_origin', 'This origin is not allowed.', null)
   const key = env.BRIEF_API_KEY || env.GEMINI_API_KEY
   if (!key) return fail(500, 'not_configured', 'The service is not configured.', origin)
   if (Number(req.headers.get('content-length') ?? 0) > BRIEF_BODY_MAX) return fail(413, 'too_large', 'Request too large.', origin)
-  let body: { contact?: unknown; auth?: unknown }
+  let body: { contact?: unknown; auth?: unknown; fresh?: unknown }
   try { body = await req.json() } catch { return fail(400, 'bad_request', 'Invalid request.', origin) }
   const input = validBriefInput(body?.contact)
   if (!input) return fail(400, 'bad_contact', "Add the contact's name or company first.", origin)
@@ -188,17 +214,22 @@ async function brief(req: Request, env: Env, origin: string | null): Promise<Res
   if (wait) return fail(429, 'rate_limited', `Too many briefs. Try again in ${Math.ceil(wait / 60)} min.`, origin, { 'Retry-After': String(wait) })
 
   const model = env.BRIEF_MODEL || env.GEMINI_MODEL || DEFAULT_MODEL
+  const search = env.BRIEF_SEARCH === '1'
+  const thinking: Thinking = THINKING.includes(env.BRIEF_THINKING as Thinking) ? env.BRIEF_THINKING as Thinking : 'low'
+  // Company research already done for this company (any account) is reused: only the person is searched. Refresh skips it.
+  const kv = search ? env.BRIEF_CACHE : undefined
+  const keys = kv ? companyKeys(input) : []
+  const saved = kv && keys.length && body.fresh !== true ? await findCompany(kv, keys, input) : null
+  const ask = (level: Thinking) => (saved ? buildPersonRequest(input, saved.company, level) : buildBriefRequest(input, search, level))
+  const call = (level: Thinking) => fetch(`${env.GEMINI_BASE ?? UPSTREAM}/models/${encodeURIComponent(model)}:generateContent`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+    body: JSON.stringify(ask(level)),
+    signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+  })
+
   let upstream: Response
-  try {
-    upstream = await fetch(`${env.GEMINI_BASE ?? UPSTREAM}/models/${encodeURIComponent(model)}:generateContent`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-      body: JSON.stringify(buildBriefRequest(input, env.BRIEF_SEARCH === '1', THINKING.includes(env.BRIEF_THINKING as Thinking) ? env.BRIEF_THINKING as Thinking : 'low')),
-      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
-    })
-  } catch {
-    return fail(502, 'upstream_unreachable', 'The service is unavailable. Try again.', origin)
-  }
+  try { upstream = await call(thinking) } catch { return fail(502, 'upstream_unreachable', 'The service is unavailable. Try again.', origin) }
   if (!upstream.ok) {
     // Google's own reason goes to the Worker's log (wrangler tail), never to the app: it can name the key or the plan
     console.log(`brief upstream ${upstream.status} ${model}: ${(await upstream.text().catch(() => '')).slice(0, 600)}`)
@@ -206,19 +237,33 @@ async function brief(req: Request, env: Env, origin: string | null): Promise<Res
     return fail(502, 'upstream_error', "Couldn't make the brief. Try again.", origin)
   }
   try {
-    const raw = await upstream.json()
-    const parsed = parseBriefResponse(raw)
+    let raw = await upstream.json()
+    let parsed = parseBriefResponse(raw)
+    let retried = false
+    // Minimal thinking sometimes answers from memory without searching (about 1 brief in 7 in the brief lab): such a
+    // brief has no sources to check, so it is asked once more on low thinking, which searched every time.
+    if (search && thinking !== 'low' && searchesRun(raw) === 0) {
+      try {
+        const again = await call('low')
+        if (again.ok) { const r2 = await again.json(); const p2 = parseBriefResponse(r2); raw = r2; parsed = p2; retried = true }
+      } catch { /* keep the first answer */ }
+    }
+    const result = saved ? mergeCompany(saved, parsed) : parsed
+    if (kv && keys.length && !saved) {
+      const keeping = keepCompany(kv, keys, companyEntry(parsed, input))
+      if (ctx) ctx.waitUntil(keeping); else await keeping
+    }
     // the model decides whether to search: this line in the log shows how often it does, and so what a brief costs
-    console.log(`brief ok ${model}: ${usageLine(raw)} sources=${parsed.sources.length}`)
+    console.log(`brief ok ${model} ${thinking}${retried ? '+low' : ''} company=${saved ? 'saved' : keys.length ? (body.fresh === true ? 'refreshed' : 'new') : 'not shared'}: ${usageLine(raw)} sources=${result.sources.length}`)
     const balance = use.kind === 'account' ? (await charge(body.auth as string, env, 'charge_brief')) ?? use.balance : null
-    return json({ ...parsed, model, balance }, 200, origin)
+    return json({ ...result, model, balance }, 200, origin)
   } catch (e) {
     return fail(502, 'bad_output', e instanceof BriefError ? "Couldn't make the brief. Try again." : 'Unexpected response.', origin)
   }
 }
 
 export default {
-  async fetch(req: Request, env: Env): Promise<Response> {
+  async fetch(req: Request, env: Env, ctx?: { waitUntil(p: Promise<unknown>): void }): Promise<Response> {
     const url = new URL(req.url)
     const origin = req.headers.get('Origin')
 
@@ -232,7 +277,7 @@ export default {
 
     if (url.pathname === '/health' && req.method === 'GET') return json({ ok: true }, 200, originAllowed(origin, env) ? origin : null)
 
-    if (url.pathname === '/v1/brief' && req.method === 'POST') return brief(req, env, origin)
+    if (url.pathname === '/v1/brief' && req.method === 'POST') return brief(req, env, origin, ctx)
     if (url.pathname !== '/v1/extract' || req.method !== 'POST') return fail(404, 'not_found', 'Not found', null)
     if (!originAllowed(origin, env)) return fail(403, 'forbidden_origin', 'This origin is not allowed.', null)
     if (!env.GEMINI_API_KEY) return fail(500, 'not_configured', 'The reading service is not configured.', origin)

@@ -1,7 +1,7 @@
 // Run: node --test test/briefcore.test.mjs
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { BriefError, buildBriefRequest, buildPersonRequest, checkLinks, companyEntry, companyKeys, mergeCompany, parseBriefResponse, validBriefInput } from '../shared/brief-core.ts'
+import { BriefError, buildBriefRequest, buildPersonRequest, checkLinks, companyEntry, companyKeys, entryMatches, mergeCompany, parseBriefResponse, validBriefInput } from '../shared/brief-core.ts'
 
 const input = { name: 'Abhishek Jain', title: '', company: 'Vivacity Woven Sack Pvt. Ltd.', address: 'Tantithaiya, Surat 394305', website: '', domains: [], gstin: '' }
 const grounded = (text, chunks = [], rendered = '<div>chips</div>') => ({ candidates: [{ content: { parts: [{ text }] }, groundingMetadata: {
@@ -93,7 +93,7 @@ test('companyEntry keeps only the company: no person text, no LinkedIn sources, 
   const r = { person: 'Director, 20 years.', company: 'Makes PP woven sacks.', starters: ['Hi'], suggestions: '<div/>',
     sources: [{ title: 'linkedin.com', uri: 'https://v/1' }, { title: 'vivacity.in', uri: 'https://v/2' }],
     links: [{ kind: 'linkedin', url: 'https://www.linkedin.com/in/aj' }, { kind: 'linkedin', url: 'https://www.linkedin.com/company/vivacity' }, { kind: 'website', url: 'https://vivacity.in' }] }
-  assert.deepEqual(companyEntry(r), { company: 'Makes PP woven sacks.', sources: [{ title: 'vivacity.in', uri: 'https://v/2' }],
+  assert.deepEqual(companyEntry(r, input), { name: 'vivacity woven sack', company: 'Makes PP woven sacks.', sources: [{ title: 'vivacity.in', uri: 'https://v/2' }],
     links: [{ kind: 'linkedin', url: 'https://www.linkedin.com/company/vivacity' }, { kind: 'website', url: 'https://vivacity.in' }] })
 })
 
@@ -109,9 +109,21 @@ test('with the company already known, the request researches only the person, in
 
 test('mergeCompany: the person from the fresh call, the company from the store, sources and links from both without repeats', () => {
   const fresh = { person: 'Director.', company: 'ignored', starters: ['Ask about sacks'], suggestions: '<s/>', sources: [{ title: 'linkedin.com', uri: 'https://v/9' }, { title: 'vivacity.in', uri: 'https://v/2' }], links: [{ kind: 'linkedin', url: 'https://www.linkedin.com/in/aj' }] }
-  const entry = { company: 'Makes PP woven sacks.', sources: [{ title: 'vivacity.in', uri: 'https://v/2' }], links: [{ kind: 'website', url: 'https://vivacity.in' }] }
+  const entry = { name: 'vivacity woven sack', company: 'Makes PP woven sacks.', sources: [{ title: 'vivacity.in', uri: 'https://v/2' }], links: [{ kind: 'website', url: 'https://vivacity.in' }] }
   const m = mergeCompany(entry, fresh)
   assert.equal(m.person, 'Director.'); assert.equal(m.company, 'Makes PP woven sacks.'); assert.deepEqual(m.starters, ['Ask about sacks'])
   assert.deepEqual(m.sources.map((s) => s.title), ['linkedin.com', 'vivacity.in'])
   assert.deepEqual(m.links.map((l) => l.url), ['https://www.linkedin.com/in/aj', 'https://vivacity.in'])
+})
+
+test('a saved company is reused only when it is the same company: GSTIN alone is enough; a shared domain or a pincode also needs the same name', () => {
+  const card = (o) => ({ name: 'A', title: '', company: '', address: '', website: '', domains: [], gstin: '', ...o })
+  const saved = companyEntry({ person: '', company: 'Makes sacks.', starters: [], suggestions: '', sources: [], links: [] }, card({ company: 'Vivacity Woven Sack Pvt. Ltd.' }))
+  assert.equal(saved.name, 'vivacity woven sack')
+  assert.equal(entryMatches(saved, card({ company: 'Vivacity Woven Sack Private Limited' }), 'co1:dom:vivacitygroup.com'), true)
+  assert.equal(entryMatches(saved, card({ company: 'Vivacity Polymers Pvt Ltd' }), 'co1:dom:vivacitygroup.com'), false, 'a sister firm on the group domain is a different company')
+  assert.equal(entryMatches(saved, card({ company: 'Vivacity Woven Sack' }), 'co1:name:vivacity woven sack|394305'), true)
+  const group = { ...saved, name: 'vivacity polymers' }
+  assert.equal(entryMatches(group, card({ company: 'Vivacity' }), 'co1:dom:vivacitygroup.com'), false, 'one word is too short to say it is the same firm')
+  assert.equal(entryMatches(saved, card({ company: 'VIVACITY POLYMERS' }), 'co1:gst:24ABCDE1234F1Z5'), true, 'a GSTIN names one registered business, whatever the card calls it')
 })

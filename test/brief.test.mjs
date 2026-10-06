@@ -84,3 +84,11 @@ test('requestBrief: pro_only and no_briefs keep their codes, and the balance is 
   const b = await requestBrief(person(), { url: 'https://api', token: 't', online: true, fetch: ok, onBalance: (x) => { seen = x } })
   assert.deepEqual(seen, { tier: 'pro' }); assert.equal('balance' in b, false, 'the balance is never saved on the contact')
 })
+
+test('requestBrief: Refresh asks the server for fresh company research; a first brief does not', async () => {
+  const bodies = []
+  const f = async (_u, init) => { bodies.push(JSON.parse(init.body)); return new Response(JSON.stringify({ person: 'P', company: 'C', starters: [], links: [], sources: [] })) }
+  await requestBrief(person(), { url: 'https://api', token: 't', online: true, fetch: f })
+  await requestBrief(person(), { url: 'https://api', token: 't', online: true, fetch: f, fresh: true })
+  assert.equal(bodies[0].fresh, undefined); assert.equal(bodies[1].fresh, true)
+})

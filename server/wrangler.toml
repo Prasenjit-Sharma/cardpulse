@@ -27,6 +27,13 @@ SUPABASE_PUBLISHABLE_KEY = "sb_publishable_xRiJzrH9yCIo_NwHN1jNDw_zWfTAiqf"
 
 # Secret (never commit it):  npx wrangler secret put GEMINI_API_KEY
 
+# Company research shared between Pulse Briefs at the same company, from any account, for 30 days (7 when nothing was
+# found). Matched by GSTIN, or by the company's own domain or its name with pincode, the name checked too. Nothing
+# about a person is kept. Only this Worker can read or write it.
+[[kv_namespaces]]
+binding = "BRIEF_CACHE"
+id = "5849e39034954c78a9424d72ce987051"
+
 # Keep the Worker's log lines (reads, briefs, charges, Gemini usage) for a few days, so they can be read after the fact
 # in the Cloudflare dashboard (Workers → cardpulse-api → Logs), not only live with `wrangler tail`.
 [observability]

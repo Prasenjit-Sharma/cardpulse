@@ -56,7 +56,7 @@ export default function BriefPage({ contact, briefKey, onSave, onAddLink, onPlan
       .catch((e) => { if (alive.current) setError(e instanceof BriefFailure ? e : new BriefFailure('failed', "Couldn't make the brief. Try again.")) })
       .finally(() => { if (alive.current) setBusy(false) })
   }
-  const start = () => follow(runBrief(briefKey, async () => requestBrief(contact, { url: API_URL, token: await accessToken(), online: navigator.onLine, fetch: (...a) => fetch(...a), onBalance: (x) => { const nb = parseBalance(x); if (nb) setBalance(nb, userId) } })))
+  const start = (fresh = false) => follow(runBrief(briefKey, async () => requestBrief(contact, { url: API_URL, token: await accessToken(), online: navigator.onLine, fetch: (...a) => fetch(...a), fresh, onBalance: (x) => { const nb = parseBalance(x); if (nb) setBalance(nb, userId) } })))
 
   // join a search already running for this contact; otherwise search when nothing is kept yet
   useEffect(() => {
@@ -134,7 +134,7 @@ export default function BriefPage({ contact, briefKey, onSave, onAddLink, onPlan
             <div className={`brief-error${brief ? ' small' : ''}`} role="alert">
               <p>{error.message}</p>
               {error.code === 'sign_in' ? <button className="cta small" onClick={() => void signInWithGoogle()}>Sign in</button>
-                : error.code !== 'daily_limit' && error.code !== 'offline' && <button className="outline small" onClick={start}>Try again</button>}
+                : error.code !== 'daily_limit' && error.code !== 'offline' && <button className="outline small" onClick={() => start()}>Try again</button>}
             </div>
           )}
           {brief && (
@@ -175,7 +175,7 @@ export default function BriefPage({ contact, briefKey, onSave, onAddLink, onPlan
       <Sheet open={menu} onClose={() => setMenu(false)} title="Pulse Brief">
         {brief && <SheetItem icon="copy" label="Copy all" onClick={() => { setMenu(false); void copy(briefText(contact, brief)) }} />}
         {brief && <SheetItem icon="share" label="Share all" onClick={() => { setMenu(false); void share(briefText(contact, brief)) }} />}
-        <SheetItem icon="refresh" label="Refresh" hint="A fresh brief; counts towards today's 10" disabled={busy} onClick={() => { setMenu(false); start() }} />
+        <SheetItem icon="refresh" label="Refresh" hint="A fresh brief; counts towards today's 10" disabled={busy} onClick={() => { setMenu(false); start(true) }} />
       </Sheet>
       {flash && <div className="flash brief-flash" role="status">{flash}</div>}
     </div>

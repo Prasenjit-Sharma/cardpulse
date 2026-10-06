@@ -66,13 +66,16 @@ const MESSAGE: Record<FailureCode, string> = {
 const SERVER_CODES = new Set<FailureCode>(['daily_limit', 'sign_in', 'pro_only', 'no_briefs'])
 
 /** Asks the server for a brief. Every failure becomes a BriefFailure the page can show as it is. */
-/** `onBalance` gets what the account has left, from every answer that carries it (it is never saved on the contact). */
-export async function requestBrief(c: Contact, deps: { url: string; token: string | undefined; online: boolean; fetch: typeof fetch; now?: number; onBalance?: (b: unknown) => void }): Promise<Brief> {
+/**
+ * `onBalance` gets what the account has left, from every answer that carries it (it is never saved on the contact).
+ * `fresh` (Refresh) asks for new company research instead of what was found at this company before.
+ */
+export async function requestBrief(c: Contact, deps: { url: string; token: string | undefined; online: boolean; fetch: typeof fetch; now?: number; onBalance?: (b: unknown) => void; fresh?: boolean }): Promise<Brief> {
   if (!deps.online) throw new BriefFailure('offline', MESSAGE.offline)
   if (!deps.token) throw new BriefFailure('sign_in', MESSAGE.sign_in)
   let res: Response
   try {
-    res = await deps.fetch(`${deps.url}/v1/brief`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contact: briefInput(c), auth: deps.token }), signal: AbortSignal.timeout(60_000) })
+    res = await deps.fetch(`${deps.url}/v1/brief`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contact: briefInput(c), auth: deps.token, ...(deps.fresh ? { fresh: true } : {}) }), signal: AbortSignal.timeout(60_000) })
   } catch { throw new BriefFailure('failed', MESSAGE.failed) }
   const json = await res.json().catch(() => ({})) as Partial<Brief> & { error?: { code?: string; message?: string }; balance?: unknown }
   if (json.balance != null) deps.onBalance?.(json.balance)
