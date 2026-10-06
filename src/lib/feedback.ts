@@ -23,7 +23,7 @@ export function buildFeedback(message: string, diag?: Diagnostics): string {
   const out = [message.trim() || '(no message)']
   if (diag) {
     out.push('', '--- Diagnostics (no contact details) ---',
-      `App: CardPulse v${diag.version}${diag.installed ? ' (installed)' : ' (browser)'}`,
+      `App: Pulse v${diag.version}${diag.installed ? ' (installed)' : ' (browser)'}`,
       `Device: ${diag.userAgent}`, `Screen: ${diag.screen}`, `Online: ${diag.online ? 'yes' : 'no'}`,
       `Cards: ${diag.cards.total} total, ${diag.cards.failed} failed, ${diag.cards.waiting} waiting`,
       `Settings: photos=${diag.settings.keepPhotos}, theme=${diag.settings.theme}, own key=${diag.settings.ownKey ? 'yes' : 'no'}`)
@@ -39,10 +39,10 @@ export type Sent = 'shared' | 'mailed' | 'copied'
 export async function sendFeedback(text: string): Promise<Sent> {
   const nav = shareNav()
   if (nav.share) {
-    try { await nav.share({ title: 'CardPulse feedback', text }); return 'shared' } catch (e) { if ((e as Error)?.name === 'AbortError') throw e }
+    try { await nav.share({ title: 'Pulse feedback', text }); return 'shared' } catch (e) { if ((e as Error)?.name === 'AbortError') throw e }
   }
   if (SUPPORT_EMAIL) {
-    location.href = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('CardPulse feedback')}&body=${encodeURIComponent(text.slice(0, 1800))}`
+    location.href = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Pulse feedback')}&body=${encodeURIComponent(text.slice(0, 1800))}`
     return 'mailed'
   }
   await navigator.clipboard.writeText(text)

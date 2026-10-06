@@ -30,7 +30,7 @@ test('shared text: all sections, or one, with the heading line, sources and the 
     '*About the person*\nDirector at Vivacity.',
     '*About the company*\nMakes woven sacks.',
     '*Conversation starters*\n• Ask about the new plant.\n• Ask about exports.',
-    'Sources: indiamart.com, vivacitygroup.in\nvia CardPulse Pulse Brief',
+    'Sources: indiamart.com, vivacitygroup.in\nvia Pulse Brief',
   ].join('\n\n'))
   const one = briefText(person(), brief, 'company')
   assert.ok(one.includes('*About the company*') && !one.includes('About the person'))

@@ -6,7 +6,7 @@ import ModeRail, { type PhotoMode } from './ModeRail'
 const EVERY_MS = 180
 
 /**
- * Scans a QR code: a visiting card that carries one, or another CardPulse user's card. Reads continuously from the
+ * Scans a QR code: a visiting card that carries one, or another Pulse user's card. Reads continuously from the
  * camera and stops on the first code it finds; a photo from the gallery works too. `paused` holds it while a result is shown.
  */
 export default function QrScanner({ paused, eventLabel, onFound, onPhotoMode, onClose }: {

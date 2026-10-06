@@ -2,7 +2,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { crc32, createZip, readZip, readVerified } from '../src/lib/zip.ts'
-import { backupDue, buildBackup, mergeEvents, parseBackup, planRestore } from '../src/lib/backup.ts'
+import { backupDue, backupFileName, buildBackup, mergeEvents, parseBackup, planRestore } from '../src/lib/backup.ts'
 
 const jpeg = (n) => new Blob([Uint8Array.from({ length: n }, (_, i) => (i * 7) & 255)], { type: 'image/jpeg' })
 const text = async (f) => new TextDecoder().decode(await readVerified(f))
@@ -25,7 +25,7 @@ test('a damaged file is detected, not restored', async () => {
   await assert.rejects(() => readVerified(f), /damaged/)
 })
 test('something that is not a zip is refused with a clear message', async () => {
-  await assert.rejects(() => readZip(new Blob(['just some text'])), /not a CardPulse backup/)
+  await assert.rejects(() => readZip(new Blob(['just some text'])), /not a Pulse backup/)
 })
 
 const card = (id, extra = {}) => ({ id, createdAt: 1, status: 'done', reviewed: false, image: jpeg(300), corrected: [{ name: 'A ' + id, phones: [], emails: [] }], ...extra })
@@ -49,7 +49,7 @@ test('restoring adds what is missing and never overwrites what is already here',
 })
 test('a file from another app, or a newer one, is refused', async () => {
   const other = await createZip([{ name: 'cardpulse-backup.json', data: JSON.stringify({ app: 'other', version: 1, cards: [] }) }])
-  await assert.rejects(() => parseBackup(other), /not a CardPulse backup/)
+  await assert.rejects(() => parseBackup(other), /not a Pulse backup/)
   const newer = await createZip([{ name: 'cardpulse-backup.json', data: JSON.stringify({ app: 'cardpulse', version: 99, cards: [] }) }])
   await assert.rejects(() => parseBackup(newer), /newer version/)
 })
@@ -70,4 +70,11 @@ test('digital cards travel in the backup with their photos, and older backups st
   assert.equal(parsed.myCards.length, 2); assert.equal(parsed.myCards[0].name, 'Me'); assert.equal(parsed.myCards[0].photo.size, 60); assert.equal(parsed.myCards[1].photo, undefined)
   const old = await parseBackup(await buildBackup([], [], 1_700_000_000_000))
   assert.deepEqual(old.myCards, [])
+})
+test('the backup file is named for Pulse, but keeps cardpulse-backup.json inside so old and new installs read each other', async () => {
+  assert.equal(backupFileName(Date.UTC(2026, 9, 6, 12)), 'pulse-backup-2026-10-06.zip')
+  const files = await readZip(await buildBackup([], [], 1_700_000_000_000))
+  const main = files.find((f) => f.name === 'cardpulse-backup.json')
+  assert.ok(main)
+  assert.equal(JSON.parse(await text(main)).app, 'cardpulse')
 })

@@ -68,7 +68,7 @@ export async function readZip(blob: Blob): Promise<ZipFile[]> {
   const tv = new DataView(tail.buffer)
   let eocd = -1
   for (let i = tail.length - 22; i >= 0; i--) if (tv.getUint32(i, true) === 0x06054b50) { eocd = i; break }
-  if (eocd < 0) throw new Error('This is not a CardPulse backup file.')
+  if (eocd < 0) throw new Error('This is not a Pulse backup file.')
   const count = tv.getUint16(eocd + 10, true)
   const cdSize = tv.getUint32(eocd + 12, true)
   const cdOffset = tv.getUint32(eocd + 16, true)
@@ -84,7 +84,7 @@ export async function readZip(blob: Blob): Promise<ZipFile[]> {
     const nameLen = cv.getUint16(p + 28, true), extraLen = cv.getUint16(p + 30, true), commentLen = cv.getUint16(p + 32, true)
     const local = cv.getUint32(p + 42, true)
     const name = dec.decode(cd.subarray(p + 46, p + 46 + nameLen))
-    if (method !== 0) throw new Error('This backup uses compression that CardPulse cannot open.')
+    if (method !== 0) throw new Error('This backup uses compression that Pulse cannot open.')
     const lh = new DataView(await blob.slice(local, local + 30).arrayBuffer())
     const start = local + 30 + lh.getUint16(26, true) + lh.getUint16(28, true)
     files.push({ name, size, crc, blob: blob.slice(start, start + size) })

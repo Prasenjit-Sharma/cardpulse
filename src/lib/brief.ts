@@ -35,7 +35,7 @@ export function briefText(c: Contact, b: Brief, only?: Section): string {
   const head = `*${name || company}*${[name ? company : '', city].filter(Boolean).map((x) => `, ${x}`).join('')}`
   const sections = (only ? [only] : (['person', 'company', 'starters'] as Section[])).filter((s) => body(b, s)).map((s) => `*${HEADING[s]}*\n${body(b, s)}`)
   const sources = [...new Set(b.sources.map((s) => s.title))].slice(0, 5)
-  return [head, ...sections, `${sources.length ? `Sources: ${sources.join(', ')}\n` : ''}via CardPulse Pulse Brief`].join('\n\n')
+  return [head, ...sections, `${sources.length ? `Sources: ${sources.join(', ')}\n` : ''}via Pulse Brief`].join('\n\n')
 }
 
 /* ---------- links found by the search ---------- */

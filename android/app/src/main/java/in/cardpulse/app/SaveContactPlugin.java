@@ -67,7 +67,7 @@ public class SaveContactPlugin extends Plugin {
             rows.add(v);
         }
         intent.putParcelableArrayListExtra(ContactsContract.Intents.Insert.DATA, rows);
-        intent.putExtra("finishActivityOnSaveCompleted", true);   // Contacts returns to CardPulse after Save
+        intent.putExtra("finishActivityOnSaveCompleted", true);   // Contacts returns to Pulse after Save
 
         try {
             getActivity().startActivity(intent);

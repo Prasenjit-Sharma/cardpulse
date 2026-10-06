@@ -1,4 +1,4 @@
-# CardPulse API
+# Pulse API
 
 A small Cloudflare Worker that sits between the app and Gemini. The Gemini key lives here, never in the app.
 

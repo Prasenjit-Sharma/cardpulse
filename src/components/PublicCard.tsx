@@ -141,7 +141,7 @@ export default function PublicCard({ slug }: { slug: string }) {
         </div>
       )}
 
-      <footer className="about public-card-foot"><Logo size={20} /><span>Made with CardPulse</span></footer>
+      <footer className="about public-card-foot"><Logo size={20} /><span>Made with Pulse</span></footer>
     </div>
   )
 }

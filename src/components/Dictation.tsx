@@ -13,7 +13,7 @@ interface View { status: Status; text: string; error?: string }
 const LABEL: Record<Status, string> = { starting: 'Getting ready', listening: 'Listening', error: 'Could not listen' }
 
 /**
- * The listening panel: stays open until Done or Cancel, listening through pauses. The CardPulse beat rises with the
+ * The listening panel: stays open until Done or Cancel, listening through pauses. The Pulse beat rises with the
  * voice (the microphone level), the words build up as they are heard, and an indigo cursor marks it is live.
  */
 function DictationPanel({ view, level, finishing, onDone, onCancel, onRetry }: {

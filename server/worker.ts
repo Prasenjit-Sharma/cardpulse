@@ -1,4 +1,4 @@
-// CardPulse API — a thin, locked-down proxy in front of Gemini.
+// Pulse API — a thin, locked-down proxy in front of Gemini.
 // The app sends card photos; the prompt, schema and API key live here, so this endpoint cannot be used as a general Gemini gateway.
 import { buildRequest, GeminiError, MAX_IMAGES, parseResponse, type ImageInput, type Layout } from '../shared/extract-core.ts'
 import { BriefError, buildBriefRequest, buildPersonRequest, companyEntry, companyKeys, entryMatches, mergeCompany, parseBriefResponse, THINKING, validBriefInput, type BriefInput, type CompanyEntry, type Thinking } from '../shared/brief-core.ts'

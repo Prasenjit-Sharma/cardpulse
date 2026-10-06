@@ -114,7 +114,7 @@ export function followUpIcs(c: Contact, date: string, now: Date = new Date()): s
   const description = [last && `Last note: ${last}`, callNumber(c), c.emails[0]].filter(Boolean).join('\n')
   const slug = c.name.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '') || 'contact'
   return [
-    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//CardPulse//Follow-up//EN', 'BEGIN:VEVENT',
+    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Pulse//Follow-up//EN', 'BEGIN:VEVENT',
     `UID:followup-${slug}-${date}@cardpulse`, `DTSTAMP:${stamp(now)}`, `DTSTART;VALUE=DATE:${date.replace(/-/g, '')}`,
     `SUMMARY:${esc(`Follow up: ${c.name}${c.company ? ` (${c.company})` : ''}`)}`,
     ...(description ? [`DESCRIPTION:${esc(description)}`] : []),

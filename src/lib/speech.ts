@@ -49,7 +49,7 @@ export interface Dictation {
  * recognizer, or the start fails, so the panel can say so.
  */
 export async function nativeDictation(p: SpeechPlugin, h: DictationHandlers): Promise<Dictation> {
-  if ((await p.requestPermissions()).speechRecognition !== 'granted') throw new Error('The microphone is not allowed. Allow it in Settings, Apps, CardPulse, Permissions.')
+  if ((await p.requestPermissions()).speechRecognition !== 'granted') throw new Error('The microphone is not allowed. Allow it in Settings, Apps, Pulse, Permissions.')
   if (!(await p.available()).available) throw new Error('This phone has no speech recognition. Install or update the Google app.')
   await p.removeAllListeners()
   let text = ''

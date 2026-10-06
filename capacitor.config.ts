@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli'
 
 const config: CapacitorConfig = {
   appId: 'in.cardpulse.app',
-  appName: 'CardPulse',
+  appName: 'Pulse',
   webDir: 'dist',
   server: { androidScheme: 'https' },
   plugins: {

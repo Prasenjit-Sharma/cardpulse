@@ -1,7 +1,7 @@
 import { emptyContact, type Contact } from './types.ts'
 
 // What a scanned QR code holds, in the forms business cards actually use: a vCard (most printed cards and every
-// CardPulse "Just share" QR), a MeCard (older Android cards), a CardPulse card link ("Collect leads"), a phone number
+// Pulse "Just share" QR), a MeCard (older Android cards), a Pulse card link ("Collect leads"), a phone number
 // or email, or just a website. Pure: no network, no DOM.
 
 export type QrResult =
@@ -101,7 +101,7 @@ export function parseMeCard(text: string): Contact | null {
   return c.name || c.company || c.phones.length || c.emails.length ? c : null
 }
 
-/** A CardPulse card link (the "Collect leads" QR): the app's own address with ?card=<slug>. */
+/** A Pulse card link (the "Collect leads" QR): the app's own address with ?card=<slug>. */
 export function parseCardLink(text: string): { slug: string; eventId?: string; eventName?: string } | null {
   let u: URL
   try { u = new URL(text.trim()) } catch { return null }

@@ -127,7 +127,7 @@ export default function SettingsPage({ cards, events, settings, install, sync, o
       <SettingGroup title="This phone" footer={sync.enabled ? 'Deleting here deletes on your synced phones too.' : "Contacts live only on this phone until you sync or export them."}>
         <PickRow icon="image" label="Keep card photos" value={settings.keepPhotos} options={PHOTOS} onChange={(v) => onChange({ ...settings, keepPhotos: v })} />
         {install.mode && (
-          <SettingRow icon="download" label="Install app" hint={install.mode === 'ios' ? 'Tap Share, then Add to Home Screen' : 'Add CardPulse to your home screen'}
+          <SettingRow icon="download" label="Install app" hint={install.mode === 'ios' ? 'Tap Share, then Add to Home Screen' : 'Add Pulse to your home screen'}
             onClick={install.mode === 'native' ? install.install : undefined} />
         )}
         <SettingRow icon="trash" label="Delete all data" danger onClick={() => void wipe()} />
@@ -201,13 +201,13 @@ export default function SettingsPage({ cards, events, settings, install, sync, o
         <SettingRow icon="chat" label="Help & support" hint="Feedback, privacy, diagnostics" onClick={() => setSub('help')} />
       </section>
 
-      <footer className="about"><Logo size={24} /><span>CardPulse v{__APP_VERSION__}</span></footer>
+      <footer className="about"><Logo size={24} /><span>Pulse v{__APP_VERSION__}</span></footer>
 
       <Sheet open={sheet === 'export'} onClose={() => setSheet(null)} title="Export">
         <SheetItem icon="file" label="Spreadsheet (CSV)" hint={`All ${people} contacts, for Excel or Google Sheets`} disabled={!done.length}
-          onClick={() => { setSheet(null); download(`cardpulse-contacts-${stamp}.csv`, buildCsv(done, eventName), 'text/csv') }} />
+          onClick={() => { setSheet(null); download(`pulse-contacts-${stamp}.csv`, buildCsv(done, eventName), 'text/csv') }} />
         <SheetItem icon="users" label="Contacts file (vCard)" hint="Import into Google Contacts, Outlook or iCloud to add them all at once" disabled={!done.length}
-          onClick={() => { setSheet(null); download(`cardpulse-contacts-${stamp}.vcf`, buildVcf(done, eventName, currentNameFormat()), 'text/vcard') }} />
+          onClick={() => { setSheet(null); download(`pulse-contacts-${stamp}.vcf`, buildVcf(done, eventName, currentNameFormat()), 'text/vcard') }} />
         <SheetItem icon="download" label="Backup file" hint={`Contacts, photos and events, to restore on any phone. ${lastLabel}`}
           onClick={() => { setSheet(null); void runData(onBackup) }} />
         <p className="hint sheet-note">{sync.enabled
@@ -251,7 +251,7 @@ function FeedbackSheet({ open, onClose, cards, settings, lines }: { open: boolea
   )
 }
 
-/** Only in a build with no CardPulse reading service (local development): read cards with your own Gemini key. */
+/** Only in a build with no Pulse reading service (local development): read cards with your own Gemini key. */
 function DeveloperKey({ settings, onChange }: { settings: Settings; onChange: (s: Settings) => void }) {
   const [key, setKey] = useState(settings.apiKey)
   const [busy, setBusy] = useState(false)
