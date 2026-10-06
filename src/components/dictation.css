@@ -1,0 +1,30 @@
+/* The listening panel: a sheet in the app's sheet grammar, carrying the brand's beat line while the phone listens. */
+.dict-wrap { position: fixed; inset: 0; z-index: 40 }
+.dict-wrap .scrim { position: absolute; inset: 0; background: rgba(8,10,14,.42); animation: fade-in var(--dur-2) var(--ease) both }
+.dict {
+  position: absolute; left: 0; right: 0; bottom: 0; max-width: 560px; margin: 0 auto;
+  padding: 16px 16px calc(16px + var(--inset-bottom)); border-radius: 14px 14px 0 0;
+  background: var(--board); color: var(--ink); box-shadow: 0 -10px 40px rgba(8,10,14,.18);
+  animation: dict-up var(--dur-3) var(--ease) both;
+}
+.dict-top { display: flex; align-items: center; gap: 8px }
+.dict-top strong { font-size: 11px; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; color: var(--band-ink) }
+.dict-top small { margin-left: auto; font-size: var(--t-xs); color: var(--ink-3) }
+.dict-live { position: relative; width: 8px; height: 8px; border-radius: 50%; background: var(--brand) }
+.dict-live::after { content: ''; position: absolute; inset: 0; border-radius: 50%; background: var(--brand); animation: dict-ping 1.4s var(--ease) infinite }
+.dict-beat { display: block; width: 100%; height: 56px; margin: 10px 0 6px }
+.dict-beat path { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke }
+.dict-beat .base { stroke: var(--rule) }
+.dict-beat .run { stroke: var(--brand); stroke-dasharray: .2 .8; animation: dict-run 1.6s linear infinite }
+.dict-words { min-height: 2.6em; max-height: 7.8em; overflow-y: auto; margin: 0; font-size: var(--t-xl); font-weight: 650; line-height: 1.3; letter-spacing: -.015em; color: var(--ink); overflow-wrap: anywhere }
+.dict-words.empty { color: var(--ink-3); font-weight: 500 }
+.dict-hint { margin: 8px 0 0; font-size: var(--t-xs); color: var(--ink-3) }
+.dict-acts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px }
+.dict-acts button { min-height: 50px }
+@keyframes dict-up { from { transform: translateY(24px); opacity: 0 } to { transform: none; opacity: 1 } }
+@keyframes dict-run { from { stroke-dashoffset: 1 } to { stroke-dashoffset: 0 } }
+@keyframes dict-ping { from { transform: scale(1); opacity: .5 } to { transform: scale(2.6); opacity: 0 } }
+@media (prefers-reduced-motion: reduce) {
+  .dict, .dict-wrap .scrim, .dict-live::after { animation: none }
+  .dict-beat .run { animation: none; stroke-dasharray: none }
+}

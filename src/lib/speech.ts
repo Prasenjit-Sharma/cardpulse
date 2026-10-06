@@ -25,26 +25,28 @@ export const speechSupported = isApp || !!Ctor
  * One utterance through the phone's recognizer: the text heard goes to `onText`, then `onEnd` (with the reason when it
  * failed, such as a refused microphone). Returns Stop.
  */
-export function dictateNative(n: Pick<Required<Native>, 'listen' | 'stopListening'>, onText: (t: string) => void, onEnd: (why?: string) => void): () => void {
-  n.listen('en-IN').then(
+export function dictateNative(n: Pick<Required<Native>, 'listen' | 'stopListening'>, onText: (t: string) => void, onEnd: (why?: string) => void, onPartial?: (t: string) => void): () => void {
+  n.listen('en-IN', onPartial).then(
     (t) => { if (t.trim()) onText(t.trim()); onEnd() },
     (e: unknown) => { const why = e instanceof Error ? e.message : String(e); notify(`Dictation did not start: ${why}`); onEnd(why) },
   )
   return () => { void n.stopListening().catch(() => {}) }
 }
 
-export function startDictation(onText: (t: string) => void, onEnd: (why?: string) => void): (() => void) | null {
+/** `onPartial` gets the words heard so far, as they arrive, for the listening panel. */
+export function startDictation(onText: (t: string) => void, onEnd: (why?: string) => void, onPartial?: (t: string) => void): (() => void) | null {
   const n = getNative()
-  if (n?.listen && n.stopListening) return dictateNative({ listen: n.listen, stopListening: n.stopListening }, onText, onEnd)
+  if (n?.listen && n.stopListening) return dictateNative({ listen: n.listen, stopListening: n.stopListening }, onText, onEnd, onPartial)
   if (!Ctor) return null
   const r = new Ctor()
   r.lang = 'en-IN'
-  r.interimResults = false
+  r.interimResults = !!onPartial
   r.continuous = true
   r.onresult = (e) => {
-    const parts: string[] = []
-    for (let i = 0; i < e.results.length; i++) if (e.results[i]!.isFinal) parts.push(e.results[i]![0]!.transcript)
-    if (parts.length) onText(parts.join(' ').trim())
+    const done: string[] = [], all: string[] = []
+    for (let i = 0; i < e.results.length; i++) { all.push(e.results[i]![0]!.transcript); if (e.results[i]!.isFinal) done.push(e.results[i]![0]!.transcript) }
+    onPartial?.(all.join(' ').trim())
+    if (done.length === e.results.length && done.length) onText(done.join(' ').trim())
   }
   r.onend = () => onEnd()
   r.onerror = () => onEnd()

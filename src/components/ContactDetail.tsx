@@ -8,7 +8,8 @@ import { currentFollowUp, dueLabel, dueStatus, followUpIcs, localISO, logInterac
 import { browserEnv, download, saveToPhone, shareContact, shareVcf, telHref, waNumber } from '../lib/actions'
 import { currentNameFormat } from '../lib/db'
 import { log } from '../lib/debug'
-import { speechSupported, startDictation } from '../lib/speech'
+import { speechSupported } from '../lib/speech'
+import { useDictation } from './Dictation'
 import { emptyContact, type CardRecord, type Contact, type EventRec, type FieldKey } from '../lib/types'
 import Sheet, { SheetItem } from './Sheet'
 import { useBackClose } from '../lib/useBackClose'
@@ -133,7 +134,6 @@ export default function ContactDetail({ card, index, events, dupes, myCards, onC
   const [menu, setMenu] = useState(false)
   const [logOpen, setLogOpen] = useState(false)
   const [adjusting, setAdjusting] = useState<'image' | 'back' | null>(null)
-  const [listening, setListening] = useState(false)
   const [tagsOpen, setTagsOpen] = useState(false)
   const [noteOpen, setNoteOpen] = useState(false)
   const [followOpen, setFollowOpen] = useState(false)
@@ -148,7 +148,6 @@ export default function ContactDetail({ card, index, events, dupes, myCards, onC
   const [cardPick, setCardPick] = useState(false)
   const [sendAsk, setSendAsk] = useState<MyCard | null>(null)     // the card chosen, waiting for what to send
   const [appAsk, setAppAsk] = useState<{ apps: WaApp[]; resolve: (a: WaApp | null) => void } | null>(null)
-  const stopRef = useRef<(() => void) | null>(null)
   // a brief can finish after edits or after this page closed: save it against the latest copy, or through the app
   const contactsRef = useRef(contacts)
   contactsRef.current = contacts
@@ -162,7 +161,6 @@ export default function ContactDetail({ card, index, events, dupes, myCards, onC
   const eventName = events.find((e) => e.id === card.eventId)?.name ?? ''
   const c = contacts[idx]
 
-  useEffect(() => () => stopRef.current?.(), [])
   // The note grows to show all of its text, so a long note (dealer lines, a factory address) is never hidden behind two lines.
   useEffect(() => { const el = noteInput.current; if (!el) return; el.style.height = 'auto'; el.style.height = `${el.scrollHeight}px` }, [c?.note, noteOpen, idx, editing])
   // Only cards the user has actually opened count towards accuracy.
@@ -263,11 +261,8 @@ export default function ContactDetail({ card, index, events, dupes, myCards, onC
     setIdx(Math.max(0, idx - 1))
     commit(contacts.filter((_, j) => j !== idx), false)
   }
-  const dictate = () => {
-    if (listening) { stopRef.current?.(); return }
-    const stop = startDictation((t) => patch({ note: [c?.note, t].filter(Boolean).join(' ') }, false), () => { setListening(false); stopRef.current = null })
-    if (stop) { stopRef.current = stop; setListening(true) }
-  }
+  const dictation = useDictation((t) => patch({ note: [c?.note, t].filter(Boolean).join(' ') }, false))
+  const { listening, toggle: dictate } = dictation
   const noteFor = () => [eventName, c?.note].filter(Boolean).join(' — ')
   // Both actions must start inside the tap (Android needs the user gesture to open Contacts or the share sheet).
   const run = async (kind: 'save' | 'share') => {
@@ -455,6 +450,7 @@ export default function ContactDetail({ card, index, events, dupes, myCards, onC
                 onBlur={(e) => { if (listening || noteRef.current?.contains(e.relatedTarget as Node | null)) return; if (!e.target.value.trim()) setNoteOpen(false) }} aria-label="Note" />
               <div className="editor-acts">
                 {speechSupported && <button className={`mic${listening ? ' on' : ''}`} onPointerDown={(e) => e.preventDefault()} onClick={dictate} aria-label={listening ? 'Stop dictating' : 'Dictate note'} aria-pressed={listening}><Icon name="mic" size={16} /></button>}
+                {dictation.panel}
                 <button className="x-btn" onClick={() => { patch({ note: '' }, false); setNoteOpen(false) }} aria-label="Remove note"><Icon name="x" size={16} /></button>
               </div>
             </div>

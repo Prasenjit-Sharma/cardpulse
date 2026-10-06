@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { MAX_NOTE, PRESETS, localISO, newEntry, presetDate, type Interaction, type Kind, type Outcome, type Preset } from '../lib/followups'
-import { speechSupported, startDictation } from '../lib/speech'
+import { speechSupported } from '../lib/speech'
+import { useDictation } from './Dictation'
 import Icon from './Icon'
 import Sheet from './Sheet'
 import DateChip from './DateChip'
@@ -16,19 +17,13 @@ export default function LogSheet({ name, onSave, onClose }: { name: string; onSa
   const [note, setNote] = useState('')
   const [next, setNext] = useState<Next>('none')
   const [date, setDate] = useState('')
-  const [listening, setListening] = useState(false)
-  const stop = useRef<(() => void) | null>(null)
-  useEffect(() => () => stop.current?.(), [])
+  const dictation = useDictation((t) => setNote((n) => [n, t].filter(Boolean).join(' ').slice(0, MAX_NOTE)))
+  const { listening, toggle: dictate } = dictation
 
   const nextISO = next === 'none' ? undefined : next === 'date' ? date || undefined : presetDate(next)
   const canSave = note.trim().length > 0 || !!outcome || !!nextISO
 
-  const dictate = () => {
-    if (listening) { stop.current?.(); return }
-    const s = startDictation((t) => setNote((n) => [n, t].filter(Boolean).join(' ').slice(0, MAX_NOTE)), () => { setListening(false); stop.current = null })
-    if (s) { stop.current = s; setListening(true) }
-  }
-  const save = () => { stop.current?.(); onSave(newEntry({ kind, outcome, note, next: nextISO })) }
+  const save = () => { onSave(newEntry({ kind, outcome, note, next: nextISO })) }
 
   return (
     <Sheet open onClose={onClose} title={`Log with ${name || 'this contact'}`}>
@@ -51,6 +46,7 @@ export default function LogSheet({ name, onSave, onClose }: { name: string; onSa
         <div className="log-note">
           <textarea rows={2} value={note} maxLength={MAX_NOTE} onChange={(e) => setNote(e.target.value)} placeholder="What was said?" aria-label="Note" />
           {speechSupported && <button className={`mic${listening ? ' on' : ''}`} onClick={dictate} aria-label={listening ? 'Stop dictating' : 'Dictate note'} aria-pressed={listening}><Icon name="mic" size={16} /></button>}
+                {dictation.panel}
         </div>
 
         <div className="log-field">
