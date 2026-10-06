@@ -514,3 +514,14 @@ test('pricing: a batch whose people cannot all be matched to a photo is not char
     assert.deepEqual(JSON.parse(m.calls.find((c) => c.url.endsWith('/rpc/charge_reads')).init.body), { n: 2 })
   } finally { m.restore() }
 })
+
+test('BRIEF_THINKING sets the thinking level of a searched brief (low when unset)', async () => {
+  for (const [set, want] of [['minimal', 'minimal'], [undefined, 'low'], ['nonsense', 'low']]) {
+    const m = mockSupa({ gemini: briefOk, begin: () => [{ allowed: true, reason: null, day_limit: 10, balance: BAL }] })
+    try {
+      await worker.fetch(briefReq({ contact: who, auth: token(`t-${want}-${set}`) }), env({ ...SUPA, BRIEF_SEARCH: '1', ...(set ? { BRIEF_THINKING: set } : {}) }))
+      const sent = JSON.parse(m.calls.find((c) => c.url.includes(':generateContent')).init.body)
+      assert.equal(sent.generationConfig.thinkingConfig.thinkingLevel, want)
+    } finally { m.restore() }
+  }
+})

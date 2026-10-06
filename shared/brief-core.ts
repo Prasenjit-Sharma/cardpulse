@@ -70,11 +70,14 @@ export function briefPrompt(i: BriefInput, search = false): string {
   ].join('\n')
 }
 
+export type Thinking = 'minimal' | 'low' | 'medium' | 'high'
+export const THINKING: Thinking[] = ['minimal', 'low', 'medium', 'high']
+
 /** Without search the answer is plain JSON; with it, Google Search is on and JSON is only asked for in the prompt. */
-export function buildBriefRequest(i: BriefInput, search = false) {
+export function buildBriefRequest(i: BriefInput, search = false, thinking: Thinking = 'low') {
   const contents = [{ role: 'user', parts: [{ text: briefPrompt(i, search) }] }]
   return search
-    ? { contents, tools: [{ google_search: {} }], generationConfig: { temperature: 0.2, thinkingConfig: { thinkingLevel: 'low' } } }
+    ? { contents, tools: [{ google_search: {} }], generationConfig: { temperature: 0.2, thinkingConfig: { thinkingLevel: thinking } } }
     : { contents, generationConfig: { temperature: 0.2, responseMimeType: 'application/json' } }
 }
 

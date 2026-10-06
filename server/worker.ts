@@ -1,7 +1,7 @@
 // CardPulse API — a thin, locked-down proxy in front of Gemini.
 // The app sends card photos; the prompt, schema and API key live here, so this endpoint cannot be used as a general Gemini gateway.
 import { buildRequest, GeminiError, MAX_IMAGES, parseResponse, type ImageInput, type Layout } from '../shared/extract-core.ts'
-import { BriefError, buildBriefRequest, parseBriefResponse, validBriefInput } from '../shared/brief-core.ts'
+import { BriefError, buildBriefRequest, parseBriefResponse, THINKING, validBriefInput, type Thinking } from '../shared/brief-core.ts'
 
 export interface Env {
   GEMINI_API_KEY: string
@@ -10,6 +10,8 @@ export interface Env {
   BRIEF_MODEL?: string
   /** "1" turns on Google Search for Pulse Brief. Needs a key whose plan allows Search grounding (a paid key). */
   BRIEF_SEARCH?: string
+  /** Thinking level for a searched brief: minimal, low (default), medium or high. Thinking is billed as output. */
+  BRIEF_THINKING?: string
   /** Optional key for Pulse Brief alone (a paid project's), so card reading stays on GEMINI_API_KEY's free tier. */
   BRIEF_API_KEY?: string
   /** Comma-separated exact origins allowed to call this API, e.g. https://you.github.io */
@@ -191,7 +193,7 @@ async function brief(req: Request, env: Env, origin: string | null): Promise<Res
     upstream = await fetch(`${env.GEMINI_BASE ?? UPSTREAM}/models/${encodeURIComponent(model)}:generateContent`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-      body: JSON.stringify(buildBriefRequest(input, env.BRIEF_SEARCH === '1')),
+      body: JSON.stringify(buildBriefRequest(input, env.BRIEF_SEARCH === '1', THINKING.includes(env.BRIEF_THINKING as Thinking) ? env.BRIEF_THINKING as Thinking : 'low')),
       signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
     })
   } catch {
