@@ -5,7 +5,8 @@ import type { Contact } from './types.ts'
 // Pulse Brief on the phone: what is sent, the call, the text that is copied or shared, and the links added to a contact.
 
 /** A brief as kept on the contact: the server's answer, when it was made and by which model. */
-export interface Brief extends BriefResult { at: number; model: string }
+/** `unchecked`: written without a web search (the server asked twice), so it has nothing behind it to check. */
+export interface Brief extends BriefResult { at: number; model: string; unchecked?: boolean }
 export type Section = 'person' | 'company' | 'starters'
 
 /** Google's terms let the user keep their own grounded results for up to two years. */
@@ -53,7 +54,7 @@ export function addLink(c: Contact, l: BriefLink): Contact {
 
 /* ---------- the call ---------- */
 
-export type FailureCode = 'sign_in' | 'daily_limit' | 'offline' | 'failed'
+export type FailureCode = 'sign_in' | 'daily_limit' | 'offline' | 'failed' | 'pro_only' | 'no_briefs'
 export class BriefFailure extends Error {
   code: FailureCode
   constructor(code: FailureCode, message: string) { super(message); this.code = code }
@@ -61,24 +62,32 @@ export class BriefFailure extends Error {
 const MESSAGE: Record<FailureCode, string> = {
   sign_in: 'Sign in to use Pulse Brief.', daily_limit: "You've used today's 10 fresh briefs. Saved briefs still open. Resets at 5:30 am.",
   offline: 'Pulse Brief needs a connection.', failed: "Couldn't make the brief. Try again.",
+  pro_only: 'Pulse Brief is part of Pro.', no_briefs: 'No briefs left this month.',
 }
+const SERVER_CODES = new Set<FailureCode>(['daily_limit', 'sign_in', 'pro_only', 'no_briefs'])
 
 /** Asks the server for a brief. Every failure becomes a BriefFailure the page can show as it is. */
-export async function requestBrief(c: Contact, deps: { url: string; token: string | undefined; online: boolean; fetch: typeof fetch; now?: number }): Promise<Brief> {
+/**
+ * `onBalance` gets what the account has left, from every answer that carries it (it is never saved on the contact).
+ * `fresh` (Refresh) asks for new company research instead of what was found at this company before.
+ */
+export async function requestBrief(c: Contact, deps: { url: string; token: string | undefined; online: boolean; fetch: typeof fetch; now?: number; onBalance?: (b: unknown) => void; fresh?: boolean }): Promise<Brief> {
   if (!deps.online) throw new BriefFailure('offline', MESSAGE.offline)
   if (!deps.token) throw new BriefFailure('sign_in', MESSAGE.sign_in)
   let res: Response
   try {
-    res = await deps.fetch(`${deps.url}/v1/brief`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contact: briefInput(c), auth: deps.token }), signal: AbortSignal.timeout(60_000) })
+    res = await deps.fetch(`${deps.url}/v1/brief`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contact: briefInput(c), auth: deps.token, ...(deps.fresh ? { fresh: true } : {}) }), signal: AbortSignal.timeout(60_000) })
   } catch { throw new BriefFailure('failed', MESSAGE.failed) }
-  const json = await res.json().catch(() => ({})) as Partial<Brief> & { error?: { code?: string; message?: string } }
+  const json = await res.json().catch(() => ({})) as Partial<Brief> & { error?: { code?: string; message?: string }; balance?: unknown }
+  if (json.balance != null) deps.onBalance?.(json.balance)
   if (!res.ok) {
-    const code: FailureCode = json.error?.code === 'daily_limit' ? 'daily_limit' : json.error?.code === 'sign_in' ? 'sign_in' : 'failed'
+    const code: FailureCode = SERVER_CODES.has(json.error?.code as FailureCode) ? json.error!.code as FailureCode : 'failed'
     throw new BriefFailure(code, code === 'failed' ? MESSAGE.failed : json.error?.message || MESSAGE[code])
   }
   return {
     person: json.person ?? '', company: json.company ?? '', starters: json.starters ?? [], links: json.links ?? [], sources: json.sources ?? [],
     suggestions: json.suggestions ?? '', model: json.model ?? '', at: deps.now ?? Date.now(),
+    ...((json as { unchecked?: unknown }).unchecked === true ? { unchecked: true } : {}),
   }
 }
 

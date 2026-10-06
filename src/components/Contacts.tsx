@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, type KeyboardEvent } from 'react'
+import { signInWithGoogle } from '../lib/auth'
 import { browserEnv, shareVcf, toVCard } from '../lib/actions'
 import { currentNameFormat } from '../lib/db'
 import { attentionReasons, needsAttention } from '../lib/attention'
@@ -21,8 +22,10 @@ interface Row { card: CardRecord; p: Contact; i: number; key: string }
 
 const monthLabel = (t: number) => new Date(t).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }).toUpperCase()
 
-export default function Contacts({ onScan, cards: allCards, events, activeEvent, onSelectEvent, dupes, initialFilter, initialCompany, onOpen, onRetryFailed, onUpload, onMoveToEvent, onDeleteContacts, onTogglePriority }: {
+export default function Contacts({ onScan, cards: allCards, events, activeEvent, onSelectEvent, dupes, initialFilter, initialCompany, onOpen, onRetryFailed, onUpload, onMoveToEvent, onDeleteContacts, onTogglePriority, onPlans }: {
   onScan: () => void
+  /** Plan & cards, from a card waiting for cards. */
+  onPlans: () => void
   cards: CardRecord[]
   events: EventRec[]
   activeEvent: string
@@ -135,16 +138,26 @@ export default function Contacts({ onScan, cards: allCards, events, activeEvent,
         <section>
           <h3 className="group band">Reading {reading.length} {reading.length === 1 ? 'card' : 'cards'}</h3>
           <div className="plain-list">
-            {reading.map((c, i) => (
-              <div key={c.id} className="contact-row reading" style={{ ['--i' as string]: i }}>
+            {reading.map((c, i) => {
+              // parked for cards or a sign-in: the whole row is the way out
+              const act = c.waiting === 'cards' ? onPlans : c.waiting === 'sign_in' ? () => void signInWithGoogle() : undefined
+              return (
+              <div key={c.id} className={`contact-row reading${act ? ' parked' : ''}`} style={{ ['--i' as string]: i }}
+                {...(act ? { role: 'button', tabIndex: 0, onClick: act, onKeyDown: (e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); act() } } } : {})}>
                 <CardThumb blob={c.image} name="" />
                 {c.waiting === 'offline'
                   ? <div className="grow"><strong>Waiting for signal</strong><span className="muted">Saved. Will be read when you are online</span></div>
                   : c.waiting === 'retry'
                     ? <div className="grow"><strong>Trying again shortly</strong><span className="muted">The reader was busy</span></div>
+                  : c.waiting === 'cards'
+                    ? <div className="grow"><strong>Waiting for cards</strong><span className="muted">Saved. Read once you add cards</span></div>
+                  : c.waiting === 'sign_in'
+                    ? <div className="grow"><strong>Waiting for sign-in</strong><span className="muted">Saved. Read once you sign in</span></div>
                     : <div className="grow"><strong>Reading…</strong><span className="dots"><i /><i /><i /></span></div>}
+                {act && <Icon name="chevron" size={18} />}
               </div>
-            ))}
+              )
+            })}
           </div>
         </section>
       )}

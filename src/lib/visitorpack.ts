@@ -26,6 +26,23 @@ export function checkFile(f: { name: string; size: number; type: string }): stri
   return null
 }
 
+const BY_EXTENSION: Record<string, string> = { pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' }
+
+/**
+ * Reads a picked file into the app at once and returns the app's own copy. A file picked from Google Drive (or another
+ * cloud app) comes as a link back to that app which can stop being readable before Save, failing the upload with
+ * "Failed to fetch"; reading it now keeps it, or says at once that it could not be read. A missing type is taken from
+ * the extension.
+ */
+export async function copyIn(f: { name: string; type: string; size: number; arrayBuffer(): Promise<ArrayBuffer> }): Promise<File> {
+  let bytes: ArrayBuffer
+  try { bytes = await f.arrayBuffer() } catch {
+    throw new Error(`${f.name} could not be read. If it is on Google Drive, open it in Drive, download it to the phone, then add it from Downloads.`)
+  }
+  const type = f.type || BY_EXTENSION[f.name.split('.').pop()?.toLowerCase() ?? ''] || ''
+  return new File([bytes], f.name, { type })
+}
+
 /** The link as stored: a bare address gets https://; anything that is not a web address is refused. Empty is fine. */
 export function checkLink(raw: string): { url: string } | { error: string } {
   const t = raw.trim()
@@ -83,7 +100,8 @@ export async function savePack(owner: string, eventId: string, before: Pack, dra
     if (!(f instanceof File)) { files.push(f); continue }
     const path = packPath(owner, eventId, f.name)
     const { error } = await sb.storage.from(BUCKET).upload(path, f, { contentType: f.type, upsert: false })
-    if (error) throw new Error(`Could not upload ${f.name}. Check your connection and try again.`)
+    // the server's own reason is shown: "Check your connection" hid a refusal that was not about the connection
+    if (error) throw new Error(`Could not upload ${f.name}: ${error.message || 'no reason given'}.`)
     files.push({ name: f.name, path, size: f.size, type: f.type })
   }
   const link = checkLink(draft.linkUrl)

@@ -32,3 +32,10 @@ export function attentionReasons(card: CardRecord, hasDuplicate: boolean): strin
 /** `reviewed` means the user has dealt with it: they edited a basic field or said "Looks fine". */
 export const needsAttention = (card: CardRecord, hasDuplicate: boolean): boolean =>
   card.status === 'done' && !card.reviewed && attentionReasons(card, hasDuplicate).length > 0
+
+/**
+ * Home's "To check" figure: the rows Contacts shows under Needs attention, one per person on a flagged card (a group
+ * photo flags everyone on it), plus failed reads, which Contacts lists in their own section.
+ */
+export const toCheckCount = (cards: CardRecord[], dupes: Map<string, unknown>): number =>
+  cards.reduce((n, c) => n + (c.status === 'error' ? 1 : c.status === 'done' && needsAttention(c, dupes.has(c.id)) ? (c.corrected ?? []).length : 0), 0)

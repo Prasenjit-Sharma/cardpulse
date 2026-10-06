@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useBackClose } from '../lib/useBackClose'
-import { checkFile, checkLink, emptyPack, fileSize, loadPack, MAX_FILES, MAX_LABEL, MAX_NOTE, savePack, type Pack, type PackDraft, type PackFile } from '../lib/visitorpack'
+import { speechSupported } from '../lib/speech'
+import { useDictation } from './Dictation'
+import { checkFile, checkLink, copyIn, emptyPack, fileSize, loadPack, MAX_FILE_BYTES, MAX_FILES, MAX_LABEL, MAX_NOTE, savePack, type Pack, type PackDraft, type PackFile } from '../lib/visitorpack'
 import Icon from './Icon'
 import './brief.css'
 import './pack.css'
@@ -23,6 +25,8 @@ export default function PackPage({ eventId, eventName, userId, online, onClose }
   const [busy, setBusy] = useState(false)
   const [flash, setFlash] = useState('')
   const picker = useRef<HTMLInputElement>(null)
+  const dictation = useDictation((t) => setDraft((d) => ({ ...d, note: [d.note, t].filter(Boolean).join(' ').slice(0, MAX_NOTE) })))
+  const { listening, toggle: dictate } = dictation
 
   const load = () => {
     setLoadError('')
@@ -31,14 +35,19 @@ export default function PackPage({ eventId, eventName, userId, online, onClose }
   useEffect(() => { if (userId && online) load() }, [userId, online])   // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (!flash) return; const t = setTimeout(() => setFlash(''), 2200); return () => clearTimeout(t) }, [flash])
 
-  const addFiles = (list: FileList | null) => {
+  const addFiles = async (list: FileList | null) => {
     setProblem('')
     const room = MAX_FILES - draft.files.length
-    const picked = [...(list ?? [])]
+    const chosen = [...(list ?? [])]
+    const tooBig = chosen.find((f) => f.size > MAX_FILE_BYTES)
+    if (tooBig) { setProblem(checkFile({ ...tooBig, name: tooBig.name, size: tooBig.size, type: tooBig.type || 'application/pdf' })!); return }
+    // read each file now: one from Google Drive can stop being readable before Save ("Failed to fetch")
+    let picked: File[]
+    try { picked = await Promise.all(chosen.slice(0, room).map(copyIn)) } catch (e) { setProblem(e instanceof Error ? e.message : 'Could not read that file.'); return }
     const bad = picked.map(checkFile).find(Boolean)
     if (bad) { setProblem(bad); return }
-    if (picked.length > room) setProblem(`Up to ${MAX_FILES} files. The first ${room} were added.`)
-    setDraft((d) => ({ ...d, files: [...d.files, ...picked.slice(0, room)] }))
+    if (chosen.length > room) setProblem(`Up to ${MAX_FILES} files. The first ${room} were added.`)
+    setDraft((d) => ({ ...d, files: [...d.files, ...picked] }))
   }
   const link = checkLink(draft.linkUrl)
   const changed = !!saved && JSON.stringify({ ...saved }) !== JSON.stringify({ ...draft, files: draft.files.map((f) => (isStored(f) ? f : f.name)) })
@@ -68,8 +77,12 @@ export default function PackPage({ eventId, eventName, userId, online, onClose }
         : (
           <>
             <h3 className="group band">Note <span className="band-count num">{draft.note.length}/{MAX_NOTE}</span></h3>
-            <textarea className="pack-note-input" rows={3} maxLength={MAX_NOTE} value={draft.note} onChange={(e) => setDraft({ ...draft, note: e.target.value })}
-              placeholder="A line for visitors, like what the files are and how to reach you" aria-label="Note for visitors" />
+            <div className="log-note pack-note">
+              <textarea className="pack-note-input" rows={3} maxLength={MAX_NOTE} value={draft.note} onChange={(e) => setDraft({ ...draft, note: e.target.value })}
+                placeholder="A line for visitors, like what the files are and how to reach you" aria-label="Note for visitors" />
+              {speechSupported && <button className={`mic${listening ? ' on' : ''}`} onClick={dictate} aria-label={listening ? 'Stop dictating' : 'Dictate note'} aria-pressed={listening}><Icon name="mic" size={16} /></button>}
+                {dictation.panel}
+            </div>
 
             <h3 className="group band">Files <span className="band-count num">{draft.files.length}/{MAX_FILES}</span></h3>
             <div className="pack-rows edit">
@@ -85,7 +98,7 @@ export default function PackPage({ eventId, eventName, userId, online, onClose }
               )}
             </div>
             <input ref={picker} type="file" accept="application/pdf,image/jpeg,image/png,image/webp" multiple hidden
-              onChange={(e) => { addFiles(e.target.files); e.target.value = '' }} />
+              onChange={(e) => { const files = e.target.files; void addFiles(files).finally(() => { e.target.value = '' }) }} />
             <p className="hint pack-limit">PDF, JPEG, PNG or WebP, up to 10 MB each.</p>
 
             <h3 className="group band">Web link</h3>

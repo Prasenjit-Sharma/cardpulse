@@ -8,7 +8,7 @@ import assert from 'node:assert/strict'
 const ROOT = fileURLToPath(new URL('../supabase/migrations/', import.meta.url))
 const db = new PGlite()
 await db.exec(`
-  create role anon nologin; create role authenticated nologin;
+  create role anon nologin; create role authenticated nologin; create role service_role nologin;
   create schema auth; create table auth.users (id uuid primary key);
   create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
   grant usage on schema auth to anon, authenticated; grant execute on function auth.uid() to anon, authenticated;
@@ -29,7 +29,11 @@ await db.exec(readFileSync(ROOT + '0003_brief_quota.sql', 'utf8'))
 await db.exec(readFileSync(ROOT + '0003_brief_quota.sql', 'utf8'))
 await db.exec(readFileSync(ROOT + '0004_visitor_packs.sql', 'utf8'))
 await db.exec(readFileSync(ROOT + '0004_visitor_packs.sql', 'utf8'))
-console.log('migrations ran (0002, 0003 and 0004 twice)')
+await db.exec(readFileSync(ROOT + '0005_plans_balances.sql', 'utf8'))
+await db.exec(readFileSync(ROOT + '0005_plans_balances.sql', 'utf8'))
+await db.exec(readFileSync(ROOT + '0006_trial_ends_on_pro.sql', 'utf8'))
+await db.exec(readFileSync(ROOT + '0006_trial_ends_on_pro.sql', 'utf8'))
+console.log('migrations ran (0002 to 0005 twice)')
 
 const A = '11111111-1111-1111-1111-111111111111', B = '22222222-2222-2222-2222-222222222222'
 await db.exec(`insert into auth.users values ('${A}'), ('${B}')`)
@@ -149,4 +153,101 @@ assert.equal(r.rows.length, 1)
 r = await db.query(`select public from storage.buckets where id = 'sync-photos'`)
 assert.equal(r.rows[0].public, false)
 console.log('ok storage policies')
+// ── 0005 plans and balances ──
+const C = '33333333-3333-3333-3333-333333333333', D = '44444444-4444-4444-4444-444444444444', E = '55555555-5555-5555-5555-555555555555'
+await db.exec(`insert into auth.users values ('${C}'), ('${D}'), ('${E}')`)
+const bal = async (uid) => (await as('authenticated', uid, 'select public.my_balance() as b')).rows[0].b
+const chargeReads = async (uid, n) => (await as('authenticated', uid, 'select public.charge_reads($1) as b', [n])).rows[0].b
+const begin = async (uid, what) => (await as('authenticated', uid, `select * from public.begin_${what}()`)).rows[0]
+const sudo = (sql, params) => as('service_role', null, sql, params)
+
+let b = await bal(C)
+assert.equal(b.tier, 'free'); assert.deepEqual(b.cards.month, { used: 0, allowance: 20 }); assert.equal(b.cards.left, 20)
+assert.equal(b.briefs.trial, 3); assert.equal(b.briefs.left, 3)
+
+// the free month, then 0, never below
+b = await chargeReads(C, 6); assert.equal(b.cards.left, 14)
+b = await chargeReads(C, 20); assert.equal(b.cards.left, 0, 'a read bigger than what is left stops at 0')
+r = await begin(C, 'read'); assert.equal(r.allowed, false); assert.equal(r.reason, 'no_cards')
+
+// a pack, then a pass: pass first, then the month, then the pack
+await sudo(`select public.grant_pack('${C}', 'cards', 50)`)
+r = await begin(C, 'read'); assert.equal(r.allowed, true); assert.equal(r.balance.cards.left, 50)
+await sudo(`select public.grant_pass('${C}')`)
+b = await bal(C); assert.equal(b.cards.pass.allowance, 1000); assert.equal(b.cards.left, 1050)
+b = await chargeReads(C, 3); assert.equal(b.cards.pass.used, 3); assert.equal(b.cards.pack, 50)
+await db.exec(`update public.passes set ends_at = now() - interval '1 minute' where owner_id = '${C}'`)
+b = await chargeReads(C, 2); assert.equal(b.cards.pass, null, 'an ended pass is not shown'); assert.equal(b.cards.pack, 48)
+
+// the month rolls over in India time
+await db.exec(`update public.usage set at = date_trunc('month', now() at time zone 'Asia/Kolkata') at time zone 'Asia/Kolkata' - interval '1 minute' where owner_id = '${C}' and source = 'month'`)
+b = await bal(C); assert.deepEqual(b.cards.month, { used: 0, allowance: 20 }); assert.equal(b.cards.left, 68)
+await db.exec(`update public.usage set at = date_trunc('month', now() at time zone 'Asia/Kolkata') at time zone 'Asia/Kolkata' + interval '1 minute' where owner_id = '${C}' and source = 'month'`)
+b = await bal(C); assert.equal(b.cards.month.used, 20, 'one minute after midnight IST on the 1st is this month')
+
+// Pro: 400 cards and 20 briefs; briefs go month, then extra, then trial
+await sudo(`select public.grant_plan('${D}', 'pro', 1)`)
+b = await bal(D); assert.equal(b.tier, 'pro'); assert.equal(b.cards.month.allowance, 400)
+assert.equal(b.briefs.left, 20, 'subscribing to Pro ends the trial: 20 briefs, not 23'); assert.equal(b.briefs.trial, 0)
+for (let i = 0; i < 20; i++) await as('authenticated', D, 'select public.charge_brief()')
+b = await bal(D); assert.equal(b.briefs.month.used, 20); assert.equal(b.briefs.left, 0)
+await sudo(`select public.grant_pack('${D}', 'briefs', 10)`)
+await as('authenticated', D, 'select public.charge_brief()')
+b = await bal(D); assert.equal(b.briefs.extra, 9)
+// granting the same plan again extends it
+await sudo(`select public.grant_plan('${D}', 'pro', 1)`)
+r = await db.query(`select period_end from public.plans where owner_id = '${D}'`)
+assert.ok(r.rows[0].period_end > new Date(Date.now() + 45 * 864e5), 'a second month is added to the first')
+b = await bal(D); assert.ok(new Date(b.periodEnd) < new Date(Date.now() + 32 * 864e5), 'the balance shows when this month renews, not when the plan ends')
+// a paid period that ended: back to Free
+await db.exec(`update public.plans set period_end = now() - interval '1 minute' where owner_id = '${D}'`)
+b = await bal(D); assert.equal(b.tier, 'free'); assert.equal(b.cards.month.allowance, 20)
+
+// briefs on Free: the trial, then pro_only; on Pro with nothing left: no_briefs
+for (let i = 0; i < 3; i++) { r = await begin(E, 'brief'); assert.equal(r.allowed, true); await as('authenticated', E, 'select public.charge_brief()') }
+r = await begin(E, 'brief'); assert.equal(r.allowed, false); assert.equal(r.reason, 'pro_only')
+b = await bal(E); assert.equal(b.briefs.trial, 0, 'trial briefs are given once')
+await sudo(`select public.grant_plan('${E}', 'pro', 1)`)
+for (let i = 0; i < 20; i++) await as('authenticated', E, 'select public.charge_brief()')
+r = await begin(E, 'brief'); assert.equal(r.reason, 'no_briefs')
+r = await as('authenticated', E, 'select public.charge_brief() as b'); assert.equal(r.rows[0].b.briefs.left, 0, 'never below 0')
+
+// the daily brakes still apply
+for (let i = 0; i < 300; i++) await begin(D, 'read')
+r = await begin(D, 'read'); assert.equal(r.allowed, false); assert.equal(r.reason, 'daily_limit'); assert.equal(r.day_limit, 300)
+
+// isolation and grants
+assert.equal((await as('authenticated', C, `select * from public.usage where owner_id <> '${C}'`)).rows.length, 0)
+assert.equal((await as('authenticated', C, `select * from public.credits where owner_id = '${D}'`)).rows.length, 0)
+await assert.rejects(as('authenticated', C, `select public.grant_pack('${C}', 'cards', 1000)`), /permission denied/)
+await assert.rejects(as('authenticated', C, `update public.credits set pack_cards = 9999`).then((x) => { if (x.affectedRows === 0) throw new Error('row-level security: no rows') }), /row-level security|permission denied/)
+await assert.rejects(as('anon', null, 'select public.my_balance()'), /permission denied/)
+await assert.rejects(as('authenticated', C, 'select public._balance($1)', [C]), /permission denied/)
+await assert.rejects(chargeReads(C, 0), /1 to 200/)
+// Delete cloud data keeps purchases
+await as('authenticated', C, 'select public.delete_my_cloud_data()')
+b = await bal(C); assert.equal(b.cards.pack, 48, 'Delete cloud data keeps what was bought')
+console.log('ok 0005 plans, packs, pass, briefs, month in India time, brakes, isolation, grants')
+// the Free month ends at midnight IST on the 1st of the next month, whatever the month's length (review C1)
+const F = '66666666-6666-6666-6666-666666666666', G = '77777777-7777-7777-7777-777777777777'
+await db.exec(`insert into auth.users values ('${F}'), ('${G}')`)
+const period = async (uid, at) => (await db.query(`select p_start, p_end, tier from public._period($1, $2::timestamptz)`, [uid, at])).rows[0]
+let pp = await period(F, '2026-10-31T17:30:00Z')      // 31 Oct, 23:00 IST
+assert.equal(pp.p_start.toISOString(), '2026-09-30T18:30:00.000Z'); assert.equal(pp.p_end.toISOString(), '2026-10-31T18:30:00.000Z', '31 Oct IST is still October')
+pp = await period(F, '2027-03-31T12:00:00Z')
+assert.equal(pp.p_end.toISOString(), '2027-03-31T18:30:00.000Z', 'March ends on the 31st, not the 28th')
+
+// a paid plan's month runs from its start, month by month, inside a longer period (review C2)
+await db.exec(`insert into public.plans (owner_id, tier, period_start, period_end) values ('${G}', 'pro', '2026-01-15T06:00:00Z', '2027-01-15T06:00:00Z')`)
+pp = await period(G, '2026-03-20T00:00:00Z')
+assert.equal(pp.tier, 'pro')
+assert.equal(pp.p_start.toISOString(), '2026-03-15T06:00:00.000Z'); assert.equal(pp.p_end.toISOString(), '2026-04-15T06:00:00.000Z', 'a yearly plan gives its allowance every month')
+pp = await period(G, '2027-01-10T00:00:00Z')
+assert.equal(pp.p_end.toISOString(), '2027-01-15T06:00:00.000Z', 'the last month stops where the plan ends')
+// renewal: last month's use does not count against the next month
+await db.exec(`update public.plans set period_start = now() - interval '40 days', period_end = now() + interval '20 days' where owner_id = '${G}'`)
+await db.exec(`insert into public.usage (owner_id, at, kind, source, qty) values ('${G}', now() - interval '35 days', 'card', 'month', 400)`)
+b = await bal(G); assert.equal(b.cards.month.used, 0, 'the second month starts fresh'); assert.equal(b.cards.month.allowance, 400)
+console.log('ok month ends in India time; paid plans count month by month')
+
 console.log('ALL OK')

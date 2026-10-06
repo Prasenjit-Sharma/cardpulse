@@ -33,6 +33,21 @@ npm run server:test                                   # unit tests, no network
 GEMINI_API_KEY=... npm run server:dev                 # local API on :8787 (allows localhost/LAN origins)
 ```
 
+## Plans and balances
+
+Reading a card needs a signed-in account once `SUPABASE_URL` is set. Before each read the Worker calls
+`begin_read` (migration 0005) with the user's own token, and after a good read `charge_reads(n)`, one card per contact
+returned; Pulse Brief uses `begin_brief` and `charge_brief`. Every answer carries the account's `balance`. If Supabase
+is slow or down, or 0005 is not applied yet, the read goes ahead uncharged (the log says so). Prices and allowances
+live in `shared/plans.ts`.
+
+Until Google Play Billing is added, plans and packs are given with a script run on this Mac:
+
+```
+npm run grant -- you@example.com pro 1     # or plus, pack50, pack100, pack200, briefs10, pass; asks for the secret key
+npm run verify:plans                       # checks 0005 on the live project; asks for the secret key
+```
+
 ## Before real users
 
 The burst limit is in memory and resets when the Worker restarts; the daily per-account count is durable. Before a public launch add Cloudflare Turnstile for signed-out use, a hard daily budget cap in the Google console, and a paid Gemini tier (the free tier may use submitted images to improve Google's products).

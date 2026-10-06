@@ -71,3 +71,30 @@ test('one search per contact at a time: a second start joins the first', async (
   await Promise.resolve(); await Promise.resolve()
   assert.equal(pendingBrief('k'), undefined)
 })
+
+test('requestBrief: pro_only and no_briefs keep their codes, and the balance is handed on', async () => {
+  for (const code of ['pro_only', 'no_briefs']) {
+    let seen
+    const f = async () => new Response(JSON.stringify({ error: { code, message: 'x' }, balance: { tier: 'free' } }), { status: 402 })
+    await assert.rejects(requestBrief(person(), { url: 'https://api', token: 't', online: true, fetch: f, onBalance: (b) => { seen = b } }), (e) => e instanceof BriefFailure && e.code === code)
+    assert.deepEqual(seen, { tier: 'free' })
+  }
+  let seen
+  const ok = async () => new Response(JSON.stringify({ person: 'P', company: '', starters: [], links: [], sources: [], balance: { tier: 'pro' } }))
+  const b = await requestBrief(person(), { url: 'https://api', token: 't', online: true, fetch: ok, onBalance: (x) => { seen = x } })
+  assert.deepEqual(seen, { tier: 'pro' }); assert.equal('balance' in b, false, 'the balance is never saved on the contact')
+})
+
+test('requestBrief: Refresh asks the server for fresh company research; a first brief does not', async () => {
+  const bodies = []
+  const f = async (_u, init) => { bodies.push(JSON.parse(init.body)); return new Response(JSON.stringify({ person: 'P', company: 'C', starters: [], links: [], sources: [] })) }
+  await requestBrief(person(), { url: 'https://api', token: 't', online: true, fetch: f })
+  await requestBrief(person(), { url: 'https://api', token: 't', online: true, fetch: f, fresh: true })
+  assert.equal(bodies[0].fresh, undefined); assert.equal(bodies[1].fresh, true)
+})
+
+test('requestBrief keeps the server\'s unchecked mark (written without a web search) on the brief', async () => {
+  const f = (unchecked) => async () => new Response(JSON.stringify({ person: 'P', company: 'C', starters: [], links: [], sources: [{ title: 'x.in', uri: 'https://v/1' }], ...(unchecked ? { unchecked: true } : {}) }))
+  assert.equal((await requestBrief(person(), { url: 'https://api', token: 't', online: true, fetch: f(true) })).unchecked, true)
+  assert.equal('unchecked' in (await requestBrief(person(), { url: 'https://api', token: 't', online: true, fetch: f(false) })), false)
+})

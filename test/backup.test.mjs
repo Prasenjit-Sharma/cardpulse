@@ -60,6 +60,7 @@ test('the reminder waits until there is something to lose, and respects a snooze
   assert.equal(backupDue(40, now - 5 * day, 0, now), false)        // backed up recently
   assert.equal(backupDue(40, now - 20 * day, 0, now), true)
   assert.equal(backupDue(40, 0, now + day, now), false)            // snoozed
+  assert.equal(backupDue(40, 0, 0, now, true), false, 'with sync on, the account keeps a copy: no reminder')
 })
 
 import { emptyCard } from '../src/lib/mycards.ts'

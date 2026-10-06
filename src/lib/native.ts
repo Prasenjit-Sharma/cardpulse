@@ -3,7 +3,8 @@ import { App } from '@capacitor/app'
 import { Browser } from '@capacitor/browser'
 import { Directory, Filesystem } from '@capacitor/filesystem'
 import { Share } from '@capacitor/share'
-import { sliceRanges, type ContactFields, type Native } from './platform'
+import { SpeechRecognition } from '@capgo/capacitor-speech-recognition'
+import { sliceRanges, type ContactFields, type Native, type SpeechPlugin } from './platform'
 
 /** The app's own plugin (android/app/src/main/java/in/cardpulse/app/SaveContactPlugin.java). */
 const SaveContact = registerPlugin<{ insert(f: ContactFields): Promise<void> }>('SaveContact')
@@ -41,4 +42,6 @@ export const native: Native = {
   waSend: async (o) => { await WhatsAppCard.send(o) },
   // SystemBarsStyle.Dark means light icons (for a dark background), as in Capacitor's docs
   setStatusBar: async (icons) => { await SystemBars.setStyle({ style: icons === 'light' ? SystemBarsStyle.Dark : SystemBarsStyle.Light }) },
+  // the phone's speech recognizer, for dictation (speech.ts)
+  speech: SpeechRecognition as unknown as SpeechPlugin,
 }

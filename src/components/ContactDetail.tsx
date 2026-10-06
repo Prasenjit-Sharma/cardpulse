@@ -1,11 +1,15 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useObjectUrl } from '../lib/useObjectUrl'
+import { useSession } from '../lib/auth'
+import { briefLine } from '../lib/balance'
+import { useStoredBalance } from '../lib/useBalance'
 import { attentionReasons } from '../lib/attention'
 import { currentFollowUp, dueLabel, dueStatus, followUpIcs, localISO, logInteraction, removeInteraction, setFollowUp, type Interaction } from '../lib/followups'
 import { browserEnv, download, saveToPhone, shareContact, shareVcf, telHref, waNumber } from '../lib/actions'
 import { currentNameFormat } from '../lib/db'
 import { log } from '../lib/debug'
-import { speechSupported, startDictation } from '../lib/speech'
+import { speechSupported } from '../lib/speech'
+import { useDictation } from './Dictation'
 import { emptyContact, type CardRecord, type Contact, type EventRec, type FieldKey } from '../lib/types'
 import Sheet, { SheetItem } from './Sheet'
 import { useBackClose } from '../lib/useBackClose'
@@ -100,7 +104,7 @@ function Info({ icon, label, children, actions }: { icon: 'pin' | 'phone' | 'mai
   )
 }
 
-export default function ContactDetail({ card, index, events, dupes, myCards, onClose, onSave, onRetry, onDelete, onMoveEvent, onBrief, onMakeCard }: {
+export default function ContactDetail({ card, index, events, dupes, myCards, onClose, onSave, onRetry, onDelete, onMoveEvent, onBrief, onMakeCard, onPlans }: {
   card: CardRecord
   index: number
   events: EventRec[]
@@ -115,9 +119,13 @@ export default function ContactDetail({ card, index, events, dupes, myCards, onC
   /** Saves a Pulse Brief that finished after this page closed, to the person at `idx` if it is still `name`. */
   onBrief: (idx: number, name: string, b: Brief) => Promise<void>
   onMakeCard: () => void
+  /** Plan & cards, from Pulse Brief's locked state. */
+  onPlans: () => void
 }) {
   const url = useObjectUrl(card.image)
   const backUrl = useObjectUrl(card.back)
+  const balance = useStoredBalance(useSession()?.user.id)
+  const briefNote = balance ? briefLine(balance) : ''
   const [contacts, setContacts] = useState<Contact[]>(card.corrected ?? [])
   const [idx, setIdx] = useState(Math.min(index, Math.max(0, (card.corrected?.length ?? 1) - 1)))
   const [editing, setEditing] = useState(false)
@@ -126,7 +134,6 @@ export default function ContactDetail({ card, index, events, dupes, myCards, onC
   const [menu, setMenu] = useState(false)
   const [logOpen, setLogOpen] = useState(false)
   const [adjusting, setAdjusting] = useState<'image' | 'back' | null>(null)
-  const [listening, setListening] = useState(false)
   const [tagsOpen, setTagsOpen] = useState(false)
   const [noteOpen, setNoteOpen] = useState(false)
   const [followOpen, setFollowOpen] = useState(false)
@@ -141,7 +148,6 @@ export default function ContactDetail({ card, index, events, dupes, myCards, onC
   const [cardPick, setCardPick] = useState(false)
   const [sendAsk, setSendAsk] = useState<MyCard | null>(null)     // the card chosen, waiting for what to send
   const [appAsk, setAppAsk] = useState<{ apps: WaApp[]; resolve: (a: WaApp | null) => void } | null>(null)
-  const stopRef = useRef<(() => void) | null>(null)
   // a brief can finish after edits or after this page closed: save it against the latest copy, or through the app
   const contactsRef = useRef(contacts)
   contactsRef.current = contacts
@@ -155,7 +161,6 @@ export default function ContactDetail({ card, index, events, dupes, myCards, onC
   const eventName = events.find((e) => e.id === card.eventId)?.name ?? ''
   const c = contacts[idx]
 
-  useEffect(() => () => stopRef.current?.(), [])
   // The note grows to show all of its text, so a long note (dealer lines, a factory address) is never hidden behind two lines.
   useEffect(() => { const el = noteInput.current; if (!el) return; el.style.height = 'auto'; el.style.height = `${el.scrollHeight}px` }, [c?.note, noteOpen, idx, editing])
   // Only cards the user has actually opened count towards accuracy.
@@ -256,11 +261,8 @@ export default function ContactDetail({ card, index, events, dupes, myCards, onC
     setIdx(Math.max(0, idx - 1))
     commit(contacts.filter((_, j) => j !== idx), false)
   }
-  const dictate = () => {
-    if (listening) { stopRef.current?.(); return }
-    const stop = startDictation((t) => patch({ note: [c?.note, t].filter(Boolean).join(' ') }, false), () => { setListening(false); stopRef.current = null })
-    if (stop) { stopRef.current = stop; setListening(true) }
-  }
+  const dictation = useDictation((t) => patch({ note: [c?.note, t].filter(Boolean).join(' ') }, false))
+  const { listening, toggle: dictate } = dictation
   const noteFor = () => [eventName, c?.note].filter(Boolean).join(' — ')
   // Both actions must start inside the tap (Android needs the user gesture to open Contacts or the share sheet).
   const run = async (kind: 'save' | 'share') => {
@@ -314,8 +316,14 @@ export default function ContactDetail({ card, index, events, dupes, myCards, onC
       </div>
 
       <Sheet open={menu} onClose={() => setMenu(false)} title={c?.name || 'Contact'}>
-        <SheetItem icon="trash" danger label="Delete contact" onClick={() => { setMenu(false); void confirmAsk({ title: 'Delete this contact?', confirmLabel: 'Delete', danger: true }).then((ok) => ok && removePerson()) }} />
-        <SheetItem icon="trash" danger label="Delete card" onClick={() => { setMenu(false); void confirmAsk({ title: 'Delete the whole card?', message: 'Every contact on it is deleted too.', confirmLabel: 'Delete', danger: true }).then((ok) => ok && onDelete()) }} />
+        {/* One photo can hold several people (a group photo, or a card listing partners): say plainly which delete takes
+            only this person and which takes everyone read from the photo. */}
+        <SheetItem icon="trash" danger label={contacts.length > 1 ? `Delete ${c?.name || 'this contact'} only` : 'Delete contact'}
+          onClick={() => { setMenu(false); void confirmAsk({ title: `Delete ${c?.name || 'this contact'}?`, message: contacts.length > 1 ? `The other ${contacts.length - 1} on the same photo stay.` : undefined, confirmLabel: 'Delete', danger: true }).then((ok) => ok && removePerson()) }} />
+        {contacts.length > 1 && (
+          <SheetItem icon="trash" danger label={`Delete the photo and all ${contacts.length} people`} hint={contacts.map((p) => p.name || p.company).filter(Boolean).slice(0, 4).join(', ') + (contacts.length > 4 ? '…' : '')}
+            onClick={() => { setMenu(false); void confirmAsk({ title: `Delete all ${contacts.length} people on this photo?`, message: `${contacts.map((p) => p.name || p.company || 'Unnamed').join(', ')} will all be deleted.`, confirmLabel: `Delete ${contacts.length}`, danger: true }).then((ok) => ok && onDelete()) }} />
+        )}
       </Sheet>
 
       {adjusting && card[adjusting] && (
@@ -335,7 +343,7 @@ export default function ContactDetail({ card, index, events, dupes, myCards, onC
       {logOpen && c && <LogSheet name={c.name} onClose={() => setLogOpen(false)} onSave={(e) => { commit(contacts.map((x, j) => (j === idx ? logInteraction(x, e) : x)), card.reviewed); setLogOpen(false); setFlash(e.next ? 'Logged. Follow-up set.' : 'Logged.') }} />}
       {light && <div className="lightbox" onClick={() => setLight('')}><img src={light} alt="Card" /></div>}
       {card.status === 'error' && <div className="banner">{card.error} {canRead && <button className="link" onClick={onRetry}>Retry</button>}</div>}
-      {busy && <p className="muted">{card.waiting === 'offline' ? 'Saved. Waiting for signal to read this card.' : card.waiting === 'retry' ? 'The reader was busy. Trying again shortly.' : 'Reading card…'}</p>}
+      {busy && <p className="muted">{card.waiting === 'offline' ? 'Saved. Waiting for signal to read this card.' : card.waiting === 'retry' ? 'The reader was busy. Trying again shortly.' : card.waiting === 'cards' ? 'Saved. Waiting for cards: it is read once you add cards.' : card.waiting === 'sign_in' ? 'Saved. Waiting for sign-in: it is read once you sign in.' : 'Reading card…'}</p>}
 
       {card.status === 'done' && !c && (
         <div className="empty small"><p>No contacts were found on this card.</p>
@@ -387,9 +395,10 @@ export default function ContactDetail({ card, index, events, dupes, myCards, onC
             <button onClick={() => setBriefOpen(true)} disabled={!canBrief(c)}><Icon name="spark" size={18} /> Pulse Brief</button>
             <button onClick={onShareCard}><Icon name="card" size={18} /> Share my card</button>
           </div>
+          {briefNote && <small className="brief-line">Pulse Brief: {briefNote}</small>}
           {briefOpen && (
             <BriefPage contact={c} briefKey={`${card.id}:${idx}`} onClose={() => setBriefOpen(false)}
-              onSave={(b) => saveBrief(idx, c.name, b)} onAddLink={(l) => replace(addLink(c, l))} />
+              onSave={(b) => saveBrief(idx, c.name, b)} onAddLink={(l) => replace(addLink(c, l))} onPlans={onPlans} />
           )}
           <Sheet open={cardPick} onClose={() => setCardPick(false)} title="Which card?">
             {myCards.map((mc) => <SheetItem key={mc.id} icon="card" label={mc.label || mc.name || 'My card'} hint={[mc.name, mc.company].filter(Boolean).join(' · ')} onClick={() => { setCardPick(false); setSendAsk(mc) }} />)}
@@ -441,6 +450,7 @@ export default function ContactDetail({ card, index, events, dupes, myCards, onC
                 onBlur={(e) => { if (listening || noteRef.current?.contains(e.relatedTarget as Node | null)) return; if (!e.target.value.trim()) setNoteOpen(false) }} aria-label="Note" />
               <div className="editor-acts">
                 {speechSupported && <button className={`mic${listening ? ' on' : ''}`} onPointerDown={(e) => e.preventDefault()} onClick={dictate} aria-label={listening ? 'Stop dictating' : 'Dictate note'} aria-pressed={listening}><Icon name="mic" size={16} /></button>}
+                {dictation.panel}
                 <button className="x-btn" onClick={() => { patch({ note: '' }, false); setNoteOpen(false) }} aria-label="Remove note"><Icon name="x" size={16} /></button>
               </div>
             </div>

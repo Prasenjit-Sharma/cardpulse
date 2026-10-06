@@ -66,16 +66,105 @@ export function briefPrompt(i: BriefInput, search = false): string {
     'company: 2 to 5 sentences of facts: what they make or trade, where, since when, size, group companies, certifications, markets. If you find nothing, write exactly: "Little public information found about this company."',
     'starters: 2 or 3 short openers the salesperson could say, each tied to a fact you found (a product line, an expansion, a trade fair, a certification). With no facts found, 2 openers about their line of business, never invented facts.',
     'links: at most 5 pages from the search results that belong to this person or company, their LinkedIn profile first when found. kind is one of linkedin, website, indiamart, facebook, instagram, justdial, tradeindia, other. Only list a LinkedIn profile whose name, company and designation match this card. Never guess or build a URL.',
-    'Rules: only facts from the search results. If different companies share the name, use the one matching the city, website or GSTIN, and say so if unsure. No praise words (renowned, leading, innovative, key player, commitment to excellence). Plain Indian English.',
+    'Rules: only facts from the search results. The company you describe must be the one named on the card: never describe a company with a different name, even a related one, and never swap in a similarly named firm. If different companies share the name, use the one matching the city, website or GSTIN, and say so if unsure. No praise words (renowned, leading, innovative, key player, commitment to excellence). Plain Indian English.',
   ].join('\n')
 }
 
+export type Thinking = 'minimal' | 'low' | 'medium' | 'high'
+export const THINKING: Thinking[] = ['minimal', 'low', 'medium', 'high']
+
 /** Without search the answer is plain JSON; with it, Google Search is on and JSON is only asked for in the prompt. */
-export function buildBriefRequest(i: BriefInput, search = false) {
+export function buildBriefRequest(i: BriefInput, search = false, thinking: Thinking = 'low') {
   const contents = [{ role: 'user', parts: [{ text: briefPrompt(i, search) }] }]
   return search
-    ? { contents, tools: [{ google_search: {} }], generationConfig: { temperature: 0.2, thinkingConfig: { thinkingLevel: 'low' } } }
+    ? { contents, tools: [{ google_search: {} }], generationConfig: { temperature: 0.2, thinkingConfig: { thinkingLevel: thinking } } }
     : { contents, generationConfig: { temperature: 0.2, responseMimeType: 'application/json' } }
+}
+
+/* ---------- the shared company store ---------- */
+// What a search found about a company is public business information, so it is kept on the server for a while and
+// reused for the next brief at the same company, from any account; a brief then searches only for the person. Nothing
+// about a person is ever kept or shared. Only strong matches share: a GSTIN, the company's own domain, or the company's
+// name with its pincode. A name alone could be a different firm in another city.
+
+const GSTIN = /^\d{2}[A-Z]{5}\d{4}[A-Z][A-Z\d]Z[A-Z\d]$/
+const NOT_THE_COMPANY = ['linkedin.com', 'indiamart.com', 'facebook.com', 'instagram.com', 'justdial.com', 'tradeindia.com', 'google.com', 'wa.me', 'whatsapp.com', 'youtube.com', 'twitter.com', 'x.com']
+const SUFFIX = /\b(m\/s|messrs|pvt|private|ltd|limited|llp|inc|the|co)\b/g
+
+const companyName = (s: string) => s.toLowerCase().replace(SUFFIX, ' ').replace(/&/g, ' and ').replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim()
+const siteHost = (w: string) => hostOf(/^https?:\/\//i.test(w) ? w : `https://${w}`)
+
+/** The store keys this card's company can be found under, strongest first; empty when nothing is strong enough. */
+export function companyKeys(i: BriefInput): string[] {
+  const keys: string[] = []
+  const g = i.gstin.toUpperCase().replace(/\s+/g, '')
+  if (GSTIN.test(g)) keys.push(`gst:${g}`)
+  for (const d of [siteHost(i.website), ...i.domains]) {
+    if (d && DOMAIN.test(d) && !NOT_THE_COMPANY.some((x) => d === x || d.endsWith('.' + x))) keys.push(`dom:${d}`)
+  }
+  const pin = i.address.match(/\b(\d{3})\s?(\d{3})\b/)
+  const name = companyName(i.company)
+  if (pin && name) keys.push(`name:${name}|${pin[1]}${pin[2]}`)
+  return [...new Set(keys)].map((k) => `co1:${k}`)
+}
+
+/** `at`: when the research was done (ms), so a Refresh can tell recent research from old. */
+export interface CompanyEntry { name: string; company: string; sources: BriefSource[]; links: BriefLink[]; at?: number }
+
+/** The part of a finished brief that is about the company only, for the store, with the company's name as on the card. */
+export function companyEntry(r: BriefResult, i: BriefInput, at = Date.now()): CompanyEntry {
+  return {
+    at,
+    name: companyName(i.company),
+    company: r.company,
+    sources: r.sources.filter((x) => !onHost(x.title.toLowerCase().replace(/^www\./, ''), 'linkedin.com')),
+    links: r.links.filter((l) => !(l.kind === 'linkedin' && /linkedin\.com\/in\//i.test(l.url))),
+  }
+}
+
+/**
+ * Is a saved company this card's company? A GSTIN names one registered business, so it is enough. A domain can be shared
+ * by sister firms of a group, and a pincode by neighbours, so those also need the same company name (one may be a
+ * shortened form of the other, such as "Vivacity Woven Sack" and "Vivacity Woven Sack Industries").
+ */
+export function entryMatches(e: CompanyEntry, i: BriefInput, key: string): boolean {
+  if (key.startsWith('co1:gst:')) return true
+  const a = companyName(i.company), b = e.name
+  if (!a || !b) return false
+  const shorter = a.length < b.length ? a : b
+  return a === b || (shorter.split(' ').length >= 2 && (a.startsWith(b + ' ') || b.startsWith(a + ' ')))
+}
+
+/** The request when the company is already known: research only the person, in one search. */
+export function buildPersonRequest(i: BriefInput, company: string, thinking: Thinking = 'low') {
+  const card = ([['Name', i.name], ['Title', i.title], ['Company', i.company], ['Address', i.address], ['Website', i.website]] as const)
+    .filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`)
+  const text = [
+    'You research a business contact for a salesperson in India who is about to call or meet them.',
+    'The company has already been researched; do not search for it again. What is known about the company:',
+    company,
+    '',
+    'Run exactly ONE Google Search, for this person: "<name>" "<company>" (LinkedIn results first). Never answer about the person from memory alone.',
+    '',
+    'From their business card:',
+    ...card,
+    '',
+    'Reply with ONLY a JSON object, in this shape: {"person": string, "starters": string[], "links": [{"kind": string, "url": string}]}',
+    'person: 2 to 4 sentences of facts about this person at this company: their role, how long, anything public. If you find nothing specific, write exactly: "Little public information found about this person."',
+    'starters: 2 or 3 short openers the salesperson could say, each tied to a fact about the person or the company above. Never invent facts.',
+    'links: at most 3 pages from your search that belong to this person, their LinkedIn profile first. kind is one of linkedin, website, indiamart, facebook, instagram, justdial, tradeindia, other. Only a LinkedIn profile whose name, company and designation match this card. Never guess or build a URL.',
+    'Rules: only facts from the search results. No praise words (renowned, leading, innovative, key player). Plain Indian English.',
+  ].join('\n')
+  return { contents: [{ role: 'user', parts: [{ text }] }], tools: [{ google_search: {} }], generationConfig: { temperature: 0.2, thinkingConfig: { thinkingLevel: thinking } } }
+}
+
+/** A brief from the person-only answer and the stored company. */
+export function mergeCompany(entry: CompanyEntry, fresh: BriefResult): BriefResult {
+  const sources = [...fresh.sources]
+  for (const x of entry.sources) if (!sources.some((y) => y.title === x.title) && sources.length < 10) sources.push(x)
+  const links = [...fresh.links]
+  for (const l of entry.links) if (!links.some((y) => y.url === l.url) && links.length < 5) links.push(l)
+  return { ...fresh, company: entry.company, sources, links }
 }
 
 /** "in.linkedin.com" from a URL; empty when it is not an http(s) URL. */

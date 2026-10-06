@@ -1,7 +1,7 @@
 // Run: node --test server/test
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import worker, { checkRate } from '../worker.ts'
+import worker, { checkRate, usageLine } from '../worker.ts'
 
 const GOOD = 'https://prasenjit-sharma.github.io'
 const png = Buffer.from('fake-image-bytes').toString('base64')
@@ -216,10 +216,10 @@ test('quota: a signed-in read is counted with the user\'s own token, never a sec
     const res = await worker.fetch(post({ images: [{ mime: 'image/png', data: png }], auth: token('user-1') }), env(SUPA))
     assert.equal(res.status, 200)
     const q = m.calls.find((c) => c.url.startsWith('https://supa.test'))
-    assert.equal(q.url, 'https://supa.test/rest/v1/rpc/consume_scan')
+    assert.equal(q.url, 'https://supa.test/rest/v1/rpc/begin_read')
     assert.equal(q.init.headers.Authorization, `Bearer ${token('user-1')}`)
     assert.equal(q.init.headers.apikey, 'sb_publishable_x')
-    assert.equal(m.calls.length, 2, 'one quota call, one read')
+    assert.equal(m.calls.length, 3, 'a check, the read, and the charge for its one contact')
   } finally { m.restore() }
 })
 
@@ -235,10 +235,10 @@ test('quota: over today\'s limit is a 429 daily_limit with a plain message, and 
   } finally { m.restore() }
 })
 
-test('quota: a bad token, Supabase down, a missing function or no config all fall back to the per-IP limit and still read', async () => {
+test('quota: Supabase down, a missing function or no config all fall back to the per-IP limit and still read', async () => {
   const cases = [
-    [() => new Response('{"message":"JWT expired"}', { status: 401 }), SUPA],
     [() => { throw new TypeError('fetch failed') }, SUPA],
+    [() => new Response('{"message":"upstream"}', { status: 503 }), SUPA],
     [() => new Response('{"code":"PGRST202"}', { status: 404 }), SUPA],
     [() => new Response('not json'), SUPA],
     [() => { throw new Error('should not be called') }, {}],
@@ -252,10 +252,10 @@ test('quota: a bad token, Supabase down, a missing function or no config all fal
   }
 })
 
-test('quota: no token means no quota call at all (signed-out use is unchanged)', async () => {
+test('quota: with no accounts configured (local development), signed-out reading still works and nothing is counted', async () => {
   const m = mockBoth(() => { throw new Error('should not be called') })
   try {
-    const res = await worker.fetch(post({ images: [{ mime: 'image/png', data: png }] }), env(SUPA))
+    const res = await worker.fetch(post({ images: [{ mime: 'image/png', data: png }] }), env())
     assert.equal(res.status, 200)
     assert.equal(m.calls.length, 1)
   } finally { m.restore() }
@@ -315,7 +315,7 @@ test('brief: BRIEF_API_KEY is used for briefs only; reading keeps GEMINI_API_KEY
     assert.equal(r.calls[0].init.headers['x-goog-api-key'], 'secret-key')
   } finally { r.restore() }
 })
-test('brief: with BRIEF_SEARCH=1, counted with consume_brief, grounded with Google Search, links checked', async () => {
+test('brief: with BRIEF_SEARCH=1, checked with begin_brief, grounded with Google Search, links checked', async () => {
   const m = mockBrief(() => new Response(JSON.stringify([{ allowed: true, used: 1, day_limit: 10 }])))
   try {
     const res = await worker.fetch(briefReq({ contact: who, auth: token('b-1') }), env({ ...SUPA, BRIEF_SEARCH: '1' }))
@@ -324,7 +324,7 @@ test('brief: with BRIEF_SEARCH=1, counted with consume_brief, grounded with Goog
     assert.equal(body.person, 'Director.')
     assert.deepEqual(body.links, [{ kind: 'linkedin', url: 'https://www.linkedin.com/in/aj' }], 'the guessed site is dropped')
     assert.equal(body.suggestions, '<style></style><div>chips</div>')
-    assert.equal(m.calls[0].url, 'https://supa.test/rest/v1/rpc/consume_brief')
+    assert.equal(m.calls[0].url, 'https://supa.test/rest/v1/rpc/begin_brief')
     const sent = JSON.parse(m.calls[1].init.body)
     assert.deepEqual(sent.tools, [{ google_search: {} }])
     assert.ok(!JSON.stringify(sent).includes('secret-key'))
@@ -367,7 +367,7 @@ test('brief: unknown origin refused, and BRIEF_MODEL picks the model', async () 
   try {
     assert.equal((await worker.fetch(briefReq({ contact: who, auth: token('b-6') }, { Origin: 'https://evil.example' }), env(SUPA))).status, 403)
     await worker.fetch(briefReq({ contact: who, auth: token('b-7') }), env({ ...SUPA, BRIEF_MODEL: 'gemini-brief-x' }))
-    assert.match(m.calls.at(-1).url, /gemini-brief-x:generateContent/)
+    assert.match(m.calls.find((c) => c.url.includes(':generateContent')).url, /gemini-brief-x:generateContent/)
   } finally { m.restore() }
 })
 
@@ -376,4 +376,262 @@ test('the deployed allow-list lets the Android app (https://localhost) call the 
   const allowed = /^ALLOWED_ORIGINS\s*=\s*"([^"]*)"/m.exec(toml)[1]
   const res = await worker.fetch(new Request('https://api.test/v1/extract', { method: 'OPTIONS', headers: { Origin: 'https://localhost', 'Access-Control-Request-Method': 'POST' } }), env({ ALLOWED_ORIGINS: allowed }))
   assert.equal(res.headers.get('access-control-allow-origin'), 'https://localhost')
+})
+
+test('usageLine: tokens in and out, thinking apart, and the searches a call ran; missing fields read as 0', () => {
+  const raw = { usageMetadata: { promptTokenCount: 900, toolUsePromptTokenCount: 2100, candidatesTokenCount: 700, thoughtsTokenCount: 1200 }, candidates: [{ groundingMetadata: { webSearchQueries: ['Asha Rao Acme', 'Acme Pune'] } }] }
+  assert.equal(usageLine(raw), 'in=3000 out=700 thinking=1200 searches=2')
+  assert.equal(usageLine(geminiOk), 'in=10 out=5 thinking=0 searches=0')
+  assert.equal(usageLine(null), 'in=0 out=0 thinking=0 searches=0')
+})
+
+// ── Pricing: sign-in, balances, charges ──
+const BAL = { tier: 'free', periodEnd: '2026-11-01T00:00:00+05:30', cards: { month: { used: 2, allowance: 20 }, pass: null, pack: 0, left: 18 }, briefs: { month: { used: 0, allowance: 0 }, extra: 0, trial: 3, left: 3 } }
+/** Supabase: begin_* answers `begin`, charge_* answers `charged`; Gemini answers everything else. */
+function mockSupa({ begin = () => [{ allowed: true, reason: null, day_limit: 300, balance: BAL }], charged = () => ({ ...BAL, cards: { ...BAL.cards, left: 17 } }), gemini = geminiOk } = {}) {
+  return mockUpstream((url, init) => {
+    const u = String(url)
+    if (u.includes('/rpc/begin_')) return new Response(JSON.stringify(begin(u, init)))
+    if (u.includes('/rpc/charge_')) return new Response(JSON.stringify(charged(u, init)))
+    return new Response(JSON.stringify(gemini))
+  })
+}
+
+test('pricing: signed out is 401 sign_in when accounts are configured, and nothing is called', async () => {
+  const m = mockSupa()
+  try {
+    const res = await worker.fetch(post({ images: [{ mime: 'image/png', data: png }] }), env(SUPA))
+    assert.equal(res.status, 401)
+    assert.equal((await res.json()).error.code, 'sign_in')
+    assert.equal(m.calls.length, 0)
+  } finally { m.restore() }
+})
+
+test('pricing: a read is checked, then charged one card per contact, and the balance comes back', async () => {
+  const two = { candidates: [{ content: { parts: [{ text: JSON.stringify({ languages: [], notes: '', contacts: [{ name: 'A', phones: [], emails: [], social: [] }, { name: 'B', phones: [], emails: [], social: [] }] }) }] } }] }
+  const m = mockSupa({ gemini: two })
+  try {
+    const res = await worker.fetch(post({ images: [{ mime: 'image/png', data: png }], auth: token('p-1') }), env(SUPA))
+    assert.equal(res.status, 200)
+    assert.equal((await res.json()).balance.cards.left, 17)
+    const charge = m.calls.find((c) => c.url.endsWith('/rpc/charge_reads'))
+    assert.deepEqual(JSON.parse(charge.init.body), { n: 2 })
+    assert.equal(charge.init.headers.Authorization, `Bearer ${token('p-1')}`)
+  } finally { m.restore() }
+})
+
+test('pricing: no cards left is 402 no_cards with the balance, and Gemini is never called', async () => {
+  const m = mockSupa({ begin: () => [{ allowed: false, reason: 'no_cards', day_limit: 300, balance: { ...BAL, cards: { ...BAL.cards, left: 0 } } }] })
+  try {
+    const res = await worker.fetch(post({ images: [{ mime: 'image/png', data: png }], auth: token('p-2') }), env(SUPA))
+    assert.equal(res.status, 402)
+    const body = await res.json()
+    assert.equal(body.error.code, 'no_cards'); assert.equal(body.balance.cards.left, 0)
+    assert.equal(m.calls.filter((c) => !c.url.startsWith('https://supa.test')).length, 0)
+  } finally { m.restore() }
+})
+
+test('pricing: an empty read or a failed read is never charged', async () => {
+  const empty = { candidates: [{ content: { parts: [{ text: JSON.stringify({ languages: [], notes: '', contacts: [] }) }] } }] }
+  for (const gemini of [empty, { candidates: [] }]) {
+    const m = mockSupa({ gemini })
+    try {
+      await worker.fetch(post({ images: [{ mime: 'image/png', data: png }], auth: token('p-3') }), env(SUPA))
+      assert.equal(m.calls.filter((c) => c.url.includes('/rpc/charge_')).length, 0)
+    } finally { m.restore() }
+  }
+})
+
+test('pricing: Supabase down or 0005 missing still reads, uncharged, with balance null', async () => {
+  for (const begin of [() => { throw new TypeError('fetch failed') }, () => ({ code: 'PGRST202' })]) {
+    const m = mockSupa({ begin })
+    try {
+      const res = await worker.fetch(post({ images: [{ mime: 'image/png', data: png }], auth: token('p-4') }), env(SUPA))
+      assert.equal(res.status, 200)
+      assert.equal((await res.json()).balance, null)
+      assert.equal(m.calls.filter((c) => c.url.includes('/rpc/charge_')).length, 0)
+    } finally { m.restore() }
+  }
+})
+
+test('pricing: a charge that fails still returns the read, with the balance from before', async () => {
+  const m = mockSupa({ charged: () => { throw new TypeError('fetch failed') } })
+  try {
+    const res = await worker.fetch(post({ images: [{ mime: 'image/png', data: png }], auth: token('p-7') }), env(SUPA))
+    assert.equal(res.status, 200)
+    const body = await res.json()
+    assert.equal(body.contacts.length, 1); assert.equal(body.balance.cards.left, 18)
+  } finally { m.restore() }
+})
+
+test('pricing: briefs are checked with begin_brief, charged with charge_brief; pro_only and no_briefs are 402', async () => {
+  let m = mockSupa({ gemini: briefOk, begin: () => [{ allowed: true, reason: null, day_limit: 10, balance: BAL }] })
+  try {
+    const res = await worker.fetch(briefReq({ contact: who, auth: token('p-5') }), env(SUPA))
+    assert.equal(res.status, 200)
+    assert.ok(m.calls.some((c) => c.url.endsWith('/rpc/begin_brief')))
+    assert.ok(m.calls.some((c) => c.url.endsWith('/rpc/charge_brief')))
+    assert.ok((await res.json()).balance)
+  } finally { m.restore() }
+  for (const reason of ['pro_only', 'no_briefs']) {
+    m = mockSupa({ begin: () => [{ allowed: false, reason, day_limit: 10, balance: BAL }] })
+    try {
+      const res = await worker.fetch(briefReq({ contact: who, auth: token('p-6') }), env(SUPA))
+      assert.equal(res.status, 402)
+      const body = await res.json()
+      assert.equal(body.error.code, reason); assert.ok(body.balance)
+      assert.equal(m.calls.filter((c) => !c.url.startsWith('https://supa.test')).length, 0)
+    } finally { m.restore() }
+  }
+})
+
+test('pricing: a token Supabase refuses (made up, expired) is 401 sign_in, for reads and briefs, and nothing is read', async () => {
+  for (const refuse of [() => new Response('{"message":"JWT expired"}', { status: 401 }), () => new Response('{"message":"invalid JWT"}', { status: 403 })]) {
+    const m = mockUpstream((url) => (String(url).startsWith('https://supa.test') ? refuse() : new Response(JSON.stringify(geminiOk))))
+    try {
+      let res = await worker.fetch(post({ images: [{ mime: 'image/png', data: png }], auth: 'x' }), env(SUPA))
+      assert.equal(res.status, 401); assert.equal((await res.json()).error.code, 'sign_in')
+      res = await worker.fetch(briefReq({ contact: who, auth: 'x' }), env(SUPA))
+      assert.equal(res.status, 401)
+      assert.equal(m.calls.filter((c) => !c.url.startsWith('https://supa.test')).length, 0, 'Gemini is never called')
+    } finally { m.restore() }
+  }
+})
+
+test('pricing: a batch whose people cannot all be matched to a photo is not charged (the app reads those cards again, one by one)', async () => {
+  const unmatched = { candidates: [{ content: { parts: [{ text: JSON.stringify({ languages: [], notes: '', contacts: [{ name: 'A', image: 1, phones: [], emails: [], social: [] }, { name: 'B', phones: [], emails: [], social: [] }] }) }] } }] }
+  const matched = { candidates: [{ content: { parts: [{ text: JSON.stringify({ languages: [], notes: '', contacts: [{ name: 'A', image: 1, phones: [], emails: [], social: [] }, { name: 'B', image: 2, phones: [], emails: [], social: [] }] }) }] } }] }
+  const two = [{ mime: 'image/png', data: png }, { mime: 'image/png', data: png }]
+  let m = mockSupa({ gemini: unmatched })
+  try {
+    const res = await worker.fetch(post({ images: two, layout: 'batch', auth: token('p-8') }), env(SUPA))
+    assert.equal(res.status, 200)
+    assert.equal(m.calls.filter((c) => c.url.includes('/rpc/charge_')).length, 0)
+  } finally { m.restore() }
+  m = mockSupa({ gemini: matched })
+  try {
+    await worker.fetch(post({ images: two, layout: 'batch', auth: token('p-9') }), env(SUPA))
+    assert.deepEqual(JSON.parse(m.calls.find((c) => c.url.endsWith('/rpc/charge_reads')).init.body), { n: 2 })
+  } finally { m.restore() }
+})
+
+test('BRIEF_THINKING sets the thinking level of a searched brief (low when unset)', async () => {
+  for (const [set, want] of [['minimal', 'minimal'], [undefined, 'low'], ['nonsense', 'low']]) {
+    const m = mockSupa({ gemini: briefOk, begin: () => [{ allowed: true, reason: null, day_limit: 10, balance: BAL }] })
+    try {
+      await worker.fetch(briefReq({ contact: who, auth: token(`t-${want}-${set}`) }), env({ ...SUPA, BRIEF_SEARCH: '1', ...(set ? { BRIEF_THINKING: set } : {}) }))
+      const sent = JSON.parse(m.calls.find((c) => c.url.includes(':generateContent')).init.body)
+      assert.equal(sent.generationConfig.thinkingConfig.thinkingLevel, want)
+    } finally { m.restore() }
+  }
+})
+
+// ── the shared company store, and the retry when a brief ran no search ──
+function kvMock(seed = {}) {
+  const m = new Map(Object.entries(seed).map(([k, v]) => [k, JSON.stringify(v)]))
+  return { m, puts: [], get: async (k, t) => (m.has(k) ? (t === 'json' ? JSON.parse(m.get(k)) : m.get(k)) : null), put: async function (k, v, o) { this.puts.push([k, o]); m.set(k, v) } }
+}
+const pinned = { name: 'Abhishek Jain', company: 'Vivacity Woven Sack Pvt. Ltd.', address: 'Tantithaiya, Surat 394305' }
+const KEY = 'co1:name:vivacity woven sack|394305'
+const okBegin = () => [{ allowed: true, reason: null, day_limit: 10, balance: BAL }]
+/** briefOk with one Google search recorded, so no retry is triggered. */
+const searched = (b = briefOk) => ({ ...b, candidates: [{ ...b.candidates[0], groundingMetadata: { ...b.candidates[0].groundingMetadata, webSearchQueries: ['q'] } }] })
+const geminiCalls = (m) => m.calls.filter((c) => c.url.includes(':generateContent')).map((c) => JSON.parse(c.init.body))
+
+test('company store: a miss runs the full brief and keeps the company part, with its name, never the person, for 30 days', async () => {
+  const kv = kvMock()
+  const m = mockSupa({ gemini: searched(), begin: okBegin })
+  try {
+    const res = await worker.fetch(briefReq({ contact: pinned, auth: token('c-1') }), env({ ...SUPA, BRIEF_SEARCH: '1', BRIEF_CACHE: kv }))
+    assert.equal(res.status, 200)
+    assert.equal(geminiCalls(m).length, 1)
+    assert.match(geminiCalls(m)[0].contents[0].parts[0].text, /Search for the company/)
+    const kept = JSON.parse(kv.m.get(KEY))
+    assert.equal(kept.company, 'Makes sacks.'); assert.equal(kept.name, 'vivacity woven sack'); assert.equal('person' in kept, false)
+    assert.equal(kv.puts[0][1].expirationTtl, 30 * 86400)
+  } finally { m.restore() }
+})
+
+test('company store: a hit for the same company researches only the person and returns the kept company', async () => {
+  const kv = kvMock({ [KEY]: { name: 'vivacity woven sack', company: 'Kept: makes PP sacks in Surat.', sources: [{ title: 'vivacity.in', uri: 'https://v/2' }], links: [] } })
+  const m = mockSupa({ gemini: searched(), begin: okBegin })
+  try {
+    const body = await (await worker.fetch(briefReq({ contact: pinned, auth: token('c-2') }), env({ ...SUPA, BRIEF_SEARCH: '1', BRIEF_CACHE: kv }))).json()
+    assert.equal(body.company, 'Kept: makes PP sacks in Surat.'); assert.equal(body.person, 'Director.')
+    assert.match(geminiCalls(m)[0].contents[0].parts[0].text, /already been researched/)
+    assert.ok(m.calls.some((c) => c.url.endsWith('/rpc/charge_brief')), 'a brief from the store is still a brief')
+  } finally { m.restore() }
+})
+
+test('company store: a sister firm on the same domain is not reused', async () => {
+  const kv = kvMock({ 'co1:dom:vivacitygroup.com': { name: 'vivacity polymers', company: 'Makes polymers.', sources: [], links: [] } })
+  const m = mockSupa({ gemini: searched(), begin: okBegin })
+  try {
+    const body = await (await worker.fetch(briefReq({ contact: { ...pinned, address: 'Surat', domains: ['vivacitygroup.com'] }, auth: token('c-7') }), env({ ...SUPA, BRIEF_SEARCH: '1', BRIEF_CACHE: kv }))).json()
+    assert.equal(body.company, 'Makes sacks.')
+    assert.match(geminiCalls(m)[0].contents[0].parts[0].text, /Search for the company/)
+  } finally { m.restore() }
+})
+
+test('company store: Refresh reuses company research under 7 days old, and researches again once it is older', async () => {
+  const day = 86400000
+  for (const [age, reused] of [[2 * day, true], [8 * day, false]]) {
+    const kv = kvMock({ [KEY]: { name: 'vivacity woven sack', company: 'Kept.', sources: [], links: [], at: Date.now() - age } })
+    const m = mockSupa({ gemini: searched(), begin: okBegin })
+    try {
+      const body = await (await worker.fetch(briefReq({ contact: pinned, auth: token(`f-${age}`), fresh: true }), env({ ...SUPA, BRIEF_SEARCH: '1', BRIEF_CACHE: kv }))).json()
+      assert.equal(body.company, reused ? 'Kept.' : 'Makes sacks.')
+      if (!reused) assert.ok(JSON.parse(kv.m.get(KEY)).at > Date.now() - 60000, 'the new research is kept with its date')
+    } finally { m.restore() }
+  }
+})
+
+test('company store: an entry without a date counts as old on Refresh; no strong match, no store; a failing store never stops a brief', async () => {
+  let kv = kvMock({ [KEY]: { name: 'vivacity woven sack', company: 'Old.', sources: [], links: [] } })
+  let m = mockSupa({ gemini: searched(), begin: okBegin })
+  try {
+    const body = await (await worker.fetch(briefReq({ contact: pinned, auth: token('c-3'), fresh: true }), env({ ...SUPA, BRIEF_SEARCH: '1', BRIEF_CACHE: kv }))).json()
+    assert.equal(body.company, 'Makes sacks.'); assert.equal(JSON.parse(kv.m.get(KEY)).company, 'Makes sacks.')
+  } finally { m.restore() }
+  kv = kvMock(); m = mockSupa({ gemini: searched(), begin: okBegin })
+  try {
+    await worker.fetch(briefReq({ contact: who, auth: token('c-4') }), env({ ...SUPA, BRIEF_SEARCH: '1', BRIEF_CACHE: kv }))
+    assert.equal(kv.puts.length, 0, 'Surat without a pincode is too weak to share')
+  } finally { m.restore() }
+  const broken = { get: async () => { throw new Error('kv down') }, put: async () => { throw new Error('kv down') } }
+  m = mockSupa({ gemini: searched(), begin: okBegin })
+  try {
+    assert.equal((await worker.fetch(briefReq({ contact: pinned, auth: token('c-5') }), env({ ...SUPA, BRIEF_SEARCH: '1', BRIEF_CACHE: broken }))).status, 200)
+  } finally { m.restore() }
+})
+
+test('a brief that ran no search is nudged once, in the same conversation and thinking level; a still-unsearched brief is marked unchecked and its company never kept', async () => {
+  const second = (searchedToo) => { const b = { ...briefOk, candidates: [{ ...briefOk.candidates[0], content: { parts: [{ text: JSON.stringify({ person: 'Second.', company: 'Second co.', starters: [], links: [] }) }] } }] }; return searchedToo ? searched(b) : b }
+  for (const searchedToo of [true, false]) {
+    let n = 0
+    const kv = kvMock()
+    const m = mockUpstream((url) => {
+      const u = String(url)
+      if (u.includes('/rpc/begin_')) return new Response(JSON.stringify(okBegin()))
+      if (u.includes('/rpc/charge_')) return new Response(JSON.stringify(BAL))
+      return new Response(JSON.stringify(++n === 1 ? briefOk : second(searchedToo)))
+    })
+    try {
+      const body = await (await worker.fetch(briefReq({ contact: pinned, auth: token(`r-${searchedToo}`) }), env({ ...SUPA, BRIEF_SEARCH: '1', BRIEF_THINKING: 'minimal', BRIEF_CACHE: kv }))).json()
+      const calls = geminiCalls(m)
+      assert.equal(calls.length, 2)
+      assert.equal(calls[1].generationConfig.thinkingConfig.thinkingLevel, 'minimal')
+      assert.deepEqual(calls[1].contents.map((c) => c.role), ['user', 'model', 'user'], 'the nudge replies to the first answer')
+      assert.match(calls[1].contents[2].parts[0].text, /without running Google Search/)
+      assert.equal(body.person, 'Second.')
+      assert.equal(body.unchecked, !searchedToo || undefined)
+      assert.equal(kv.puts.length, searchedToo ? 1 : 0, 'only searched company research is kept')
+      assert.equal(m.calls.filter((c) => c.url.endsWith('/rpc/charge_brief')).length, 1, 'charged once')
+    } finally { m.restore() }
+  }
+  const m = mockSupa({ gemini: searched(), begin: okBegin })
+  try {
+    const body = await (await worker.fetch(briefReq({ contact: who, auth: token('r-3') }), env({ ...SUPA, BRIEF_SEARCH: '1', BRIEF_THINKING: 'minimal' }))).json()
+    assert.equal(geminiCalls(m).length, 1); assert.equal('unchecked' in body, false)
+  } finally { m.restore() }
 })

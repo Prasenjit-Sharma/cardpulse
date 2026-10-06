@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { hostOf } from '../../shared/brief-core'
-import { signInWithGoogle } from '../lib/auth'
+import { signInWithGoogle, useSession } from '../lib/auth'
+import { ALLOWANCE, EXTRA_BRIEFS, PLANS, rupees } from '../../shared/plans'
+import { parseBalance, setBalance } from '../lib/balance'
+import { useStoredBalance } from '../lib/useBalance'
 import { BriefFailure, briefText, freshBrief, hasLink, linkLabel, pendingBrief, requestBrief, runBrief, type Brief, type Section } from '../lib/brief'
 import { API_URL } from '../lib/gemini'
 import { shareNav } from '../lib/platform'
@@ -23,16 +26,20 @@ const day = (t: number) => new Date(t).toLocaleDateString('en-IN', { day: 'numer
  * Pulse Brief: a short brief on the person and their company, from what Gemini knows (or a web search, when the server
  * has it on). A kept brief opens at once; a new one shows a pulse while it is made, and is saved even if the page closes.
  */
-export default function BriefPage({ contact, briefKey, onSave, onAddLink, onClose }: {
+export default function BriefPage({ contact, briefKey, onSave, onAddLink, onPlans, onClose }: {
   contact: Contact
   /** The card id and person, so one search runs per contact. */
   briefKey: string
   /** Saves a finished brief to the contact. Called even after this page has closed. */
   onSave: (b: Brief) => void
   onAddLink: (l: BriefLink) => void
+  /** Plan & cards, from the locked state (Pulse Brief is part of Pro, or none left this month). */
+  onPlans: () => void
   onClose: () => void
 }) {
   useBackClose(true, onClose)
+  const userId = useSession()?.user.id
+  const balance = useStoredBalance(userId)
   const brief = freshBrief(contact)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<BriefFailure | null>(null)
@@ -49,7 +56,7 @@ export default function BriefPage({ contact, briefKey, onSave, onAddLink, onClos
       .catch((e) => { if (alive.current) setError(e instanceof BriefFailure ? e : new BriefFailure('failed', "Couldn't make the brief. Try again.")) })
       .finally(() => { if (alive.current) setBusy(false) })
   }
-  const start = () => follow(runBrief(briefKey, async () => requestBrief(contact, { url: API_URL, token: await accessToken(), online: navigator.onLine, fetch: (...a) => fetch(...a) })))
+  const start = (fresh = false) => follow(runBrief(briefKey, async () => requestBrief(contact, { url: API_URL, token: await accessToken(), online: navigator.onLine, fetch: (...a) => fetch(...a), fresh, onBalance: (x) => { const nb = parseBalance(x); if (nb) setBalance(nb, userId) } })))
 
   // join a search already running for this contact; otherwise search when nothing is kept yet
   useEffect(() => {
@@ -111,11 +118,23 @@ export default function BriefPage({ contact, briefKey, onSave, onAddLink, onClos
         </div>
       ) : (
         <>
-          {error && (
+          {error && (error.code === 'pro_only' || error.code === 'no_briefs') ? (
+            <div className={`brief-locked${brief ? ' small' : ''}`} role="status">
+              <span className="tool-well"><Icon name="spark" size={20} /></span>
+              <div className="grow">
+                <strong>{error.code === 'pro_only' ? 'Pulse Brief is part of Pro' : 'No briefs left this month'}</strong>
+                <p>{error.code === 'pro_only'
+                  ? `Pro gives ${ALLOWANCE.pro.briefs} briefs and ${ALLOWANCE.pro.cards} cards a month, for ${rupees(PLANS.find((p) => p.tier === 'pro')!.monthly)} a month.`
+                  : `Your ${ALLOWANCE.pro.briefs} come back on ${balance ? new Date(balance.periodEnd).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'the 1st'}. Or add ${EXTRA_BRIEFS.briefs} extra for ${rupees(EXTRA_BRIEFS.price)}.`}
+                  {brief ? ' This saved brief still opens.' : ' Saved briefs always open.'}</p>
+                <button className="cta small" onClick={onPlans}>See plans</button>
+              </div>
+            </div>
+          ) : error && (
             <div className={`brief-error${brief ? ' small' : ''}`} role="alert">
               <p>{error.message}</p>
               {error.code === 'sign_in' ? <button className="cta small" onClick={() => void signInWithGoogle()}>Sign in</button>
-                : error.code !== 'daily_limit' && error.code !== 'offline' && <button className="outline small" onClick={start}>Try again</button>}
+                : error.code !== 'daily_limit' && error.code !== 'offline' && <button className="outline small" onClick={() => start()}>Try again</button>}
             </div>
           )}
           {brief && (
@@ -145,9 +164,9 @@ export default function BriefPage({ contact, briefKey, onSave, onAddLink, onClos
                   </div>
                 </>
               )}
-              <p className="brief-foot">{brief.sources.length || brief.suggestions
+              <p className="brief-foot">{!brief.unchecked && (brief.sources.length || brief.suggestions)
                 ? `Found on the web on ${day(brief.at)} with Google Search. Public information; check before relying on it.`
-                : `Written on ${day(brief.at)} by Gemini from what it already knows, without a web search. It can be out of date or wrong; check before relying on it.`}</p>
+                : `Written on ${day(brief.at)} by Gemini from what it already knows, without a web search. It can be out of date or wrong; check before relying on it, or Refresh to search again.`}</p>
             </>
           )}
         </>
@@ -156,7 +175,7 @@ export default function BriefPage({ contact, briefKey, onSave, onAddLink, onClos
       <Sheet open={menu} onClose={() => setMenu(false)} title="Pulse Brief">
         {brief && <SheetItem icon="copy" label="Copy all" onClick={() => { setMenu(false); void copy(briefText(contact, brief)) }} />}
         {brief && <SheetItem icon="share" label="Share all" onClick={() => { setMenu(false); void share(briefText(contact, brief)) }} />}
-        <SheetItem icon="refresh" label="Refresh" hint="A fresh brief; counts towards today's 10" disabled={busy} onClick={() => { setMenu(false); start() }} />
+        <SheetItem icon="refresh" label="Refresh" hint="A fresh brief; counts towards today's 10" disabled={busy} onClick={() => { setMenu(false); start(true) }} />
       </Sheet>
       {flash && <div className="flash brief-flash" role="status">{flash}</div>}
     </div>

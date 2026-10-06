@@ -1,7 +1,7 @@
 // CardPulse API — a thin, locked-down proxy in front of Gemini.
 // The app sends card photos; the prompt, schema and API key live here, so this endpoint cannot be used as a general Gemini gateway.
 import { buildRequest, GeminiError, MAX_IMAGES, parseResponse, type ImageInput, type Layout } from '../shared/extract-core.ts'
-import { BriefError, buildBriefRequest, parseBriefResponse, validBriefInput } from '../shared/brief-core.ts'
+import { BriefError, buildBriefRequest, buildPersonRequest, companyEntry, companyKeys, entryMatches, mergeCompany, parseBriefResponse, THINKING, validBriefInput, type BriefInput, type CompanyEntry, type Thinking } from '../shared/brief-core.ts'
 
 export interface Env {
   GEMINI_API_KEY: string
@@ -10,6 +10,10 @@ export interface Env {
   BRIEF_MODEL?: string
   /** "1" turns on Google Search for Pulse Brief. Needs a key whose plan allows Search grounding (a paid key). */
   BRIEF_SEARCH?: string
+  /** Thinking level for a searched brief: minimal, low (default), medium or high. Thinking is billed as output. */
+  BRIEF_THINKING?: string
+  /** Cloudflare KV: company research shared between briefs at the same company (never anything about a person). */
+  BRIEF_CACHE?: { get(key: string, type: 'json'): Promise<unknown>; put(key: string, value: string, options?: { expirationTtl?: number }): Promise<void> }
   /** Optional key for Pulse Brief alone (a paid project's), so card reading stays on GEMINI_API_KEY's free tier. */
   BRIEF_API_KEY?: string
   /** Comma-separated exact origins allowed to call this API, e.g. https://you.github.io */
@@ -18,7 +22,7 @@ export interface Env {
   ALLOW_LAN?: string
   /** Override the upstream, used by tests. */
   GEMINI_BASE?: string
-  /** With both set, a signed-in user's reads are counted per account (see consume_scan in migration 0002). */
+  /** With both set, reading needs sign-in, and reads and briefs are checked and charged against the account (migration 0005). */
   SUPABASE_URL?: string
   SUPABASE_PUBLISHABLE_KEY?: string
 }
@@ -79,7 +83,7 @@ function validImages(v: unknown, layout: Layout): ImageInput[] | null {
   return total <= MAX_BASE64_CHARS[layout] ? out : null
 }
 
-/** The quota check must never hold up a scan for long: past this, fall back to the per-IP limit. */
+/** The balance check must never hold up a scan for long: past this, go ahead uncharged under the per-IP limit. */
 const QUOTA_TIMEOUT_MS = 3000
 
 /** The account id inside a token Supabase has just accepted. Only read after Supabase validated the token. */
@@ -91,67 +95,147 @@ function tokenSubject(token: string): string | null {
   } catch { return null }
 }
 
-export type Quota = { kind: 'account'; userId: string } | { kind: 'over'; limit: number } | { kind: 'none' }
+export type Use =
+  | { kind: 'account'; userId: string; balance: unknown }
+  | { kind: 'over'; reason: string; limit: number; balance: unknown }
+  | { kind: 'none' }
+  /** Supabase refused the token (made up, expired): the caller is not signed in. */
+  | { kind: 'refused' }
 
-/**
- * Counts one read against the signed-in user's daily quota, using the user's own token (the Worker holds no
- * Supabase secret). Anything that goes wrong — no token, a bad or expired token, Supabase slow or down, the function
- * not deployed — is `none`, and the caller falls back to the per-IP limit: a quota outage never stops a scan.
- */
-export async function checkQuota(token: unknown, env: Env, fn: 'consume_scan' | 'consume_brief' = 'consume_scan'): Promise<Quota> {
-  if (typeof token !== 'string' || !token || token.length > 4096 || !env.SUPABASE_URL || !env.SUPABASE_PUBLISHABLE_KEY) return { kind: 'none' }
+/** Supabase answered 401 or 403: the token is not a valid sign-in. Kept apart from an outage, which reads uncharged. */
+const REFUSED = Symbol('refused')
+
+/** One Supabase function, called with the user's own token (the Worker holds no Supabase secret). null on any failure. */
+async function rpc(fn: string, token: string, env: Env, args: Record<string, unknown> = {}): Promise<unknown | typeof REFUSED> {
   try {
-    const res = await fetch(`${env.SUPABASE_URL.replace(/\/$/, '')}/rest/v1/rpc/${fn}`, {
+    const res = await fetch(`${env.SUPABASE_URL!.replace(/\/$/, '')}/rest/v1/rpc/${fn}`, {
       method: 'POST',
-      headers: { apikey: env.SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: '{}',
+      headers: { apikey: env.SUPABASE_PUBLISHABLE_KEY!, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(args),
       signal: AbortSignal.timeout(QUOTA_TIMEOUT_MS),
     })
-    if (!res.ok) return { kind: 'none' }
-    const body = await res.json() as unknown
-    const row = (Array.isArray(body) ? body[0] : body) as { allowed?: unknown; day_limit?: unknown } | undefined
-    if (!row || typeof row.allowed !== 'boolean') return { kind: 'none' }
-    if (!row.allowed) return { kind: 'over', limit: Number(row.day_limit) || 0 }
-    const userId = tokenSubject(token)
-    return userId ? { kind: 'account', userId } : { kind: 'none' }
-  } catch { return { kind: 'none' } }
+    if (res.status === 401 || res.status === 403) return REFUSED
+    return res.ok ? await res.json() : null
+  } catch { return null }
 }
+
+const usable = (token: unknown, env: Env): token is string =>
+  typeof token === 'string' && !!token && token.length <= 4096 && !!env.SUPABASE_URL && !!env.SUPABASE_PUBLISHABLE_KEY
+
+/**
+ * Before a read or a brief (migration 0005's begin_read / begin_brief): is a card or brief left, and is the account
+ * under today's brake? Anything that goes wrong — no token, a bad or expired token, Supabase slow or down, 0005 not
+ * applied — is `none`: the caller goes ahead uncharged under the per-IP brake. Losing a card at a stall is worse.
+ */
+export async function beginUse(token: unknown, env: Env, what: 'read' | 'brief'): Promise<Use> {
+  if (!usable(token, env)) return { kind: 'none' }
+  const body = await rpc(what === 'read' ? 'begin_read' : 'begin_brief', token, env)
+  if (body === REFUSED) return { kind: 'refused' }
+  const row = (Array.isArray(body) ? body[0] : body) as { allowed?: unknown; reason?: unknown; day_limit?: unknown; balance?: unknown } | null | undefined
+  if (!row || typeof row.allowed !== 'boolean') return { kind: 'none' }
+  if (!row.allowed) return { kind: 'over', reason: typeof row.reason === 'string' ? row.reason : 'daily_limit', limit: Number(row.day_limit) || 0, balance: row.balance ?? null }
+  const userId = tokenSubject(token)
+  return userId ? { kind: 'account', userId, balance: row.balance ?? null } : { kind: 'none' }
+}
+
+/** After a good answer: the new balance, or null if the charge did not land (logged; the answer still goes back). */
+async function charge(token: string, env: Env, fn: 'charge_reads' | 'charge_brief', args: Record<string, unknown> = {}): Promise<unknown> {
+  const b = await rpc(fn, token, env, args)
+  if (b === REFUSED) { console.log(`${fn} refused: the token expired during the call, not charged`); return null }
+  if (b == null) console.log(`${fn} failed: not charged`)
+  return b
+}
+
+/** charge_reads refuses more than this in one call. */
+const MAX_CHARGE = 200
 
 /** A read is normally 3 to 10 s. Past this the request is stuck upstream; fail fast so the app can retry. */
 const UPSTREAM_TIMEOUT_MS = 40_000
 const BRIEF_BODY_MAX = 16_384
 
+/**
+ * One log line of what a call is billed for: tokens in, tokens out (thinking is billed as output, so it is shown apart),
+ * and the Google searches it ran (Gemini 3 bills each query). `wrangler tail` shows it; nothing reaches the app.
+ */
+export function usageLine(json: unknown): string {
+  const r = json as { usageMetadata?: Record<string, unknown>; candidates?: { groundingMetadata?: { webSearchQueries?: unknown } }[] } | null
+  const u = r?.usageMetadata ?? {}
+  const n = (k: string) => (typeof u[k] === 'number' ? (u[k] as number) : 0)
+  const queries = r?.candidates?.[0]?.groundingMetadata?.webSearchQueries
+  return `in=${n('promptTokenCount') + n('toolUsePromptTokenCount')} out=${n('candidatesTokenCount')} thinking=${n('thoughtsTokenCount')} searches=${Array.isArray(queries) ? queries.length : 0}`
+}
+
 /** Pulse Brief: a short brief on one contact. Signed-in only, with its own daily limit; nothing is stored here. */
-async function brief(req: Request, env: Env, origin: string | null): Promise<Response> {
+const COMPANY_TTL = 30 * 86400
+const COMPANY_TTL_NOTHING = 7 * 86400        // "nothing found" is kept a shorter while: a new website may appear
+/** Refresh reuses company research younger than this; older research is done again (company facts change slowly). */
+const REFRESH_REUSE_MS = 7 * 86_400_000
+
+/** The saved research for this card's company, when one of its keys holds the same company; null otherwise or on error. */
+async function findCompany(kv: NonNullable<Env['BRIEF_CACHE']>, keys: string[], i: BriefInput): Promise<CompanyEntry | null> {
+  for (const k of keys) {
+    try {
+      const e = await kv.get(k, 'json') as CompanyEntry | null
+      if (e && typeof e.company === 'string' && entryMatches(e, i, k)) return e
+    } catch { return null }
+  }
+  return null
+}
+
+async function keepCompany(kv: NonNullable<Env['BRIEF_CACHE']>, keys: string[], e: CompanyEntry): Promise<void> {
+  const ttl = /^Little public information found/.test(e.company) ? COMPANY_TTL_NOTHING : COMPANY_TTL
+  await Promise.all(keys.map((k) => kv.put(k, JSON.stringify(e), { expirationTtl: ttl }).catch(() => {})))
+}
+
+const nudge = (personOnly: boolean) => `You answered without running Google Search, so nothing in your answer can be checked. Run Google Search now (${personOnly ? 'for this person' : 'the company, then the person'}), then give the JSON answer again using only what the search found.`
+
+const searchesRun = (raw: unknown) => {
+  const q = (raw as { candidates?: { groundingMetadata?: { webSearchQueries?: unknown } }[] } | null)?.candidates?.[0]?.groundingMetadata?.webSearchQueries
+  return Array.isArray(q) ? q.length : 0
+}
+
+async function brief(req: Request, env: Env, origin: string | null, ctx?: { waitUntil(p: Promise<unknown>): void }): Promise<Response> {
   if (!originAllowed(origin, env)) return fail(403, 'forbidden_origin', 'This origin is not allowed.', null)
   const key = env.BRIEF_API_KEY || env.GEMINI_API_KEY
   if (!key) return fail(500, 'not_configured', 'The service is not configured.', origin)
   if (Number(req.headers.get('content-length') ?? 0) > BRIEF_BODY_MAX) return fail(413, 'too_large', 'Request too large.', origin)
-  let body: { contact?: unknown; auth?: unknown }
+  let body: { contact?: unknown; auth?: unknown; fresh?: unknown }
   try { body = await req.json() } catch { return fail(400, 'bad_request', 'Invalid request.', origin) }
   const input = validBriefInput(body?.contact)
   if (!input) return fail(400, 'bad_contact', "Add the contact's name or company first.", origin)
   if (typeof body.auth !== 'string' || !body.auth) return fail(401, 'sign_in', 'Sign in to use Pulse Brief.', origin)
 
-  // Each fresh brief is a model call (and, with search on, a paid Google search): counted per account. A quota outage
-  // falls back to the per-IP brake.
-  const quota = await checkQuota(body.auth, env, 'consume_brief')
-  if (quota.kind === 'over') return fail(429, 'daily_limit', `You've used today's ${quota.limit} fresh briefs. Saved briefs still open. Resets at 5:30 am.`, origin)
-  const wait = checkRate(quota.kind === 'account' ? `brief:${quota.userId}` : `brief-ip:${req.headers.get('cf-connecting-ip') ?? 'local'}`)
+  // Each fresh brief is a model call (and, with search on, paid Google searches): checked against the account's briefs
+  // (Pro's month, extra, trial) and its daily brake. A balance outage falls back to the per-IP brake, uncharged.
+  const use = await beginUse(body.auth, env, 'brief')
+  if (use.kind === 'refused') return fail(401, 'sign_in', 'Sign in to use Pulse Brief.', origin)
+  if (use.kind === 'over') {
+    if (use.reason === 'pro_only') return json({ error: { code: 'pro_only', message: 'Pulse Brief is part of Pro.' }, balance: use.balance }, 402, origin)
+    if (use.reason === 'no_briefs') return json({ error: { code: 'no_briefs', message: 'No briefs left this month.' }, balance: use.balance }, 402, origin)
+    return fail(429, 'daily_limit', `You've used today's ${use.limit} fresh briefs. Saved briefs still open. Resets at 5:30 am.`, origin)
+  }
+  const wait = checkRate(use.kind === 'account' ? `brief:${use.userId}` : `brief-ip:${req.headers.get('cf-connecting-ip') ?? 'local'}`)
   if (wait) return fail(429, 'rate_limited', `Too many briefs. Try again in ${Math.ceil(wait / 60)} min.`, origin, { 'Retry-After': String(wait) })
 
   const model = env.BRIEF_MODEL || env.GEMINI_MODEL || DEFAULT_MODEL
+  const search = env.BRIEF_SEARCH === '1'
+  const thinking: Thinking = THINKING.includes(env.BRIEF_THINKING as Thinking) ? env.BRIEF_THINKING as Thinking : 'low'
+  // Company research already done for this company (any account) is reused: only the person is searched. Refresh reuses
+  // it only while it is under a week old, so refreshing several people at one company searches the company once.
+  const kv = search ? env.BRIEF_CACHE : undefined
+  const keys = kv ? companyKeys(input) : []
+  const found = kv && keys.length ? await findCompany(kv, keys, input) : null
+  const saved = found && (body.fresh !== true || (typeof found.at === 'number' && Date.now() - found.at < REFRESH_REUSE_MS)) ? found : null
+  const request = saved ? buildPersonRequest(input, saved.company, thinking) : buildBriefRequest(input, search, thinking)
+  const call = (body: unknown) => fetch(`${env.GEMINI_BASE ?? UPSTREAM}/models/${encodeURIComponent(model)}:generateContent`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+  })
+
   let upstream: Response
-  try {
-    upstream = await fetch(`${env.GEMINI_BASE ?? UPSTREAM}/models/${encodeURIComponent(model)}:generateContent`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-      body: JSON.stringify(buildBriefRequest(input, env.BRIEF_SEARCH === '1')),
-      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
-    })
-  } catch {
-    return fail(502, 'upstream_unreachable', 'The service is unavailable. Try again.', origin)
-  }
+  try { upstream = await call(request) } catch { return fail(502, 'upstream_unreachable', 'The service is unavailable. Try again.', origin) }
   if (!upstream.ok) {
     // Google's own reason goes to the Worker's log (wrangler tail), never to the app: it can name the key or the plan
     console.log(`brief upstream ${upstream.status} ${model}: ${(await upstream.text().catch(() => '')).slice(0, 600)}`)
@@ -159,17 +243,37 @@ async function brief(req: Request, env: Env, origin: string | null): Promise<Res
     return fail(502, 'upstream_error', "Couldn't make the brief. Try again.", origin)
   }
   try {
-    const parsed = parseBriefResponse(await upstream.json())
+    let raw = await upstream.json()
+    let parsed = parseBriefResponse(raw)
+    let nudged = false
+    // The model sometimes answers from memory without searching (about 1 brief in 7 in the brief lab), leaving nothing
+    // to check. It is told so in the same conversation and asked again: in the lab that made it search 5 times in 6 (on
+    // minimal thinking; low did worse). A brief still written without a search is marked unchecked for the app.
+    if (search && searchesRun(raw) === 0) {
+      try {
+        const said = (raw as { candidates?: { content?: unknown }[] }).candidates?.[0]?.content ?? { parts: [{ text: '' }] }
+        const again = await call({ ...request, contents: [...request.contents, { ...(said as object), role: 'model' }, { role: 'user', parts: [{ text: nudge(!!saved) }] }] })
+        if (again.ok) { const r2 = await again.json(); const p2 = parseBriefResponse(r2); raw = r2; parsed = p2; nudged = true }
+      } catch { /* keep the first answer */ }
+    }
+    const checked = !search || searchesRun(raw) > 0
+    const result = saved ? mergeCompany(saved, parsed) : parsed
+    // only research a search backed is kept for others
+    if (kv && keys.length && !saved && checked) {
+      const keeping = keepCompany(kv, keys, companyEntry(parsed, input))
+      if (ctx) ctx.waitUntil(keeping); else await keeping
+    }
     // the model decides whether to search: this line in the log shows how often it does, and so what a brief costs
-    console.log(`brief ok ${model}: searched=${parsed.sources.length > 0} sources=${parsed.sources.length}`)
-    return json({ ...parsed, model }, 200, origin)
+    console.log(`brief ok ${model} ${thinking}${nudged ? '+nudge' : ''}${checked ? '' : ' UNCHECKED'} company=${saved ? 'saved' : keys.length ? (body.fresh === true ? 'refreshed' : 'new') : 'not shared'}: ${usageLine(raw)} sources=${result.sources.length}`)
+    const balance = use.kind === 'account' ? (await charge(body.auth as string, env, 'charge_brief')) ?? use.balance : null
+    return json({ ...result, model, balance, ...(checked ? {} : { unchecked: true }) }, 200, origin)
   } catch (e) {
     return fail(502, 'bad_output', e instanceof BriefError ? "Couldn't make the brief. Try again." : 'Unexpected response.', origin)
   }
 }
 
 export default {
-  async fetch(req: Request, env: Env): Promise<Response> {
+  async fetch(req: Request, env: Env, ctx?: { waitUntil(p: Promise<unknown>): void }): Promise<Response> {
     const url = new URL(req.url)
     const origin = req.headers.get('Origin')
 
@@ -183,7 +287,7 @@ export default {
 
     if (url.pathname === '/health' && req.method === 'GET') return json({ ok: true }, 200, originAllowed(origin, env) ? origin : null)
 
-    if (url.pathname === '/v1/brief' && req.method === 'POST') return brief(req, env, origin)
+    if (url.pathname === '/v1/brief' && req.method === 'POST') return brief(req, env, origin, ctx)
     if (url.pathname !== '/v1/extract' || req.method !== 'POST') return fail(404, 'not_found', 'Not found', null)
     if (!originAllowed(origin, env)) return fail(403, 'forbidden_origin', 'This origin is not allowed.', null)
     if (!env.GEMINI_API_KEY) return fail(500, 'not_configured', 'The reading service is not configured.', origin)
@@ -196,10 +300,17 @@ export default {
     const images = validImages(body.images, layout)
     if (!images) return fail(400, 'bad_images', layout === 'batch' ? 'Send 1 to 6 JPEG, PNG or WebP photos, under 3 MB in total.' : 'Send 1 or 2 JPEG, PNG or WebP photos, under 6 MB in total.', origin)
 
-    // Signed in: counted per account (so a stall's reps on one hall Wi-Fi don't share one limit). Otherwise per IP.
-    const quota = await checkQuota(body.auth, env)
-    if (quota.kind === 'over') return fail(429, 'daily_limit', `You have reached today's limit of ${quota.limit} scans. It resets at midnight UTC.`, origin)
-    const wait = checkRate(quota.kind === 'account' ? `account:${quota.userId}` : req.headers.get('cf-connecting-ip') ?? 'local')
+    // Reading needs an account once accounts are configured: each contact read uses one card from its plan, pass or
+    // packs. Checked here, charged after a good read. The burst limit follows the account, not the hall Wi-Fi.
+    const auth = typeof body.auth === 'string' && body.auth ? body.auth : null
+    if (env.SUPABASE_URL && !auth) return fail(401, 'sign_in', 'Sign in to read cards. You get 20 free each month.', origin)
+    const use = await beginUse(auth, env, 'read')
+    if (use.kind === 'refused') return fail(401, 'sign_in', 'Sign in to read cards. You get 20 free each month.', origin)
+    if (use.kind === 'over') {
+      if (use.reason === 'no_cards') return json({ error: { code: 'no_cards', message: 'No cards left. Add a pack or a plan to keep reading.' }, balance: use.balance }, 402, origin)
+      return fail(429, 'daily_limit', `You have reached today's limit of ${use.limit} scans. It resets at midnight UTC.`, origin)
+    }
+    const wait = checkRate(use.kind === 'account' ? `account:${use.userId}` : req.headers.get('cf-connecting-ip') ?? 'local')
     if (wait) return fail(429, 'rate_limited', `Too many scans. Try again in ${Math.ceil(wait / 60)} min.`, origin, { 'Retry-After': String(wait) })
 
     const model = env.GEMINI_MODEL || DEFAULT_MODEL
@@ -221,8 +332,16 @@ export default {
     if (!upstream.ok) return fail(502, 'upstream_error', 'The reading service had a problem. Try again.', origin)
 
     try {
-      const parsed = parseResponse(await upstream.json())
-      return json({ ...parsed, model }, 200, origin)
+      const raw = await upstream.json()
+      const parsed = parseResponse(raw)
+      console.log(`extract ok ${model} ${layout} images=${images.length} contacts=${parsed.contacts.length}: ${usageLine(raw)}`)
+      let balance: unknown = use.kind === 'account' ? use.balance : null
+      // A batch whose people cannot all be matched to a photo is thrown away by the app and read again card by card,
+      // so it is not charged here; the re-reads are.
+      const usable = layout !== 'batch' || parsed.contacts.every((c) => Number.isInteger(c.image) && c.image! >= 1 && c.image! <= images.length)
+      if (use.kind === 'account' && parsed.contacts.length && usable) balance = (await charge(auth!, env, 'charge_reads', { n: Math.min(parsed.contacts.length, MAX_CHARGE) })) ?? balance
+      else if (use.kind === 'none' && auth) console.log('extract uncharged: balance service unavailable')
+      return json({ ...parsed, model, balance }, 200, origin)
     } catch (e) {
       return fail(502, 'unreadable', e instanceof GeminiError ? 'Could not read that photo. Try a clearer one.' : 'Unexpected response.', origin)
     }

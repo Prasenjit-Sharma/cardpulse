@@ -7,7 +7,8 @@ import { prepareCardImage } from './lib/cardImage'
 import type { CardRecord, Contact, EventRec } from './lib/types'
 import { loadActiveEvent, loadEvents, saveActiveEvent, saveEvents, saveEventsRaw } from './lib/events'
 import { wipeContactData } from './lib/wipe'
-import { useSession } from './lib/auth'
+import { signInWithGoogle, useSessionState } from './lib/auth'
+import { cloudEnabled } from './lib/supabase'
 import { fetchCardStats, flushUnpublish, queueUnpublish, type CardStats } from './lib/cloudaccount'
 import { leadCardId } from './lib/synccore'
 import { keepCloudCopy } from './lib/sync'
@@ -15,6 +16,11 @@ import { useSync } from './lib/useSync'
 import { findDuplicates } from './lib/dupes'
 import { backupDue, backupFileName, backupNudgeUntil, buildBackup, lastBackupAt, markBackedUp, mergeEvents, parseBackup, planRestore, saveBackupFile, snoozeBackupNudge } from './lib/backup'
 import { classifyFailure } from './lib/errors'
+import { cardsLine, forgetBalance, isLow, scanGate, getBalance, parseBalance, setBalance, shouldResume } from './lib/balance'
+import { ALLOWANCE } from '../shared/plans'
+import PlanPage from './components/PlanPage'
+import { useBalance } from './lib/useBalance'
+import { claim, readable } from './lib/queue'
 import { applyPulledLeads, markLeadsPulled, pullNewLeads } from './lib/leads'
 import { useOnline } from './lib/useOnline'
 import MyCards from './components/MyCards'
@@ -40,14 +46,15 @@ import Report from './components/Report'
 import SettingsPage from './components/SettingsPage'
 import Camera from './components/Camera'
 import Icon from './components/Icon'
+import Sheet from './components/Sheet'
 import Toast, { type ToastData } from './components/Toast'
 import { confirmAsk, DialogHost } from './components/Dialog'
 import EventSheet, { type EventDraft } from './components/EventSheet'
 import { useInstall } from './lib/useInstall'
 import { useBackClose } from './lib/useBackClose'
 
-type Tab = 'home' | 'companies' | 'mycard' | 'contacts' | 'exhibition' | 'insights' | 'settings' | 'accuracy'
-const TABS: Tab[] = ['home', 'companies', 'mycard', 'contacts', 'exhibition', 'insights', 'settings', 'accuracy']
+type Tab = 'home' | 'companies' | 'mycard' | 'contacts' | 'exhibition' | 'insights' | 'settings' | 'accuracy' | 'plans'
+const TABS: Tab[] = ['home', 'companies', 'mycard', 'contacts', 'exhibition', 'insights', 'settings', 'accuracy', 'plans']
 const CONCURRENCY = 2
 /** A read that failed for a passing reason (busy reader, weak signal) is tried again by itself this many times. */
 const MAX_ATTEMPTS = 3
@@ -134,6 +141,13 @@ export default function App() {
   const active = useRef(0)
   const settingsRef = useRef(settings)
   settingsRef.current = settings
+  /** The signed-in account, for the read queue (set where the session is read, below). */
+  const userIdRef = useRef<string | undefined>(undefined)
+  /** A sheet asked for by the read queue or the Scan key: sign in first, or no cards left (shown once per session). */
+  const [gate, setGate] = useState<'sign_in' | 'no_cards' | null>(null)
+  const outOfCardsShown = useRef(false)
+  /** Every read answer carries what the account has left; keep the newest. */
+  const noteBalance = (x: unknown) => { const b = parseBalance(x); if (b) setBalance(b, userIdRef.current) }
 
   const refresh = useCallback(async () => { const l = await listCards(); log(`refresh: ${l.length} cards`); setCards(l) }, [])
   useEffect(() => { void refresh() }, [refresh])
@@ -163,7 +177,7 @@ export default function App() {
   const enqueueRef = useRef<(ids: string[]) => Promise<void>>(async () => {})
   const runJob = useCallback(async (ids: string[]): Promise<void> => {
     const { apiKey, model, keepPhotos, useOwnKey } = settingsRef.current
-    const found = (await Promise.all(ids.map((id) => getCard(id)))).filter((c): c is CardRecord => !!c)
+    const found = (await Promise.all(ids.map((id) => getCard(id)))).filter((c): c is CardRecord => !!c && readable(c))
     const cards: CardRecord[] = []
     for (const c of found) {
       if (!c.image || c.thumbOnly) await putCard({ ...c, status: 'error', error: 'The full photo was not kept, so this card cannot be re-read.' })
@@ -193,6 +207,7 @@ export default function App() {
       if (cards.length === 1) {
         const c = cards[0]!
         const r = await extractCard(c.back ? [c.image!, c.back] : [c.image!], opts)
+        noteBalance(r.balance)
         const contacts = r.contacts.map(stripImage)
         await finish(c, contacts, { model: r.model ?? model, latencyMs: r.latencyMs, tokensIn: r.tokensIn, tokensOut: r.tokensOut, languages: r.languages, notes: r.notes, batchSize: 1 })
         notifyAdded(contacts.length, c.id)
@@ -201,6 +216,7 @@ export default function App() {
         const blobs = await Promise.all(cards.map((c) => fitForBatch(c.image!, n)))
         log(`batch of ${n}: ${blobs.map((b) => Math.round(b.size / 1024) + 'KB').join(' ')} in one call`)
         const r = await extractCard(blobs, opts, 'batch')
+        noteBalance(r.balance)
         // Which card does each person belong to? Gemini numbers the photos. If any person has no valid number we
         // cannot attribute them safely, so read those cards one by one instead of guessing.
         const valid = r.contacts.every((c) => Number.isInteger(c.image) && c.image! >= 1 && c.image! <= n)
@@ -226,6 +242,13 @@ export default function App() {
     } catch (e) {
       log(`extract failed: ${e instanceof Error ? e.message : e}`)
       const failure = classifyFailure(e)
+      if (failure.waiting) {
+        // No cards left, or signed out: the photos are kept and read once cards or a sign-in arrive (see resumePending).
+        noteBalance((e as { balance?: unknown }).balance)
+        for (const c of cards) await putCard({ ...((await getCard(c.id)) ?? c), status: 'pending', error: undefined, waiting: failure.waiting })
+        if (failure.waiting === 'cards' && !outOfCardsShown.current) { outOfCardsShown.current = true; setGate('no_cards') }
+        return refresh()
+      }
       const later: string[] = []
       for (const c of cards) {
         const cur = (await getCard(c.id)) ?? c
@@ -257,16 +280,19 @@ export default function App() {
    * With no connection the photos simply stay saved and marked as waiting; they are picked up when signal returns.
    */
   const enqueue = useCallback(async (ids: string[]) => {
-    const fresh = ids.filter((id) => !inFlight.current.has(id))
+    // claimed before the first await, so two overlapping calls (app start, back online) never read a card twice
+    const fresh = claim(inFlight.current, ids)
     if (!fresh.length) return
     const recs = await Promise.all(fresh.map((id) => getCard(id)))
+    const release = (id: string) => inFlight.current.delete(id)
     if (!navigator.onLine) {
-      await Promise.all(recs.filter((c): c is CardRecord => !!c).map((c) => putCard({ ...c, status: 'pending', waiting: 'offline' })))
+      fresh.forEach(release)
+      await Promise.all(recs.filter((c): c is CardRecord => !!c && readable(c)).map((c) => putCard({ ...c, status: 'pending', waiting: 'offline' })))
       await refresh()
       return
     }
     const singles: string[] = [], jobs: string[][] = []
-    recs.forEach((c, i) => { if (!c) return; if (c.back) jobs.push([fresh[i]!]); else singles.push(fresh[i]!) })
+    recs.forEach((c, i) => { if (!c || !readable(c)) { release(fresh[i]!); return } if (c.back) jobs.push([fresh[i]!]); else singles.push(fresh[i]!) })
     for (let i = 0; i < singles.length; i += BATCH_MAX) jobs.push(singles.slice(i, i + BATCH_MAX))
     for (const j of jobs) j.forEach((id) => inFlight.current.add(id))
     queue.current.push(...jobs)
@@ -276,7 +302,9 @@ export default function App() {
 
   /** Anything saved but not yet read (the app was closed mid-read, or there was no signal) goes back in the queue. */
   const resumePending = useCallback(async () => {
-    const waiting = (await listCards()).filter((c) => (c.status === 'pending' || c.status === 'running') && !inFlight.current.has(c.id))
+    const signedIn = !!userIdRef.current, balance = getBalance(userIdRef.current)
+    const waiting = (await listCards()).filter((c) => (c.status === 'pending' || c.status === 'running') && !inFlight.current.has(c.id)
+      && shouldResume(c.waiting, { signedIn, balance }))
     if (waiting.length) void enqueue(waiting.map((c) => c.id))
   }, [enqueue])
   const online = useOnline()
@@ -307,8 +335,14 @@ export default function App() {
     await refresh()
     setToast({ id: Date.now(), title: `${added} new ${added === 1 ? 'lead' : 'leads'} from your stall`, sub: 'Ready to call, message or save' })
   }
-  const session = useSession()
+  const { session, known: sessionKnown } = useSessionState()
   const userId = session?.user.id
+  userIdRef.current = userId
+  const balance = useBalance(userId)
+  // Signing out forgets the balance; signing in, or cards arriving, sends parked cards back to the reader.
+  const lastUser = useRef(userId)
+  useEffect(() => { if (lastUser.current && !userId) forgetBalance(); lastUser.current = userId }, [userId])
+  useEffect(() => { if (online) void resumePending() }, [userId, balance?.cards.left])   // eslint-disable-line react-hooks/exhaustive-deps
   // New leads come in whenever the app is online (and on sign-in). A deleted digital card's link is taken down only
   // after that, so leads still waiting on it are received first.
   useEffect(() => { if (online) void pullLeads().finally(() => { if (userId) void flushUnpublish(userId) }) }, [online, pullLeads, userId])
@@ -362,7 +396,17 @@ export default function App() {
   const addBatch = useCallback((cards: File[][]) => addGroups(cards, true), [addGroups])
 
   const hasLiveCamera = !!navigator.mediaDevices?.getUserMedia
-  const scan = () => { if (hasLiveCamera) setCamOpen(true); else fallbackInput.current?.click() }
+  // Reading needs an account (its free 20 a month, plan or packs). QR codes never do, so the sheet offers that instead.
+  // At app start the saved session takes a moment to load: a Scan in that moment waits for it rather than asking a
+  // signed-in user to sign in.
+  const scanWaiting = useRef(false)
+  const scan = () => {
+    const g = scanGate({ accounts: serverMode && cloudEnabled, ownKey: !!settings.useOwnKey, sessionKnown, signedIn: !!userId })
+    scanWaiting.current = g === 'wait'
+    if (g === 'sign_in') setGate('sign_in')
+    else if (g === 'open') { if (hasLiveCamera) setCamOpen(true); else fallbackInput.current?.click() }
+  }
+  useEffect(() => { if (sessionKnown && scanWaiting.current) scan() }, [sessionKnown])   // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     const params = new URLSearchParams(location.search)
     if (params.get('action') !== 'scan') return
@@ -379,7 +423,7 @@ export default function App() {
   }, [cards, open])
   // Android back: close the camera, then the open contact/review, then go back to the Scan tab, before ever leaving the app.
   useBackClose(!!open, () => setOpen(null))
-  useBackClose(tab !== 'home' && !open && !camOpen, () => setTab(tab === 'accuracy' || tab === 'insights' ? backTab : 'home'))
+  useBackClose(tab !== 'home' && !open && !camOpen, () => setTab(tab === 'accuracy' || tab === 'insights' || tab === 'plans' ? backTab : 'home'))
   const openCard = open ? cards.find((c) => c.id === open.id) : undefined
   const eventLabel = events.find((e) => e.id === activeEvent)?.name ?? ''
 
@@ -421,6 +465,10 @@ export default function App() {
     await refresh()
   }
   const goto = (t: Tab, from?: Tab) => { if (from) setBackTab(from); setOpen(null); setTab(t) }
+  /** Plan & cards, coming back to wherever it was opened from: over an open contact (or its brief), so Back returns there. */
+  const [plansOver, setPlansOver] = useState(false)
+  useBackClose(plansOver, () => setPlansOver(false))
+  const openPlans = () => { if (open) setPlansOver(true); else goto('plans', tab === 'plans' ? backTab : tab) }
   const gotoTab = (t: Tab) => { setContactsFilter(undefined); setContactsCompany(''); goto(t) }
   /** Open Contacts pre-filtered from Home or Companies. The list spans every event, so the event tab resets to All. */
   const openContacts = (f?: Flt, company = '') => { setActiveEvent(''); setContactsFilter(f); setContactsCompany(company); goto('contacts') }
@@ -437,7 +485,7 @@ export default function App() {
     await refresh()
   }
   const [backupTick, setBackupTick] = useState(0)
-  const nudgeBackup = useMemo(() => backupDue(cards.length, lastBackupAt(), backupNudgeUntil()), [cards.length, backupTick])   // eslint-disable-line react-hooks/exhaustive-deps
+  const nudgeBackup = useMemo(() => backupDue(cards.length, lastBackupAt(), backupNudgeUntil(), Date.now(), sync.enabled), [cards.length, backupTick, sync.enabled])   // eslint-disable-line react-hooks/exhaustive-deps
   const backupNow = async (): Promise<string> => {
     const all = await listCards()
     try { await saveBackupFile(await buildBackup(all, events, Date.now(), await listMyCards()), backupFileName()) } catch (e) { if ((e as Error)?.name === 'AbortError') return 'Export cancelled.'; throw e }
@@ -459,7 +507,7 @@ export default function App() {
   }
   const retryFailed = () => enqueue(cards.filter((c) => c.status === 'error').map((c) => c.id))
   // Settings, Accuracy, Insights and Companies open from Home, so Home stays lit under them.
-  const navActive: Tab = tab === 'accuracy' || tab === 'insights' || tab === 'settings' || tab === 'companies' ? 'home' : tab
+  const navActive: Tab = tab === 'accuracy' || tab === 'insights' || tab === 'settings' || tab === 'companies' || tab === 'plans' ? 'home' : tab
 
   return (
     <div className="app">
@@ -487,6 +535,7 @@ export default function App() {
             events={events}
             dupes={dupes.get(openCard.id) ?? []}
             onClose={() => setOpen(null)}
+            onPlans={openPlans}
             onSave={async (c) => { await putCard(c); await refresh() }}
             onRetry={() => enqueue([openCard.id])}
             onDelete={async () => { await deleteCard(openCard.id); setOpen(null); await refresh() }}
@@ -502,7 +551,7 @@ export default function App() {
             }}
           />
         ) : tab === 'home' ? (
-          <Home cards={cards} events={events} dupes={dupes} ready={readerReady(settings)} needsKey={!serverMode || !!settings.useOwnKey} install={install} backupNudge={nudgeBackup}
+          <Home cards={cards} events={events} dupes={dupes} cardsLeft={balance ? { left: balance.cards.left, low: isLow(balance) } : undefined} onPlans={openPlans} ready={readerReady(settings)} needsKey={!serverMode || !!settings.useOwnKey} install={install} backupNudge={nudgeBackup}
             onBackup={() => void backupNow().then((m) => setBanner(m), () => setBanner('The export could not be saved. Try again.'))} onSnoozeBackup={() => { snoozeBackupNudge(); setBackupTick((n) => n + 1) }}
             onOpenContact={(id, idx) => setOpen({ id, idx })} onTogglePriority={(id, idx) => void togglePriority(id, idx)} onContacts={() => openContacts()} onCompanies={() => goto('companies')} onStarred={() => openContacts('priority')}
             onAttention={() => openContacts('attention')} onInsights={() => goto('insights', 'home')} onSetup={() => goto('settings', 'home')} onSettings={() => goto('settings', 'home')}
@@ -512,7 +561,7 @@ export default function App() {
         ) : tab === 'companies' ? (
           <Companies cards={cards} onBack={() => setTab('home')} onOpenCompany={(name) => openContacts(undefined, name)} />
         ) : tab === 'contacts' ? (
-          <Contacts onScan={scan} cards={cards} events={events} activeEvent={activeEvent} onSelectEvent={setActiveEvent} dupes={dupes} initialFilter={contactsFilter} initialCompany={contactsCompany} onTogglePriority={(id, idx) => void togglePriority(id, idx)}
+          <Contacts onScan={scan} onPlans={openPlans} cards={cards} events={events} activeEvent={activeEvent} onSelectEvent={setActiveEvent} dupes={dupes} initialFilter={contactsFilter} initialCompany={contactsCompany} onTogglePriority={(id, idx) => void togglePriority(id, idx)}
             onOpen={(id, idx) => setOpen({ id, idx })} onRetryFailed={retryFailed} onUpload={(f) => void addFiles(f)} onMoveToEvent={moveToEvent} onDeleteContacts={deleteContacts} />
         ) : tab === 'exhibition' ? (
           <Exhibition cards={cards} events={events} activeEvent={activeEvent} onNew={() => setEventSheet({})} onEdit={(id) => setEventSheet({ id })} onDelete={removeEvent} onPack={setPackEvent}
@@ -520,6 +569,8 @@ export default function App() {
             onOpenContact={(id, idx) => setOpen({ id, idx })} onTogglePriority={(id, idx) => void togglePriority(id, idx)} />
         ) : tab === 'insights' ? (
           <Insights cards={cards} onBack={() => setTab(backTab)} onContacts={() => goto('contacts')} onAccuracy={() => goto('accuracy', 'insights')} onOpen={(id, idx) => setOpen({ id, idx })} />
+        ) : tab === 'plans' ? (
+          <PlanPage balance={balance} signedIn={!!userId} onBack={() => setTab(backTab)} />
         ) : tab === 'accuracy' ? (
           <Report cards={cards} events={events} dupes={dupes} onBack={() => setTab(backTab)} />
         ) : (
@@ -540,7 +591,7 @@ export default function App() {
               if (!everywhere) await keepCloudCopy()
               await refresh()
             }}
-            onBackup={backupNow} onRestore={restoreFrom} onAccuracy={() => goto('accuracy', 'settings')} onInsights={() => goto('insights', 'settings')}
+            onBackup={backupNow} onRestore={restoreFrom} onAccuracy={() => goto('accuracy', 'settings')} onInsights={() => goto('insights', 'settings')} onPlans={() => goto('plans', 'settings')} plansHint={balance ? cardsLine(balance) : userId ? 'What you have left, and what to add' : `Free: ${ALLOWANCE.free.cards} cards a month`}
             onBack={() => setTab('home')}
           />
         )}
@@ -555,6 +606,30 @@ export default function App() {
       {packEvent && (
         <PackPage eventId={packEvent} eventName={showEvent(events.find((e) => e.id === packEvent)?.name ?? '')} userId={userId} online={online} onClose={() => setPackEvent(null)} />
       )}
+      {plansOver && (
+        <div className="plan-over" role="dialog" aria-modal="true" aria-label="Plan and cards">
+          <PlanPage balance={balance} signedIn={!!userId} onBack={() => setPlansOver(false)} />
+        </div>
+      )}
+      <Sheet open={gate === 'sign_in'} onClose={() => setGate(null)} title="Sign in to read cards">
+        <div className="consent">
+          <p>You get <b>{ALLOWANCE.free.cards} cards free each month</b>, kept with your account on any phone you sign in on.</p>
+          <p>QR codes, your digital card and your contacts work without an account.</p>
+          <div className="consent-actions">
+            <button className="outline" onClick={() => { setGate(null); setQrOpen(true) }}>Scan a QR code</button>
+            <button className="cta" onClick={() => { setGate(null); void signInWithGoogle() }}>Sign in</button>
+          </div>
+        </div>
+      </Sheet>
+      <Sheet open={gate === 'no_cards'} onClose={() => setGate(null)} title="No cards left">
+        <div className="consent">
+          <p>Your photos are saved as <b>Waiting for cards</b>. They are read as soon as you add cards.</p>
+          <div className="consent-actions">
+            <button className="outline" onClick={() => setGate(null)}>Later</button>
+            <button className="cta" onClick={() => { setGate(null); openPlans() }}>See plans</button>
+          </div>
+        </div>
+      </Sheet>
       {camOpen && <Camera eventLabel={eventLabel} onQr={() => { setCamOpen(false); setQrOpen(true) }} onSubmit={(cards) => { void addBatch(cards); goto('contacts') }} onGallery={(fs) => { void addFiles(fs) }} onClose={() => setCamOpen(false)} />}
       {qrOpen && (
         <QrScanner paused={!!qrText} eventLabel={eventLabel ? showEvent(eventLabel) : ''} onFound={setQrText} onClose={() => { setQrOpen(false); setQrText('') }}
