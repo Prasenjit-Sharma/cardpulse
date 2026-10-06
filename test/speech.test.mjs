@@ -34,3 +34,50 @@ test('native dictation: words heard so far are passed on as they arrive', async 
   await new Promise((r) => setTimeout(r, 0))
   assert.deepEqual(live, ['call', 'call him']); assert.deepEqual(got, ['call him tomorrow'])
 })
+
+// ── a dictation session: keeps listening across pauses until Done ──
+import { dictationSession } from '../src/lib/speech.ts'
+const tick = () => new Promise((r) => setTimeout(r, 0))
+/** listen() answers from a script, one entry per utterance: a string, '' for silence, or an Error. */
+function scripted(steps) {
+  let i = 0, stopped = 0, pending = null
+  const listen = (onPartial) => new Promise((resolve, reject) => {
+    const s = steps[i++]
+    if (s === undefined) { pending = resolve; return }      // waits until stopNow
+    if (s instanceof Error) return reject(s)
+    if (s) onPartial(s.split(' ')[0])
+    resolve(s)
+  })
+  const stopNow = async () => { stopped++; pending?.(''); pending = null }
+  return { listen, stopNow, stopped: () => stopped }
+}
+
+test('a session carries on across pauses and joins what was said', async () => {
+  const s = scripted(['call him', 'next tuesday at four'])
+  const views = []
+  const d = dictationSession(s.listen, s.stopNow, (v) => views.push(v))
+  await tick(); await tick()
+  assert.equal(views.at(-1).status, 'listening')
+  assert.ok(views.some((v) => v.live === 'call'), 'words in progress are shown live')
+  assert.equal(await d.finish(), 'call him next tuesday at four')
+})
+
+test('two quiet spells in a row pause it instead of closing; the mic resumes', async () => {
+  const s = scripted(['', '', 'hello again'])
+  const views = []
+  const d = dictationSession(s.listen, s.stopNow, (v) => views.push(v))
+  for (let k = 0; k < 6; k++) await tick()
+  assert.equal(views.at(-1).status, 'paused')
+  d.resume()
+  for (let k = 0; k < 4; k++) await tick()
+  assert.equal(await d.finish(), 'hello again')
+})
+
+test('a failure shows as an error in the session, and Cancel drops everything', async () => {
+  const s = scripted([new Error('the microphone is not allowed')])
+  const views = []
+  const d = dictationSession(s.listen, s.stopNow, (v) => views.push(v))
+  await tick(); await tick()
+  assert.equal(views.at(-1).status, 'error'); assert.match(views.at(-1).error, /microphone/)
+  d.cancel()
+})

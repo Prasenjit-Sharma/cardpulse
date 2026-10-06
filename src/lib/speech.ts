@@ -53,3 +53,53 @@ export function startDictation(onText: (t: string) => void, onEnd: (why?: string
   r.start()
   return () => r.stop()
 }
+
+/* ---------- a dictation session ---------- */
+
+export interface SessionView { status: 'listening' | 'paused' | 'error'; text: string; live: string; error?: string }
+
+/**
+ * Dictation that lasts until Done or Cancel. Android's recognizer hears one utterance and stops at every pause (even a
+ * comma), so each time it ends the next utterance is started and the words are joined. Two quiet utterances in a row
+ * (about 15 seconds of silence) pause the session rather than closing it; `resume` carries on. A failure (no mic, no
+ * recognizer) shows as an error the panel can offer to retry.
+ */
+export function dictationSession(
+  listen: (onPartial: (t: string) => void) => Promise<string>,
+  stopNow: () => Promise<void>,
+  onView: (v: SessionView) => void,
+  quietRounds = 2,
+) {
+  let text = '', live = '', status: SessionView['status'] = 'listening', error = '', ended = false
+  let loopDone: Promise<void> = Promise.resolve()
+  const show = () => onView({ status, text, live, ...(error ? { error } : {}) })
+  const run = async () => {
+    let quiet = 0
+    while (status === 'listening' && !ended) {
+      live = ''; show()
+      let got: string
+      try { got = (await listen((t) => { if (!ended) { live = t; show() } })).trim() }
+      catch (e) { if (!ended) { status = 'error'; error = e instanceof Error ? e.message : String(e); live = ''; show() } return }
+      live = ''
+      if (got) { text = text ? `${text} ${got}` : got; quiet = 0 }
+      else if (++quiet >= quietRounds) status = 'paused'
+      if (!ended) show()
+    }
+  }
+  loopDone = run()
+  return {
+    resume() {
+      if (ended || status === 'listening') return
+      status = 'listening'; error = ''
+      loopDone = run()
+    },
+    /** Stops listening, waits for the last words, and returns everything said. */
+    async finish(): Promise<string> {
+      ended = true
+      if (status === 'listening') await stopNow()
+      await loopDone
+      return text
+    },
+    cancel() { ended = true; void stopNow() },
+  }
+}
