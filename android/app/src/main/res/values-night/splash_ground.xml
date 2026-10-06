@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android 12+ splash: the app's dark ground; values holds the light one -->
+    <color name="splash_ground">#0F0F17</color>
+</resources>
