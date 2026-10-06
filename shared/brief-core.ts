@@ -66,7 +66,7 @@ export function briefPrompt(i: BriefInput, search = false): string {
     'company: 2 to 5 sentences of facts: what they make or trade, where, since when, size, group companies, certifications, markets. If you find nothing, write exactly: "Little public information found about this company."',
     'starters: 2 or 3 short openers the salesperson could say, each tied to a fact you found (a product line, an expansion, a trade fair, a certification). With no facts found, 2 openers about their line of business, never invented facts.',
     'links: at most 5 pages from the search results that belong to this person or company, their LinkedIn profile first when found. kind is one of linkedin, website, indiamart, facebook, instagram, justdial, tradeindia, other. Only list a LinkedIn profile whose name, company and designation match this card. Never guess or build a URL.',
-    'Rules: only facts from the search results. If different companies share the name, use the one matching the city, website or GSTIN, and say so if unsure. No praise words (renowned, leading, innovative, key player, commitment to excellence). Plain Indian English.',
+    'Rules: only facts from the search results. The company you describe must be the one named on the card: never describe a company with a different name, even a related one, and never swap in a similarly named firm. If different companies share the name, use the one matching the city, website or GSTIN, and say so if unsure. No praise words (renowned, leading, innovative, key player, commitment to excellence). Plain Indian English.',
   ].join('\n')
 }
 

@@ -71,3 +71,8 @@ test('links: only on a searched domain, kind from the host, LinkedIn only for pe
   const many = Array.from({ length: 8 }, (_, i) => ({ kind: 'other', url: `https://indiamart.com/p${i}` }))
   assert.equal(checkLinks(many, sources).length, 5)
 })
+
+test('a searched brief must stay on the company named on the card (minimal thinking once swapped in a similarly named firm)', () => {
+  const text = buildBriefRequest(input, true, 'minimal').contents[0].parts[0].text
+  assert.match(text, /never swap in a similarly named firm/)
+})
