@@ -2,6 +2,8 @@
 
 <!-- impeccable:product-schema 1 -->
 
+**Name:** Pulse. The store title is "Pulse - Business Card Reader", and everywhere else it is just "Pulse", with the tagline "The pulse of your network". Renamed from CardPulse on 2026-10-06. The searches it must rank for: business card reader, card scanner, card reader, expo, exhibition.
+
 ## Platform
 
 web

@@ -1,6 +1,6 @@
 ---
-name: CardPulse
-description: Business-card scanner and digital card, laid out as a trading desk where contacts read like a watchlist
+name: Pulse
+description: Pulse (store: "Pulse - Business Card Reader"), a business-card scanner and digital card, laid out as a trading desk where contacts read like a watchlist
 colors:
   primary: "#3B2FC9"
   primary-lite: "#A9A3FF"
@@ -274,13 +274,13 @@ components:
     padding: "6px 8px 18px"
 ---
 
-# Design System: CardPulse
+# Design System: Pulse
 
 ## Overview
 
 **Creative North Star: "The Trading Desk"**
 
-CardPulse reads like the trading apps Indian professionals check every hour. Contacts are a watchlist: dense rows on a flat white ground, who on the left, one figure on the right in tabular numerals, the state of each person carried by that figure's colour and a word under it. Home opens under an indigo masthead carrying six standing figures in one aligned grid (and, signed in, the cards left to read across it) and the event that matters now, then underline watchlist tabs over the rows. The user's own card is treated as a holding, with its shares, QR showings, views and leads counted in one ruled band.
+Pulse reads like the trading apps Indian professionals check every hour. Contacts are a watchlist: dense rows on a flat white ground, who on the left, one figure on the right in tabular numerals, the state of each person carried by that figure's colour and a word under it. Home opens under an indigo masthead carrying six standing figures in one aligned grid (and, signed in, the cards left to read across it) and the event that matters now, then underline watchlist tabs over the rows. The user's own card is treated as a holding, with its shares, QR showings, views and leads counted in one ruled band.
 
 The brand is **Neel Indigo**, India's indigo ink (chosen 2026-09-26, replacing the user-selectable accent). It is the one colour of the app: Home opens under an indigo masthead, every band and neutral leans a few degrees toward it, and the band headings carry it at text weight.
 
@@ -296,6 +296,15 @@ It replaced the Covve/HiHello arrangement (grey ground, white rounded cards, 28p
 - Palette law: indigo is tappable or live; red is due; green is done or up; amber is check this.
 - One accent-filled action per screen; Scan is filled in ink, not accent.
 - Rows act in place: a tapped watchlist row opens its depth drawer.
+
+## Mark
+
+The Pulse mark is a scan frame around a beat whose peaks are people: on a 32-unit indigo tile (gradient #5A4FE0 to
+#3B2FC9, rx 7.5), four white corner brackets (stroke 2), a teal #5DD6C8 beat (stroke 1.8, the camera's lock colour)
+and three white dots (r 1.85) where the beat peaks. The geometry is defined once, in `src/lib/brandMark.ts`. The
+in-app `Logo` draws from it (its tile follows the accent colour; `tone="light"` on the indigo masthead), and
+`npm run icons` renders every launcher icon, splash, web icon and store icon from it. The wordmark is "Pulse" in Inter
+at weight 750, and the tagline is "The pulse of your network".
 
 ## Colors
 
