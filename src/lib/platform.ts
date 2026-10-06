@@ -49,9 +49,20 @@ export interface Native {
   waApps?(): Promise<string[]>
   /** Opens the WhatsApp chat with this number (digits) with the files ready to send. Rejects when WhatsApp refuses. */
   waSend?(o: { uris: string[]; jid: string; pkg: string }): Promise<void>
-  /** Listens for one utterance with the phone's speech recognizer and resolves with what was heard (asks for the mic first); `onPartial` gets the words so far. */
-  listen?(lang: string, onPartial?: (t: string) => void): Promise<string>
-  stopListening?(): Promise<void>
+  /** The phone's speech recognizer (Capgo's speech plugin), driven by speech.ts's nativeDictation. */
+  speech?: SpeechPlugin
+}
+
+/** The parts of the speech plugin dictation uses (kept here so shared code never imports Capacitor). */
+export interface SpeechPlugin {
+  requestPermissions(): Promise<{ speechRecognition: string }>
+  available(): Promise<{ available: boolean }>
+  removeAllListeners(): Promise<void>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  addListener(event: string, handler: (data: any) => void): Promise<{ remove(): Promise<void> }>
+  setPTTState(o: { held: boolean }): Promise<void>
+  start(o: Record<string, unknown>): Promise<unknown>
+  stop(): Promise<void>
 }
 let native: Native | null = null
 export const setNative = (n: Native): void => { native = n }

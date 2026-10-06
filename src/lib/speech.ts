@@ -1,7 +1,7 @@
-// Dictation. In the app, the phone's own speech recognition (Android's, through a plugin behind platform.ts's Native
-// interface): the WebView the app runs in has no working Web Speech API, and the app had no microphone permission. In a
-// browser, the Web Speech API (Chrome). `speechSupported` is false where neither exists.
-import { getNative, isApp, notify, type Native } from './platform.ts'
+// Dictation. In the app: the phone's own speech recognizer through Capgo's speech plugin (platform.ts's Native.speech),
+// in its continuous mode, which keeps listening across pauses until Done, carries the text over its restarts, mutes
+// the restart beep, and reports errors and the microphone level. In a browser: the Web Speech API (Chrome).
+import { isApp, type SpeechPlugin } from './platform.ts'
 
 interface Recognition {
   lang: string
@@ -19,87 +19,83 @@ const Ctor = typeof window === 'undefined' ? undefined
   : (window as unknown as { SpeechRecognition?: Ctor; webkitSpeechRecognition?: Ctor }).SpeechRecognition
     ?? (window as unknown as { webkitSpeechRecognition?: Ctor }).webkitSpeechRecognition
 
+/** Whether dictation is offered: always in the app (through the plugin), in a browser when it has the Web Speech API. */
 export const speechSupported = isApp || !!Ctor
 
-/**
- * One utterance through the phone's recognizer: the text heard goes to `onText`, then `onEnd` (with the reason when it
- * failed, such as a refused microphone). Returns Stop.
- */
-export function dictateNative(n: Pick<Required<Native>, 'listen' | 'stopListening'>, onText: (t: string) => void, onEnd: (why?: string) => void, onPartial?: (t: string) => void): () => void {
-  n.listen('en-IN', onPartial).then(
-    (t) => { if (t.trim()) onText(t.trim()); onEnd() },
-    (e: unknown) => { const why = e instanceof Error ? e.message : String(e); notify(`Dictation did not start: ${why}`); onEnd(why) },
-  )
-  return () => { void n.stopListening().catch(() => {}) }
+export interface DictationHandlers {
+  lang: string
+  /** Everything heard so far in this session. */
+  onText: (text: string) => void
+  /** The microphone level, 0 to 1, a few times a second. */
+  onLevel?: (level: number) => void
+  /** A failure while listening (not silence, which the plugin listens through). */
+  onError: (message: string) => void
 }
 
-/** `onPartial` gets the words heard so far, as they arrive, for the listening panel. */
-export function startDictation(onText: (t: string) => void, onEnd: (why?: string) => void, onPartial?: (t: string) => void): (() => void) | null {
-  const n = getNative()
-  if (n?.listen && n.stopListening) return dictateNative({ listen: n.listen, stopListening: n.stopListening }, onText, onEnd, onPartial)
+export interface Dictation {
+  /** Stops listening, waits for the last words (at most `waitMs`), and returns everything said. */
+  finish(waitMs?: number): Promise<string>
+  /** Stops and drops the words. */
+  cancel(): Promise<void>
+}
+
+/**
+ * Starts continuous dictation through the speech plugin. Rejects when the microphone is refused, the phone has no
+ * recognizer, or the start fails, so the panel can say so.
+ */
+export async function nativeDictation(p: SpeechPlugin, h: DictationHandlers): Promise<Dictation> {
+  if ((await p.requestPermissions()).speechRecognition !== 'granted') throw new Error('The microphone is not allowed. Allow it in Settings, Apps, CardPulse, Permissions.')
+  if (!(await p.available()).available) throw new Error('This phone has no speech recognition. Install or update the Google app.')
+  await p.removeAllListeners()
+  let text = ''
+  let stopped: (() => void) | null = null
+  await p.addListener('partialResults', (e: { accumulatedText?: string; matches?: string[] }) => {
+    const t = (e.accumulatedText ?? e.matches?.[0] ?? '').trim()
+    if (t) { text = t; h.onText(t) }
+  })
+  await p.addListener('audioLevel', (e: { level?: number }) => { if (typeof e.level === 'number') h.onLevel?.(e.level) })
+  await p.addListener('error', (e: { message?: string; code?: string }) => h.onError(e.message || e.code || 'The speech service stopped.'))
+  await p.addListener('listeningState', (e: { state?: string; status?: string }) => { if ((e.state ?? e.status) === 'stopped') stopped?.() })
+  await p.setPTTState({ held: true })
+  try {
+    await p.start({ language: h.lang, maxResults: 1, partialResults: true, popup: false, continuousPTT: true, muteRecognizerBeep: true })
+  } catch (e) {
+    await p.setPTTState({ held: false }).catch(() => {})
+    await p.removeAllListeners().catch(() => {})
+    throw e instanceof Error ? e : new Error(String(e))
+  }
+  const end = async () => { await p.removeAllListeners().catch(() => {}) }
+  return {
+    async finish(waitMs = 1500) {
+      const done = new Promise<void>((resolve) => { stopped = resolve; setTimeout(resolve, waitMs) })
+      await p.setPTTState({ held: false }).catch(() => {})
+      await p.stop().catch(() => {})
+      await done
+      await end()
+      return text
+    },
+    async cancel() {
+      await p.setPTTState({ held: false }).catch(() => {})
+      await p.stop().catch(() => {})
+      await end()
+    },
+  }
+}
+
+/** Browser dictation (Web Speech API), continuous: `onText` gets everything heard so far. Returns Stop, or null. */
+export function webDictation(onText: (t: string) => void, onEnd: () => void): (() => void) | null {
   if (!Ctor) return null
   const r = new Ctor()
   r.lang = 'en-IN'
-  r.interimResults = !!onPartial
+  r.interimResults = true
   r.continuous = true
   r.onresult = (e) => {
-    const done: string[] = [], all: string[] = []
-    for (let i = 0; i < e.results.length; i++) { all.push(e.results[i]![0]!.transcript); if (e.results[i]!.isFinal) done.push(e.results[i]![0]!.transcript) }
-    onPartial?.(all.join(' ').trim())
-    if (done.length === e.results.length && done.length) onText(done.join(' ').trim())
+    const all: string[] = []
+    for (let i = 0; i < e.results.length; i++) all.push(e.results[i]![0]!.transcript)
+    onText(all.join(' ').replace(/\s+/g, ' ').trim())
   }
-  r.onend = () => onEnd()
-  r.onerror = () => onEnd()
+  r.onend = onEnd
+  r.onerror = onEnd
   r.start()
   return () => r.stop()
-}
-
-/* ---------- a dictation session ---------- */
-
-export interface SessionView { status: 'listening' | 'paused' | 'error'; text: string; live: string; error?: string }
-
-/**
- * Dictation that lasts until Done or Cancel. Android's recognizer hears one utterance and stops at every pause (even a
- * comma), so each time it ends the next utterance is started and the words are joined. Two quiet utterances in a row
- * (about 15 seconds of silence) pause the session rather than closing it; `resume` carries on. A failure (no mic, no
- * recognizer) shows as an error the panel can offer to retry.
- */
-export function dictationSession(
-  listen: (onPartial: (t: string) => void) => Promise<string>,
-  stopNow: () => Promise<void>,
-  onView: (v: SessionView) => void,
-  quietRounds = 2,
-) {
-  let text = '', live = '', status: SessionView['status'] = 'listening', error = '', ended = false
-  let loopDone: Promise<void> = Promise.resolve()
-  const show = () => onView({ status, text, live, ...(error ? { error } : {}) })
-  const run = async () => {
-    let quiet = 0
-    while (status === 'listening' && !ended) {
-      live = ''; show()
-      let got: string
-      try { got = (await listen((t) => { if (!ended) { live = t; show() } })).trim() }
-      catch (e) { if (!ended) { status = 'error'; error = e instanceof Error ? e.message : String(e); live = ''; show() } return }
-      live = ''
-      if (got) { text = text ? `${text} ${got}` : got; quiet = 0 }
-      else if (++quiet >= quietRounds) status = 'paused'
-      if (!ended) show()
-    }
-  }
-  loopDone = run()
-  return {
-    resume() {
-      if (ended || status === 'listening') return
-      status = 'listening'; error = ''
-      loopDone = run()
-    },
-    /** Stops listening, waits for the last words, and returns everything said. */
-    async finish(): Promise<string> {
-      ended = true
-      if (status === 'listening') await stopNow()
-      await loopDone
-      return text
-    },
-    cancel() { ended = true; void stopNow() },
-  }
 }
