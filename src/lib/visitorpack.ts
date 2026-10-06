@@ -26,6 +26,23 @@ export function checkFile(f: { name: string; size: number; type: string }): stri
   return null
 }
 
+const BY_EXTENSION: Record<string, string> = { pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' }
+
+/**
+ * Reads a picked file into the app at once and returns the app's own copy. A file picked from Google Drive (or another
+ * cloud app) comes as a link back to that app which can stop being readable before Save, failing the upload with
+ * "Failed to fetch"; reading it now keeps it, or says at once that it could not be read. A missing type is taken from
+ * the extension.
+ */
+export async function copyIn(f: { name: string; type: string; size: number; arrayBuffer(): Promise<ArrayBuffer> }): Promise<File> {
+  let bytes: ArrayBuffer
+  try { bytes = await f.arrayBuffer() } catch {
+    throw new Error(`${f.name} could not be read. If it is on Google Drive, open it in Drive, download it to the phone, then add it from Downloads.`)
+  }
+  const type = f.type || BY_EXTENSION[f.name.split('.').pop()?.toLowerCase() ?? ''] || ''
+  return new File([bytes], f.name, { type })
+}
+
 /** The link as stored: a bare address gets https://; anything that is not a web address is refused. Empty is fine. */
 export function checkLink(raw: string): { url: string } | { error: string } {
   const t = raw.trim()
