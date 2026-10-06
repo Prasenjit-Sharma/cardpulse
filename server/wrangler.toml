@@ -23,3 +23,9 @@ SUPABASE_URL = "https://xqwslvteyhfmnxcnlpsg.supabase.co"
 SUPABASE_PUBLISHABLE_KEY = "sb_publishable_xRiJzrH9yCIo_NwHN1jNDw_zWfTAiqf"
 
 # Secret (never commit it):  npx wrangler secret put GEMINI_API_KEY
+
+# Keep the Worker's log lines (reads, briefs, charges, Gemini usage) for a few days, so they can be read after the fact
+# in the Cloudflare dashboard (Workers → cardpulse-api → Logs), not only live with `wrangler tail`.
+[observability]
+enabled = true
+head_sampling_rate = 1

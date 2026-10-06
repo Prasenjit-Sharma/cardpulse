@@ -485,7 +485,7 @@ export default function App() {
     await refresh()
   }
   const [backupTick, setBackupTick] = useState(0)
-  const nudgeBackup = useMemo(() => backupDue(cards.length, lastBackupAt(), backupNudgeUntil()), [cards.length, backupTick])   // eslint-disable-line react-hooks/exhaustive-deps
+  const nudgeBackup = useMemo(() => backupDue(cards.length, lastBackupAt(), backupNudgeUntil(), Date.now(), sync.enabled), [cards.length, backupTick, sync.enabled])   // eslint-disable-line react-hooks/exhaustive-deps
   const backupNow = async (): Promise<string> => {
     const all = await listCards()
     try { await saveBackupFile(await buildBackup(all, events, Date.now(), await listMyCards()), backupFileName()) } catch (e) { if ((e as Error)?.name === 'AbortError') return 'Export cancelled.'; throw e }

@@ -74,8 +74,9 @@ export const markBackedUp = (now = Date.now()) => { try { localStorage.setItem(L
 export const snoozeBackupNudge = (now = Date.now()) => { try { localStorage.setItem(NUDGE, String(now + 7 * DAY)) } catch { /* private mode */ } }
 
 /** A gentle reminder: only once there is something worth losing, at most every two weeks, and easy to dismiss. */
-export function backupDue(cardCount: number, last: number, snoozedUntil: number, now = Date.now()): boolean {
-  return cardCount >= 10 && now - last > 14 * DAY && now > snoozedUntil
+/** The export reminder: only for contacts that live on this phone alone. With sync on, the account keeps a copy. */
+export function backupDue(cardCount: number, last: number, snoozedUntil: number, now = Date.now(), synced = false): boolean {
+  return !synced && cardCount >= 10 && now - last > 14 * DAY && now > snoozedUntil
 }
 export const backupNudgeUntil = (): number => { try { return Number(localStorage.getItem(NUDGE)) || 0 } catch { return 0 } }
 

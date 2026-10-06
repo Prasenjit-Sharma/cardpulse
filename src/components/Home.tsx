@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { needsAttention } from '../lib/attention'
+import { toCheckCount } from '../lib/attention'
 import { currentFollowUp, localISO } from '../lib/followups'
 import { companyList } from '../lib/companies'
 import { eventState, eventWhen, featuredEvents, showEvent } from '../lib/eventname'
@@ -100,7 +100,7 @@ export default function Home({ cards, events, dupes, ready, needsKey, install, b
   const week = people.filter((x) => now - x.card.createdAt < WEEK_MS).length
   const scannedToday = people.filter((x) => isToday(x.card.createdAt, today)).length
   const companies = companyList(cards).length
-  const toCheck = cards.filter((c) => needsAttention(c, dupes.has(c.id))).length
+  const toCheck = toCheckCount(cards, dupes)
 
   // Until the user picks a watchlist, show the one that matters: due, else upcoming, else recent. Chosen at render time,
   // because contacts load after the first render.

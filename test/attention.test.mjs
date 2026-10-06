@@ -1,7 +1,7 @@
 // Run: node --test test/attention.test.mjs
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { attentionReasons, needsAttention } from '../src/lib/attention.ts'
+import { attentionReasons, needsAttention, toCheckCount } from '../src/lib/attention.ts'
 
 const person = (o = {}) => ({ name: 'Rajesh Shah', title: '', company: 'ABC', phones: ['+91 98240 22893'], emails: ['r@abc.com'], website: '', address: '', gstin: '', social: [], ...o })
 const card = (o = {}, people = [person()]) => ({ id: 'c', createdAt: 1, status: 'done', reviewed: false, corrected: people, ...o })
@@ -29,4 +29,13 @@ test('once the user has dealt with it, it stays quiet; failed and pending cards 
   assert.equal(needsAttention(card({ reviewed: true }), true), false)
   assert.deepEqual(attentionReasons(card({ status: 'error' }), true), [])
   assert.deepEqual(attentionReasons(card({ status: 'pending' }), true), [])
+})
+
+test('To check counts what the Needs attention list shows: each person on a flagged card, plus failed reads', () => {
+  const group = card({ id: 'g' }, [person({ name: 'A' }), person({ name: 'B' }), person({ name: 'C' })])
+  const clean = card({ id: 'k' }, [person({ name: 'D' }), person({ name: 'E' })])
+  const failed = card({ id: 'f', status: 'error', corrected: undefined })
+  const dupes = new Map([['g', [clean]]])
+  assert.equal(toCheckCount([group, clean, failed], dupes), 4, 'three people on the duplicate group photo, and one failed read')
+  assert.equal(toCheckCount([clean], new Map()), 0)
 })

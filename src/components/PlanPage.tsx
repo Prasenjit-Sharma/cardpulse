@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { ALLOWANCE, EXTRA_BRIEFS, PACKS, PASS, PLANS, TRIAL_BRIEFS, rupees, type Tier } from '../../shared/plans'
 import type { Balance } from '../lib/balance'
-import { signInWithGoogle } from '../lib/auth'
+import { signInWithGoogle, useSession } from '../lib/auth'
+import { refreshBalance, useBalanceError } from '../lib/useBalance'
 import Icon from './Icon'
 import Sheet from './Sheet'
 import './plan.css'
@@ -34,6 +35,10 @@ function Meter({ label, left, of, word }: { label: string; left: number; of: num
 
 /** The plan you hold: name, when it refills, and what is left, on the page's one deep indigo surface. */
 function Holding({ balance, signedIn }: { balance: Balance | null; signedIn: boolean }) {
+  const userId = useSession()?.user.id
+  const error = useBalanceError()
+  const [trying, setTrying] = useState(false)
+  const retry = async () => { if (!userId) return; setTrying(true); await refreshBalance(userId).finally(() => setTrying(false)) }
   if (!signedIn) {
     return (
       <section className="pl-hero" aria-label="Your plan">
@@ -48,8 +53,9 @@ function Holding({ balance, signedIn }: { balance: Balance | null; signedIn: boo
     return (
       <section className="pl-hero" aria-label="Your plan">
         <span className="pl-kicker-line">Your plan</span>
-        <h2>Not loaded yet</h2>
-        <p>Your plan and what is left show here when you are online.</p>
+        <h2>{error ? 'Could not load' : 'Not loaded yet'}</h2>
+        <p>{error ? `The server said: ${error}` : 'Your plan and what is left show here when you are online.'}</p>
+        <button className="pl-hero-cta" onClick={() => void retry()} disabled={trying || !userId}>{trying ? 'Trying…' : 'Try again'}</button>
       </section>
     )
   }
