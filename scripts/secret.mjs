@@ -1,4 +1,5 @@
-// The Supabase secret key for the admin scripts: from SUPABASE_SECRET_KEY if set; otherwise asked for in the terminal
+// The Supabase secret key for the admin scripts: from SUPABASE_SECRET_KEY if set, then the Mac Keychain item
+// "cardpulse-supabase-secret" (save it once: security add-generic-password -s cardpulse-supabase-secret -a admin -w); otherwise asked for in the terminal
 // with the typing hidden (or, on a Mac, read from the clipboard when Enter is pressed on an empty prompt), so it never
 // lands in the shell history or a file. Line breaks, spaces and terminal paste markers in a pasted key are dropped.
 import { execFileSync } from 'node:child_process'
@@ -13,6 +14,7 @@ function fromClipboard() {
 
 export async function secretKey() {
   let key = clean(process.env.SUPABASE_SECRET_KEY ?? '')
+  if (!key) { try { key = clean(execFileSync('security', ['find-generic-password', '-s', 'cardpulse-supabase-secret', '-w'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })) } catch { /* not in the Keychain */ } }
   if (!key) {
     if (!stdin.isTTY) { console.error('Set SUPABASE_SECRET_KEY, or run this in a terminal to be asked for it.'); process.exit(1) }
     stdout.write('Supabase secret key (Project Settings → API keys → Secret).\nPaste it and press Enter, or copy it and just press Enter to read the clipboard. Typing is hidden: ')

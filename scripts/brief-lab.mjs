@@ -1,8 +1,9 @@
 // Run: node scripts/brief-lab.mjs [--clipboard]
 // Compares Pulse Brief settings on a few real contacts: thinking level and how many Google searches the prompt allows.
 // Prints tokens, searches, time and an estimated cost per run, and writes the briefs to compare quality side by side.
-// Needs the Gemini key that Pulse Brief uses (the paid "Business card" project): set GEMINI_KEY, or copy it and pass
-// --clipboard, or paste it when asked (typing hidden). Never shipped in the app.
+// Needs the Gemini key that Pulse Brief uses (the paid "Business card" project), read in this order: GEMINI_KEY, the Mac
+// Keychain item "cardpulse-gemini-brief" (save it once: security add-generic-password -s cardpulse-gemini-brief -a brief -w),
+// --clipboard, or pasted when asked (typing hidden). Never shipped in the app.
 import { execFileSync } from 'node:child_process'
 import { writeFileSync } from 'node:fs'
 import { stdin, stdout } from 'node:process'
@@ -37,6 +38,7 @@ const VARIANTS = [
 async function key() {
   const clean = (s) => s.replace(/\s+/g, '')
   if (process.env.GEMINI_KEY) return clean(process.env.GEMINI_KEY)
+  try { const k = clean(execFileSync('security', ['find-generic-password', '-s', 'cardpulse-gemini-brief', '-w'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })); if (k) return k } catch { /* not in the Keychain */ }
   if (process.argv.includes('--clipboard')) return clean(execFileSync('pbpaste', { encoding: 'utf8' }))
   if (!stdin.isTTY) { console.error('Set GEMINI_KEY, or pass --clipboard after copying the key.'); process.exit(1) }
   stdout.write('Gemini key for Pulse Brief (typing hidden, or just Enter to read the clipboard): ')
@@ -56,9 +58,14 @@ async function key() {
 const K = await key()
 if (!/^[\w.-]{30,}$/.test(K)) { console.error(`That does not look like an API key (read ${K.length} characters, starting "${K.slice(0, 4)}"). Copy the key itself and try again.`); process.exit(1) }
 
+// --only "<name>" --variants min,now --repeat 3: a narrower run
+const arg = (k) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : undefined }
+const only = arg('--only'), pick = arg('--variants')?.split(','), repeat = Number(arg('--repeat') ?? 1)
+const contacts = CONTACTS.filter((c) => !only || c.name === only)
+const variants = VARIANTS.filter((v) => !pick || pick.includes(v.id)).flatMap((v) => Array.from({ length: repeat }, () => v))
 const rows = [], briefs = []
-for (const c of CONTACTS) {
-  for (const v of VARIANTS) {
+for (const c of contacts) {
+  for (const v of variants) {
     const body = { contents: [{ role: 'user', parts: [{ text: v.prompt(c) }] }], tools: [{ google_search: {} }], generationConfig: { temperature: 0.2, thinkingConfig: { thinkingLevel: v.thinking } } }
     const t0 = Date.now()
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': K }, body: JSON.stringify(body) })
@@ -79,7 +86,7 @@ for (const c of CONTACTS) {
 }
 
 console.log('\nAverage per brief:')
-for (const v of VARIANTS) {
+for (const v of VARIANTS.filter((x) => variants.includes(x))) {
   const r = rows.filter((x) => x.variant === v.id && !x.error)
   if (!r.length) { console.log(`  ${v.label}: no successful runs`); continue }
   const avg = (k) => (r.reduce((s, x) => s + x[k], 0) / r.length).toFixed(2)
