@@ -158,6 +158,14 @@ My Card as a holding with on-device share figures, Events as index rows, and the
 hairline forms. Scan modes moved to a thumb rail (Card, 2-sided, Group, QR). DESIGN.md records the system. Each part is
 its own commit on `main`; tag `pre-redesign` marks the app before it. Awaiting the real-phone check.
 
+### Rebrand to Pulse (started 2026-10-06, branch `pulse-brand`)
+
+The store title is "Pulse - Business Card Reader", and everywhere else it is "Pulse", with the tagline "The pulse of your network". Four parts:
+1. Rename and the new mark (a scan frame, a teal beat, three people-dots): built, awaiting the phone check.
+2. First-run welcome and in-context tips.
+3. SEO and store listings (business card reader, card scanner, card reader, expo, exhibition), plus the website landing page.
+4. Native payments: Play Billing, then Apple IAP (Razorpay later). This is Phase 4 part 2 below.
+
 ### Phase 4: Packs and payments (about 2 weeks)
 
 **Part 1 built 2026-10-05 on branch `pricing`, awaiting migration 0005 and the real-phone check** (spec

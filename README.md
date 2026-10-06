@@ -1,6 +1,6 @@
-# CardPulse
+# Pulse
 
-Business-card scanner PWA — multi-contact cards, India-ready, built for exhibitions. Cards are read by Gemini (vision + structured JSON output); everything else runs on-device.
+Pulse (store title "Pulse - Business Card Reader"; tagline "The pulse of your network"; formerly CardPulse): a business-card scanner app — multi-contact cards, India-ready, built for exhibitions. Cards are read by Gemini (vision + structured JSON output); everything else runs on-device.
 
 ## Features
 
@@ -21,6 +21,7 @@ npm run build      # production PWA in dist/
 npm test           # unit tests
 npm run test:sync  # two phones syncing through a stand-in server, using the real sync engine
 npm run test:db    # the Supabase migrations against a real Postgres (PGlite)
+npm run icons      # re-render every icon and splash from the mark in src/lib/brandMark.ts
 ```
 
 Deploying under a sub-path (e.g. GitHub Pages project site): `VITE_BASE=/cardpulse/ npm run build`.
@@ -29,7 +30,7 @@ Deploying under a sub-path (e.g. GitHub Pages project site): `VITE_BASE=/cardpul
 
 Two modes:
 
-- **Server (production):** the app calls the CardPulse API in `server/` and users need nothing. See `server/README.md` to deploy it, then set `VITE_API_URL`.
+- **Server (production):** the app calls the Pulse API in `server/` and users need nothing. See `server/README.md` to deploy it, then set `VITE_API_URL`.
 - **Own key (development):** with no `VITE_API_URL`, open **Settings**, paste a free Gemini key from https://aistudio.google.com/apikey, and tap **Save and connect**.
 
 ## Notes
