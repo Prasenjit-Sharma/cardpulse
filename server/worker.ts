@@ -185,6 +185,8 @@ async function keepCompany(kv: NonNullable<Env['BRIEF_CACHE']>, keys: string[], 
   await Promise.all(keys.map((k) => kv.put(k, JSON.stringify(e), { expirationTtl: ttl }).catch(() => {})))
 }
 
+const nudge = (personOnly: boolean) => `You answered without running Google Search, so nothing in your answer can be checked. Run Google Search now (${personOnly ? 'for this person' : 'the company, then the person'}), then give the JSON answer again using only what the search found.`
+
 const searchesRun = (raw: unknown) => {
   const q = (raw as { candidates?: { groundingMetadata?: { webSearchQueries?: unknown } }[] } | null)?.candidates?.[0]?.groundingMetadata?.webSearchQueries
   return Array.isArray(q) ? q.length : 0
@@ -220,16 +222,16 @@ async function brief(req: Request, env: Env, origin: string | null, ctx?: { wait
   const kv = search ? env.BRIEF_CACHE : undefined
   const keys = kv ? companyKeys(input) : []
   const saved = kv && keys.length && body.fresh !== true ? await findCompany(kv, keys, input) : null
-  const ask = (level: Thinking) => (saved ? buildPersonRequest(input, saved.company, level) : buildBriefRequest(input, search, level))
-  const call = (level: Thinking) => fetch(`${env.GEMINI_BASE ?? UPSTREAM}/models/${encodeURIComponent(model)}:generateContent`, {
+  const request = saved ? buildPersonRequest(input, saved.company, thinking) : buildBriefRequest(input, search, thinking)
+  const call = (body: unknown) => fetch(`${env.GEMINI_BASE ?? UPSTREAM}/models/${encodeURIComponent(model)}:generateContent`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-    body: JSON.stringify(ask(level)),
+    body: JSON.stringify(body),
     signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
   })
 
   let upstream: Response
-  try { upstream = await call(thinking) } catch { return fail(502, 'upstream_unreachable', 'The service is unavailable. Try again.', origin) }
+  try { upstream = await call(request) } catch { return fail(502, 'upstream_unreachable', 'The service is unavailable. Try again.', origin) }
   if (!upstream.ok) {
     // Google's own reason goes to the Worker's log (wrangler tail), never to the app: it can name the key or the plan
     console.log(`brief upstream ${upstream.status} ${model}: ${(await upstream.text().catch(() => '')).slice(0, 600)}`)
@@ -239,24 +241,28 @@ async function brief(req: Request, env: Env, origin: string | null, ctx?: { wait
   try {
     let raw = await upstream.json()
     let parsed = parseBriefResponse(raw)
-    let retried = false
-    // Minimal thinking sometimes answers from memory without searching (about 1 brief in 7 in the brief lab): such a
-    // brief has no sources to check, so it is asked once more on low thinking, which searched every time.
-    if (search && thinking !== 'low' && searchesRun(raw) === 0) {
+    let nudged = false
+    // The model sometimes answers from memory without searching (about 1 brief in 7 in the brief lab), leaving nothing
+    // to check. It is told so in the same conversation and asked again: in the lab that made it search 5 times in 6 (on
+    // minimal thinking; low did worse). A brief still written without a search is marked unchecked for the app.
+    if (search && searchesRun(raw) === 0) {
       try {
-        const again = await call('low')
-        if (again.ok) { const r2 = await again.json(); const p2 = parseBriefResponse(r2); raw = r2; parsed = p2; retried = true }
+        const said = (raw as { candidates?: { content?: unknown }[] }).candidates?.[0]?.content ?? { parts: [{ text: '' }] }
+        const again = await call({ ...request, contents: [...request.contents, { ...(said as object), role: 'model' }, { role: 'user', parts: [{ text: nudge(!!saved) }] }] })
+        if (again.ok) { const r2 = await again.json(); const p2 = parseBriefResponse(r2); raw = r2; parsed = p2; nudged = true }
       } catch { /* keep the first answer */ }
     }
+    const checked = !search || searchesRun(raw) > 0
     const result = saved ? mergeCompany(saved, parsed) : parsed
-    if (kv && keys.length && !saved) {
+    // only research a search backed is kept for others
+    if (kv && keys.length && !saved && checked) {
       const keeping = keepCompany(kv, keys, companyEntry(parsed, input))
       if (ctx) ctx.waitUntil(keeping); else await keeping
     }
     // the model decides whether to search: this line in the log shows how often it does, and so what a brief costs
-    console.log(`brief ok ${model} ${thinking}${retried ? '+low' : ''} company=${saved ? 'saved' : keys.length ? (body.fresh === true ? 'refreshed' : 'new') : 'not shared'}: ${usageLine(raw)} sources=${result.sources.length}`)
+    console.log(`brief ok ${model} ${thinking}${nudged ? '+nudge' : ''}${checked ? '' : ' UNCHECKED'} company=${saved ? 'saved' : keys.length ? (body.fresh === true ? 'refreshed' : 'new') : 'not shared'}: ${usageLine(raw)} sources=${result.sources.length}`)
     const balance = use.kind === 'account' ? (await charge(body.auth as string, env, 'charge_brief')) ?? use.balance : null
-    return json({ ...result, model, balance }, 200, origin)
+    return json({ ...result, model, balance, ...(checked ? {} : { unchecked: true }) }, 200, origin)
   } catch (e) {
     return fail(502, 'bad_output', e instanceof BriefError ? "Couldn't make the brief. Try again." : 'Unexpected response.', origin)
   }

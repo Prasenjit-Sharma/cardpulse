@@ -92,3 +92,9 @@ test('requestBrief: Refresh asks the server for fresh company research; a first 
   await requestBrief(person(), { url: 'https://api', token: 't', online: true, fetch: f, fresh: true })
   assert.equal(bodies[0].fresh, undefined); assert.equal(bodies[1].fresh, true)
 })
+
+test('requestBrief keeps the server\'s unchecked mark (written without a web search) on the brief', async () => {
+  const f = (unchecked) => async () => new Response(JSON.stringify({ person: 'P', company: 'C', starters: [], links: [], sources: [{ title: 'x.in', uri: 'https://v/1' }], ...(unchecked ? { unchecked: true } : {}) }))
+  assert.equal((await requestBrief(person(), { url: 'https://api', token: 't', online: true, fetch: f(true) })).unchecked, true)
+  assert.equal('unchecked' in (await requestBrief(person(), { url: 'https://api', token: 't', online: true, fetch: f(false) })), false)
+})

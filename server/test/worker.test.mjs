@@ -544,6 +544,7 @@ test('company store: a miss runs the full brief and keeps the company part, with
   try {
     const res = await worker.fetch(briefReq({ contact: pinned, auth: token('c-1') }), env({ ...SUPA, BRIEF_SEARCH: '1', BRIEF_CACHE: kv }))
     assert.equal(res.status, 200)
+    assert.equal(geminiCalls(m).length, 1)
     assert.match(geminiCalls(m)[0].contents[0].parts[0].text, /Search for the company/)
     const kept = JSON.parse(kv.m.get(KEY))
     assert.equal(kept.company, 'Makes sacks.'); assert.equal(kept.name, 'vivacity woven sack'); assert.equal('person' in kept, false)
@@ -591,26 +592,33 @@ test('company store: Refresh skips the store and writes the new company; no stro
   } finally { m.restore() }
 })
 
-test('a brief that ran no search is tried once more on low thinking, and that answer is kept; one that searched is not', async () => {
-  let n = 0
-  let m = mockUpstream((url, init) => {
-    const u = String(url)
-    if (u.includes('/rpc/begin_')) return new Response(JSON.stringify(okBegin()))
-    if (u.includes('/rpc/charge_')) return new Response(JSON.stringify(BAL))
-    n++
-    return new Response(JSON.stringify(n === 1 ? briefOk : searched({ ...briefOk, candidates: [{ ...briefOk.candidates[0], content: { parts: [{ text: JSON.stringify({ person: 'Second.', company: 'Second co.', starters: [], links: [] }) }] } }] })))
-  })
+test('a brief that ran no search is nudged once, in the same conversation and thinking level; a still-unsearched brief is marked unchecked and its company never kept', async () => {
+  const second = (searchedToo) => { const b = { ...briefOk, candidates: [{ ...briefOk.candidates[0], content: { parts: [{ text: JSON.stringify({ person: 'Second.', company: 'Second co.', starters: [], links: [] }) }] } }] }; return searchedToo ? searched(b) : b }
+  for (const searchedToo of [true, false]) {
+    let n = 0
+    const kv = kvMock()
+    const m = mockUpstream((url) => {
+      const u = String(url)
+      if (u.includes('/rpc/begin_')) return new Response(JSON.stringify(okBegin()))
+      if (u.includes('/rpc/charge_')) return new Response(JSON.stringify(BAL))
+      return new Response(JSON.stringify(++n === 1 ? briefOk : second(searchedToo)))
+    })
+    try {
+      const body = await (await worker.fetch(briefReq({ contact: pinned, auth: token(`r-${searchedToo}`) }), env({ ...SUPA, BRIEF_SEARCH: '1', BRIEF_THINKING: 'minimal', BRIEF_CACHE: kv }))).json()
+      const calls = geminiCalls(m)
+      assert.equal(calls.length, 2)
+      assert.equal(calls[1].generationConfig.thinkingConfig.thinkingLevel, 'minimal')
+      assert.deepEqual(calls[1].contents.map((c) => c.role), ['user', 'model', 'user'], 'the nudge replies to the first answer')
+      assert.match(calls[1].contents[2].parts[0].text, /without running Google Search/)
+      assert.equal(body.person, 'Second.')
+      assert.equal(body.unchecked, !searchedToo || undefined)
+      assert.equal(kv.puts.length, searchedToo ? 1 : 0, 'only searched company research is kept')
+      assert.equal(m.calls.filter((c) => c.url.endsWith('/rpc/charge_brief')).length, 1, 'charged once')
+    } finally { m.restore() }
+  }
+  const m = mockSupa({ gemini: searched(), begin: okBegin })
   try {
-    const body = await (await worker.fetch(briefReq({ contact: who, auth: token('r-1') }), env({ ...SUPA, BRIEF_SEARCH: '1', BRIEF_THINKING: 'minimal' }))).json()
-    const calls = geminiCalls(m)
-    assert.equal(calls.length, 2)
-    assert.equal(calls[0].generationConfig.thinkingConfig.thinkingLevel, 'minimal'); assert.equal(calls[1].generationConfig.thinkingConfig.thinkingLevel, 'low')
-    assert.equal(body.person, 'Second.')
-    assert.equal(m.calls.filter((c) => c.url.endsWith('/rpc/charge_brief')).length, 1, 'charged once')
-  } finally { m.restore() }
-  m = mockSupa({ gemini: searched(), begin: okBegin })
-  try {
-    await worker.fetch(briefReq({ contact: who, auth: token('r-2') }), env({ ...SUPA, BRIEF_SEARCH: '1', BRIEF_THINKING: 'minimal' }))
-    assert.equal(geminiCalls(m).length, 1)
+    const body = await (await worker.fetch(briefReq({ contact: who, auth: token('r-3') }), env({ ...SUPA, BRIEF_SEARCH: '1', BRIEF_THINKING: 'minimal' }))).json()
+    assert.equal(geminiCalls(m).length, 1); assert.equal('unchecked' in body, false)
   } finally { m.restore() }
 })

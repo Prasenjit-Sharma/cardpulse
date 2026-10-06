@@ -5,7 +5,8 @@ import type { Contact } from './types.ts'
 // Pulse Brief on the phone: what is sent, the call, the text that is copied or shared, and the links added to a contact.
 
 /** A brief as kept on the contact: the server's answer, when it was made and by which model. */
-export interface Brief extends BriefResult { at: number; model: string }
+/** `unchecked`: written without a web search (the server asked twice), so it has nothing behind it to check. */
+export interface Brief extends BriefResult { at: number; model: string; unchecked?: boolean }
 export type Section = 'person' | 'company' | 'starters'
 
 /** Google's terms let the user keep their own grounded results for up to two years. */
@@ -86,6 +87,7 @@ export async function requestBrief(c: Contact, deps: { url: string; token: strin
   return {
     person: json.person ?? '', company: json.company ?? '', starters: json.starters ?? [], links: json.links ?? [], sources: json.sources ?? [],
     suggestions: json.suggestions ?? '', model: json.model ?? '', at: deps.now ?? Date.now(),
+    ...((json as { unchecked?: unknown }).unchecked === true ? { unchecked: true } : {}),
   }
 }
 

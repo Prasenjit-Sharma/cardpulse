@@ -164,9 +164,9 @@ export default function BriefPage({ contact, briefKey, onSave, onAddLink, onPlan
                   </div>
                 </>
               )}
-              <p className="brief-foot">{brief.sources.length || brief.suggestions
+              <p className="brief-foot">{!brief.unchecked && (brief.sources.length || brief.suggestions)
                 ? `Found on the web on ${day(brief.at)} with Google Search. Public information; check before relying on it.`
-                : `Written on ${day(brief.at)} by Gemini from what it already knows, without a web search. It can be out of date or wrong; check before relying on it.`}</p>
+                : `Written on ${day(brief.at)} by Gemini from what it already knows, without a web search. It can be out of date or wrong; check before relying on it, or Refresh to search again.`}</p>
             </>
           )}
         </>
