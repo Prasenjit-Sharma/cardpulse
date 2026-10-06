@@ -321,8 +321,14 @@ export default function ContactDetail({ card, index, events, dupes, myCards, onC
       </div>
 
       <Sheet open={menu} onClose={() => setMenu(false)} title={c?.name || 'Contact'}>
-        <SheetItem icon="trash" danger label="Delete contact" onClick={() => { setMenu(false); void confirmAsk({ title: 'Delete this contact?', confirmLabel: 'Delete', danger: true }).then((ok) => ok && removePerson()) }} />
-        <SheetItem icon="trash" danger label="Delete card" onClick={() => { setMenu(false); void confirmAsk({ title: 'Delete the whole card?', message: 'Every contact on it is deleted too.', confirmLabel: 'Delete', danger: true }).then((ok) => ok && onDelete()) }} />
+        {/* One photo can hold several people (a group photo, or a card listing partners): say plainly which delete takes
+            only this person and which takes everyone read from the photo. */}
+        <SheetItem icon="trash" danger label={contacts.length > 1 ? `Delete ${c?.name || 'this contact'} only` : 'Delete contact'}
+          onClick={() => { setMenu(false); void confirmAsk({ title: `Delete ${c?.name || 'this contact'}?`, message: contacts.length > 1 ? `The other ${contacts.length - 1} on the same photo stay.` : undefined, confirmLabel: 'Delete', danger: true }).then((ok) => ok && removePerson()) }} />
+        {contacts.length > 1 && (
+          <SheetItem icon="trash" danger label={`Delete the photo and all ${contacts.length} people`} hint={contacts.map((p) => p.name || p.company).filter(Boolean).slice(0, 4).join(', ') + (contacts.length > 4 ? '…' : '')}
+            onClick={() => { setMenu(false); void confirmAsk({ title: `Delete all ${contacts.length} people on this photo?`, message: `${contacts.map((p) => p.name || p.company || 'Unnamed').join(', ')} will all be deleted.`, confirmLabel: `Delete ${contacts.length}`, danger: true }).then((ok) => ok && onDelete()) }} />
+        )}
       </Sheet>
 
       {adjusting && card[adjusting] && (
