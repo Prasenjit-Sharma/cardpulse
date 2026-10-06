@@ -46,12 +46,31 @@ test('Done still returns when the phone never confirms the stop', async () => {
   assert.equal(await d.finish(400), 'hello there')
 })
 
-test('a refused microphone, a missing recognizer or a failed start reject; errors during listening reach onError', async () => {
+test('a refused microphone, a missing recognizer or a failed start reject', async () => {
   await assert.rejects(nativeDictation(fakePlugin({ granted: false }), { lang: 'en-IN', onText: () => {}, onError: () => {} }), /microphone/)
   await assert.rejects(nativeDictation(fakePlugin({ available: false }), { lang: 'en-IN', onText: () => {}, onError: () => {} }), /speech recognition/)
   await assert.rejects(nativeDictation(fakePlugin({ startFails: true }), { lang: 'en-IN', onText: () => {}, onError: () => {} }), /busy/)
+})
+
+test('after a pause the earlier words stay: the plugin sends them as accumulated, and the new sentence in matches', async () => {
+  const p = fakePlugin(), texts = []
+  await nativeDictation(p, { lang: 'en-IN', onText: (t) => texts.push(t), onError: () => {} })
+  p.emit('partialResults', { matches: ['call him'] })
+  p.emit('partialResults', { matches: ['call him'], accumulated: 'call him', isRestarting: true })     // the pause
+  p.emit('partialResults', { matches: ['tomorrow'], accumulated: 'call him' })
+  p.emit('partialResults', { matches: ['tomorrow at four'], accumulated: 'call him' })
+  assert.equal(texts.at(-1), 'call him tomorrow at four')
+})
+
+test('pauses are not errors: silence and restart hiccups are ignored; only a session that ends on an error is reported', async () => {
   const p = fakePlugin(), errors = []
   await nativeDictation(p, { lang: 'en-IN', onText: () => {}, onError: (m) => errors.push(m) })
+  p.emit('error', { code: 'NO_MATCH', message: 'No match' })
+  p.emit('error', { code: 'SPEECH_TIMEOUT', message: 'No speech input' })
+  p.emit('error', { code: 'CLIENT', message: 'Client side error' })
+  p.emit('listeningState', { state: 'started', reason: 'userStart' })
+  assert.deepEqual(errors, [], 'listening carries on')
   p.emit('error', { code: 'NETWORK', message: 'No connection to the speech service' })
+  p.emit('listeningState', { state: 'stopped', status: 'stopped', reason: 'error', errorCode: 'NETWORK' })
   assert.deepEqual(errors, ['No connection to the speech service'])
 })

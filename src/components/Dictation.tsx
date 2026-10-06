@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { log } from '../lib/debug'
 import { getNative } from '../lib/platform'
 import { nativeDictation, webDictation, type Dictation } from '../lib/speech'
 import { useBackClose } from '../lib/useBackClose'
@@ -75,6 +76,7 @@ export function useDictation(add: (text: string) => void) {
           lang: 'en-IN',
           onText: (t) => setView((v) => (v ? { ...v, status: 'listening', text: join(t) } : v)),
           onLevel: setLevel,
+          onLog: log,
           onError: (m) => {
             void session.current?.cancel(); session.current = null
             setView((v) => { if (!v) return v; kept.current = v.text; return { ...v, status: 'error', error: m } })
@@ -89,6 +91,7 @@ export function useDictation(add: (text: string) => void) {
       if (!open.current) { void session.current?.cancel(); session.current = null; return }
       setView((v) => (v ? { ...v, status: 'listening' } : v))
     } catch (e) {
+      log(`dictation could not start: ${e instanceof Error ? e.message : String(e)}`)
       setView((v) => (v ? { ...v, status: 'error', error: e instanceof Error ? e.message : String(e) } : v))
     }
   }

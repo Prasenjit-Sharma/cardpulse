@@ -1,9 +1,10 @@
 /* The listening panel: a sheet in the app's sheet grammar. It stays until Done or Cancel; the brand's beat runs while
    the phone listens and rises with the voice (the microphone level); an indigo cursor marks it is live. */
 .dict-wrap { position: fixed; inset: 0; z-index: 40 }
-.dict-wrap .scrim { position: absolute; inset: 0; background: rgba(8,10,14,.42); animation: fade-in var(--dur-2) var(--ease) both }
+/* the shared .scrim carries z-index 8; here it must sit under the panel, or it takes every tap meant for Done and Cancel */
+.dict-wrap .scrim { position: absolute; inset: 0; z-index: 0; background: rgba(8,10,14,.42); animation: fade-in var(--dur-2) var(--ease) both }
 .dict {
-  position: absolute; left: 0; right: 0; bottom: 0; max-width: 560px; margin: 0 auto;
+  position: absolute; z-index: 1; left: 0; right: 0; bottom: 0; max-width: 560px; margin: 0 auto;
   padding: 16px 16px calc(16px + var(--inset-bottom)); border-radius: 14px 14px 0 0;
   background: var(--board); color: var(--ink); box-shadow: 0 -10px 40px rgba(8,10,14,.18);
   animation: dict-up var(--dur-3) var(--ease) both;

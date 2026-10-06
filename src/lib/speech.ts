@@ -22,6 +22,9 @@ const Ctor = typeof window === 'undefined' ? undefined
 /** Whether dictation is offered: always in the app (through the plugin), in a browser when it has the Web Speech API. */
 export const speechSupported = isApp || !!Ctor
 
+/** Error codes a pause raises (the plugin listens on through them). */
+const SILENCE = new Set(['NO_MATCH', 'SPEECH_TIMEOUT', 'CLIENT', 'RECOGNIZER_BUSY'])
+
 export interface DictationHandlers {
   lang: string
   /** Everything heard so far in this session. */
@@ -30,6 +33,8 @@ export interface DictationHandlers {
   onLevel?: (level: number) => void
   /** A failure while listening (not silence, which the plugin listens through). */
   onError: (message: string) => void
+  /** Each error code and stop reason, for the diagnostic log. */
+  onLog?: (line: string) => void
 }
 
 export interface Dictation {
@@ -49,13 +54,26 @@ export async function nativeDictation(p: SpeechPlugin, h: DictationHandlers): Pr
   await p.removeAllListeners()
   let text = ''
   let stopped: (() => void) | null = null
-  await p.addListener('partialResults', (e: { accumulatedText?: string; matches?: string[] }) => {
-    const t = (e.accumulatedText ?? e.matches?.[0] ?? '').trim()
+  let stopping = false, lastError = ''
+  // While listening the plugin sends the sentence being heard in `matches` and the sentences before the last pause in
+  // `accumulated`; at a pause (`isRestarting`) `accumulated` already holds everything; at the end, `accumulatedText`.
+  await p.addListener('partialResults', (e: { accumulatedText?: string; accumulated?: string; matches?: string[]; isRestarting?: boolean }) => {
+    const now = (e.matches?.[0] ?? '').trim(), before = (e.accumulated ?? '').trim()
+    const t = (e.accumulatedText ?? (e.isRestarting ? before || now : [before, now].filter(Boolean).join(' '))).trim()
     if (t) { text = t; h.onText(t) }
   })
   await p.addListener('audioLevel', (e: { level?: number }) => { if (typeof e.level === 'number') h.onLevel?.(e.level) })
-  await p.addListener('error', (e: { message?: string; code?: string }) => h.onError(e.message || e.code || 'The speech service stopped.'))
-  await p.addListener('listeningState', (e: { state?: string; status?: string }) => { if ((e.state ?? e.status) === 'stopped') stopped?.() })
+  // Every pause raises an error event (no match, speech timeout) and a restart can raise a client error, while the
+  // plugin carries on listening; only a session that actually ends on an error is reported, with the last message.
+  await p.addListener('error', (e: { message?: string; code?: string }) => { h.onLog?.(`dictation error ${e.code}: ${e.message}`); if (!SILENCE.has(e.code ?? '')) lastError = e.message || e.code || '' })
+  await p.addListener('listeningState', (e: { state?: string; status?: string; reason?: string; errorCode?: string }) => {
+    h.onLog?.(`dictation ${e.state ?? e.status} ${e.reason ?? ''} ${e.errorCode ?? ''}`.trim())
+    if ((e.state ?? e.status) !== 'stopped') return
+    stopped?.()
+    if (!stopping && (e.reason === 'error' || e.reason === 'silence' || e.reason === 'unknown')) {
+      h.onError(lastError || (e.reason === 'silence' ? 'Listening stopped after a long quiet spell.' : 'The speech service stopped.'))
+    }
+  })
   await p.setPTTState({ held: true })
   try {
     await p.start({ language: h.lang, maxResults: 1, partialResults: true, popup: false, continuousPTT: true, muteRecognizerBeep: true })
@@ -67,6 +85,7 @@ export async function nativeDictation(p: SpeechPlugin, h: DictationHandlers): Pr
   const end = async () => { await p.removeAllListeners().catch(() => {}) }
   return {
     async finish(waitMs = 1500) {
+      stopping = true
       const done = new Promise<void>((resolve) => { stopped = resolve; setTimeout(resolve, waitMs) })
       await p.setPTTState({ held: false }).catch(() => {})
       await p.stop().catch(() => {})
@@ -75,6 +94,7 @@ export async function nativeDictation(p: SpeechPlugin, h: DictationHandlers): Pr
       return text
     },
     async cancel() {
+      stopping = true
       await p.setPTTState({ held: false }).catch(() => {})
       await p.stop().catch(() => {})
       await end()
