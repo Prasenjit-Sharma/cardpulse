@@ -1,7 +1,7 @@
 // Run: node --test test/briefcore.test.mjs
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { BriefError, buildBriefRequest, checkLinks, parseBriefResponse, validBriefInput } from '../shared/brief-core.ts'
+import { BriefError, buildBriefRequest, buildPersonRequest, checkLinks, companyEntry, companyKeys, mergeCompany, parseBriefResponse, validBriefInput } from '../shared/brief-core.ts'
 
 const input = { name: 'Abhishek Jain', title: '', company: 'Vivacity Woven Sack Pvt. Ltd.', address: 'Tantithaiya, Surat 394305', website: '', domains: [], gstin: '' }
 const grounded = (text, chunks = [], rendered = '<div>chips</div>') => ({ candidates: [{ content: { parts: [{ text }] }, groundingMetadata: {
@@ -75,4 +75,43 @@ test('links: only on a searched domain, kind from the host, LinkedIn only for pe
 test('a searched brief must stay on the company named on the card (minimal thinking once swapped in a similarly named firm)', () => {
   const text = buildBriefRequest(input, true, 'minimal').contents[0].parts[0].text
   assert.match(text, /never swap in a similarly named firm/)
+})
+
+// ── the shared company store ──
+test('companyKeys: only strong matches (GSTIN, the company\'s own domain, or name with pincode); never a name alone', () => {
+  const base = { name: 'A', title: '', company: '', address: '', website: '', domains: [], gstin: '' }
+  assert.deepEqual(companyKeys({ ...base, company: 'Vivacity Woven Sack Pvt. Ltd.', address: 'Surat' }), [], 'a name without a pincode is too weak to share')
+  assert.deepEqual(companyKeys({ ...base, company: 'Vivacity Woven Sack Pvt. Ltd.', address: 'Tantithaiya, Surat 394 305' }), ['co1:name:vivacity woven sack|394305'])
+  assert.deepEqual(companyKeys({ ...base, company: 'M/s. Vivacity Woven Sack Private Limited', address: 'Surat - 394305, Gujarat' }), ['co1:name:vivacity woven sack|394305'], 'suffixes and punctuation do not split one company')
+  assert.deepEqual(companyKeys({ ...base, company: 'Vivacity', gstin: '24abcde1234f1z5', website: 'https://www.Vivacity.in/about', domains: ['vivacity.in', 'vivacitygroup.com'] }),
+    ['co1:gst:24ABCDE1234F1Z5', 'co1:dom:vivacity.in', 'co1:dom:vivacitygroup.com'])
+  assert.deepEqual(companyKeys({ ...base, company: 'X', website: 'www.indiamart.com/vivacity' }), [], 'a marketplace or social site is not the company\'s domain')
+  assert.deepEqual(companyKeys({ ...base, company: 'X', gstin: 'not-a-gstin' }), [])
+})
+
+test('companyEntry keeps only the company: no person text, no LinkedIn sources, no personal LinkedIn links', () => {
+  const r = { person: 'Director, 20 years.', company: 'Makes PP woven sacks.', starters: ['Hi'], suggestions: '<div/>',
+    sources: [{ title: 'linkedin.com', uri: 'https://v/1' }, { title: 'vivacity.in', uri: 'https://v/2' }],
+    links: [{ kind: 'linkedin', url: 'https://www.linkedin.com/in/aj' }, { kind: 'linkedin', url: 'https://www.linkedin.com/company/vivacity' }, { kind: 'website', url: 'https://vivacity.in' }] }
+  assert.deepEqual(companyEntry(r), { company: 'Makes PP woven sacks.', sources: [{ title: 'vivacity.in', uri: 'https://v/2' }],
+    links: [{ kind: 'linkedin', url: 'https://www.linkedin.com/company/vivacity' }, { kind: 'website', url: 'https://vivacity.in' }] })
+})
+
+test('with the company already known, the request researches only the person, in one search', () => {
+  const req = buildPersonRequest(input, 'Makes PP woven sacks in Surat.', 'minimal')
+  const text = req.contents[0].parts[0].text
+  assert.deepEqual(req.tools, [{ google_search: {} }])
+  assert.equal(req.generationConfig.thinkingConfig.thinkingLevel, 'minimal')
+  assert.match(text, /Makes PP woven sacks in Surat\./)
+  assert.match(text, /exactly ONE Google Search/)
+  assert.doesNotMatch(text, /Search for the company/)
+})
+
+test('mergeCompany: the person from the fresh call, the company from the store, sources and links from both without repeats', () => {
+  const fresh = { person: 'Director.', company: 'ignored', starters: ['Ask about sacks'], suggestions: '<s/>', sources: [{ title: 'linkedin.com', uri: 'https://v/9' }, { title: 'vivacity.in', uri: 'https://v/2' }], links: [{ kind: 'linkedin', url: 'https://www.linkedin.com/in/aj' }] }
+  const entry = { company: 'Makes PP woven sacks.', sources: [{ title: 'vivacity.in', uri: 'https://v/2' }], links: [{ kind: 'website', url: 'https://vivacity.in' }] }
+  const m = mergeCompany(entry, fresh)
+  assert.equal(m.person, 'Director.'); assert.equal(m.company, 'Makes PP woven sacks.'); assert.deepEqual(m.starters, ['Ask about sacks'])
+  assert.deepEqual(m.sources.map((s) => s.title), ['linkedin.com', 'vivacity.in'])
+  assert.deepEqual(m.links.map((l) => l.url), ['https://www.linkedin.com/in/aj', 'https://vivacity.in'])
 })
