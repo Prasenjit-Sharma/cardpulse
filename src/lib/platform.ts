@@ -1,5 +1,5 @@
 /**
- * The one place that knows whether CardPulse runs as the Android app or in a browser. Pure: native abilities are handed in
+ * The one place that knows whether Pulse runs as the Android app or in a browser. Pure: native abilities are handed in
  * at start-up (`setNative`, from main.tsx with src/lib/native.ts), so library code and Node tests never load Capacitor.
  */
 

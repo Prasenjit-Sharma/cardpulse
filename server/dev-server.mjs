@@ -18,4 +18,4 @@ createServer(async (req, res) => {
   const r = await worker.fetch(new Request(`http://${req.headers.host}${req.url}`, { method: req.method, headers: req.headers, body: ['GET', 'HEAD'].includes(req.method) ? undefined : body }), env)
   res.writeHead(r.status, Object.fromEntries(r.headers))
   res.end(Buffer.from(await r.arrayBuffer()))
-}).listen(Number(process.env.PORT ?? 8787), () => console.log(`CardPulse API on http://localhost:${process.env.PORT ?? 8787}`))
+}).listen(Number(process.env.PORT ?? 8787), () => console.log(`Pulse API on http://localhost:${process.env.PORT ?? 8787}`))

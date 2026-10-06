@@ -10,7 +10,7 @@ export default class ErrorBoundary extends Component<{ children: ReactNode }, { 
       <div className="fatal">
         <h1>Something went wrong</h1>
         <p>Your contacts are safe on this device. Reloading usually fixes it.</p>
-        <button className="primary" onClick={() => location.reload()}>Reload CardPulse</button>
+        <button className="primary" onClick={() => location.reload()}>Reload Pulse</button>
       </div>
     )
   }

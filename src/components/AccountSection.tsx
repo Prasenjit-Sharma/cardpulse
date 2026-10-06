@@ -39,7 +39,7 @@ export default function AccountSection({ sync }: { sync: SyncControl }) {
   const clearCloud = async () => {
     const ok = await confirmAsk({
       title: 'Delete cloud data?',
-      message: 'Everything CardPulse keeps for your account on the server is deleted: synced contacts and photos, your card links, and any leads not yet received. This phone keeps its own copy.',
+      message: 'Everything Pulse keeps for your account on the server is deleted: synced contacts and photos, your card links, and any leads not yet received. This phone keeps its own copy.',
       confirmLabel: 'Delete', danger: true,
     })
     if (ok) void act(async () => { await deleteCloudData(userId); await sync.cleared(); return 'Your cloud data is deleted. Sync is off.' })
@@ -73,7 +73,7 @@ export default function AccountSection({ sync }: { sync: SyncControl }) {
 
       <Sheet open={consent} onClose={() => setConsent(false)} title="Sync across devices">
         <div className="consent">
-          <p>A copy of your contacts, their card photos, notes, events and your own cards is kept in CardPulse's cloud under <b>{session?.user.email}</b>, so they appear on any phone you sign in on.</p>
+          <p>A copy of your contacts, their card photos, notes, events and your own cards is kept in Pulse's cloud under <b>{session?.user.email}</b>, so they appear on any phone you sign in on.</p>
           <ul>
             <li>These are other people's details. Sync only the ones you have a business reason to keep.</li>
             <li>Deleting a contact on one phone deletes it on all of them.</li>

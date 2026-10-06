@@ -19,7 +19,7 @@ type State =
   | { step: 'error'; message: string }
 
 /**
- * What a scanned QR turned out to be, and the one next step: save the contact (and, for another CardPulse user's
+ * What a scanned QR turned out to be, and the one next step: save the contact (and, for another Pulse user's
  * card link, send them yours back in the same tap), open a link, or copy text.
  */
 export default function QrResult({ raw, myCard, onSave, onShowMyQr, onAgain, onClose }: {
@@ -41,7 +41,7 @@ export default function QrResult({ raw, myCard, onSave, onShowMyQr, onAgain, onC
     if (parsed.kind === 'contact') setState({ step: 'preview', contact: parsed.contact })
     else if (parsed.kind === 'link') setState({ step: 'link', url: parsed.url })
     else if (parsed.kind === 'text') setState({ step: 'text', text: parsed.text })
-    else if (!cloudEnabled || !navigator.onLine) setState({ step: 'error', message: 'This is a CardPulse card link. Connect to the internet to open it.' })
+    else if (!cloudEnabled || !navigator.onLine) setState({ step: 'error', message: 'This is a Pulse card link. Connect to the internet to open it.' })
     else void fetchPublicCard(parsed.slug).then((d) => {
       if (!live) return
       if (!d) { setState({ step: 'error', message: 'This card link is no longer available.' }); return }
@@ -59,7 +59,7 @@ export default function QrResult({ raw, myCard, onSave, onShowMyQr, onAgain, onC
     let sentBack = false
     try {
       await onSave(state.contact)
-      // Their card is a CardPulse link: leave your own details with them, exactly as a visitor at their stall would.
+      // Their card is a Pulse link: leave your own details with them, exactly as a visitor at their stall would.
       if (state.cardId && sendBack && myCard) {
         try {
           await submitLead(state.cardId, state.eventId ?? null, state.eventName ?? null, { name: myCard.name, phone: myCard.phones[0] ?? '', email: myCard.emails[0] ?? '', company: myCard.company })

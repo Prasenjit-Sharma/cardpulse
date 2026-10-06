@@ -11,7 +11,7 @@ test('the message alone is sent as written', () => {
 })
 test('with diagnostics it adds the version, device, counts and recent errors, and says it holds no contact details', () => {
   const t = buildFeedback('It crashed', diag)
-  for (const part of ['It crashed', 'no contact details', 'CardPulse v1.2.0 (installed)', 'Pixel 7', 'Online: no', '40 total, 2 failed, 3 waiting', 'own key=no', 'No connection', '10:01 refresh']) assert.ok(t.includes(part), part)
+  for (const part of ['It crashed', 'no contact details', 'App: Pulse v1.2.0 (installed)', 'Pixel 7', 'Online: no', '40 total, 2 failed, 3 waiting', 'own key=no', 'No connection', '10:01 refresh']) assert.ok(t.includes(part), part)
 })
 test('the report has no place for a key, name, phone or email', () => {
   const t = buildFeedback('x', diag)

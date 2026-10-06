@@ -31,11 +31,11 @@ export async function buildBackup(cards: CardRecord[], events: EventRec[], now =
 export async function parseBackup(blob: Blob): Promise<ParsedBackup> {
   const files = await readZip(blob)
   const main = files.find((f) => f.name === 'cardpulse-backup.json')
-  if (!main) throw new Error('This is not a CardPulse backup file.')
+  if (!main) throw new Error('This is not a Pulse backup file.')
   let manifest: { app?: string; version?: number; createdAt?: number; cards?: Record<string, unknown>[]; events?: EventRec[]; myCards?: unknown[] }
   try { manifest = JSON.parse(new TextDecoder().decode(await readVerified(main))) } catch { throw new Error('The backup file is damaged.') }
-  if (manifest.app !== 'cardpulse') throw new Error('This is not a CardPulse backup file.')
-  if ((manifest.version ?? 0) > BACKUP_VERSION) throw new Error('This backup was made by a newer version of CardPulse. Update the app and try again.')
+  if (manifest.app !== 'cardpulse') throw new Error('This is not a Pulse backup file.')
+  if ((manifest.version ?? 0) > BACKUP_VERSION) throw new Error('This backup was made by a newer version of Pulse. Update the app and try again.')
 
   const byName = new Map(files.map((f) => [f.name, f]))
   const cards: CardRecord[] = []
@@ -80,7 +80,7 @@ export function backupDue(cardCount: number, last: number, snoozedUntil: number,
 }
 export const backupNudgeUntil = (): number => { try { return Number(localStorage.getItem(NUDGE)) || 0 } catch { return 0 } }
 
-export const backupFileName = (now = Date.now()) => `cardpulse-backup-${new Date(now).toISOString().slice(0, 10)}.zip`
+export const backupFileName = (now = Date.now()) => `pulse-backup-${new Date(now).toISOString().slice(0, 10)}.zip`
 
 /** Hands the backup to the phone: the share sheet where files are supported (Drive, WhatsApp, Files), else a download. */
 export async function saveBackupFile(blob: Blob, name: string): Promise<void> {
@@ -89,7 +89,7 @@ export async function saveBackupFile(blob: Blob, name: string): Promise<void> {
   if (nav.canShare?.({ files: [file] })) {
     // in the app the share sheet is the only way out: a failure is an error, never a second sheet that a cancel would
     // turn into a false "backed up"
-    try { await nav.share!({ files: [file], title: 'CardPulse backup' }); return } catch (e) { if ((e as Error)?.name === 'AbortError' || getNative()) throw e }
+    try { await nav.share!({ files: [file], title: 'Pulse backup' }); return } catch (e) { if ((e as Error)?.name === 'AbortError' || getNative()) throw e }
   }
   await saveBlob(name, blob)
 }

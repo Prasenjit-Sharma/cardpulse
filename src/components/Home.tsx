@@ -138,7 +138,7 @@ export default function Home({ cards, events, dupes, ready, needsKey, install, b
       <header className="masthead">
         <PulseLine />
         <div className="mast-top">
-          <span className="wordmark"><Logo size={24} tone="light" />CardPulse</span>
+          <span className="wordmark"><Logo size={24} tone="light" />Pulse</span>
           <button className="icon-btn ghost" onClick={onContacts} aria-label="Search contacts"><Icon name="search" size={20} /></button>
           <button className="icon-btn ghost" onClick={onSettings} aria-label="Settings"><Icon name="sliders" size={20} /></button>
         </div>
@@ -190,7 +190,7 @@ export default function Home({ cards, events, dupes, ready, needsKey, install, b
       {install.visible && (
         <div className="banner-row static">
           <Icon name="download" size={18} />
-          <span className="grow"><strong>Install CardPulse</strong><small>{install.mode === 'ios' ? 'Tap Share, then Add to Home Screen' : 'One-tap scanning from your home screen'}</small></span>
+          <span className="grow"><strong>Install Pulse</strong><small>{install.mode === 'ios' ? 'Tap Share, then Add to Home Screen' : 'One-tap scanning from your home screen'}</small></span>
           {install.mode === 'native' && <button className="link" onClick={install.install}>Install</button>}
           <button className="icon-btn ghost small" onClick={install.dismiss} aria-label="Dismiss"><Icon name="x" size={16} /></button>
         </div>
