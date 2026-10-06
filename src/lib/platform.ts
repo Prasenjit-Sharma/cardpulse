@@ -49,6 +49,9 @@ export interface Native {
   waApps?(): Promise<string[]>
   /** Opens the WhatsApp chat with this number (digits) with the files ready to send. Rejects when WhatsApp refuses. */
   waSend?(o: { uris: string[]; jid: string; pkg: string }): Promise<void>
+  /** Listens for one utterance with the phone's speech recognizer and resolves with what was heard (asks for the mic first). */
+  listen?(lang: string): Promise<string>
+  stopListening?(): Promise<void>
 }
 let native: Native | null = null
 export const setNative = (n: Native): void => { native = n }

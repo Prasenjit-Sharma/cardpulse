@@ -3,6 +3,7 @@ import { App } from '@capacitor/app'
 import { Browser } from '@capacitor/browser'
 import { Directory, Filesystem } from '@capacitor/filesystem'
 import { Share } from '@capacitor/share'
+import { SpeechRecognition } from '@capacitor-community/speech-recognition'
 import { sliceRanges, type ContactFields, type Native } from './platform'
 
 /** The app's own plugin (android/app/src/main/java/in/cardpulse/app/SaveContactPlugin.java). */
@@ -41,4 +42,12 @@ export const native: Native = {
   waSend: async (o) => { await WhatsAppCard.send(o) },
   // SystemBarsStyle.Dark means light icons (for a dark background), as in Capacitor's docs
   setStatusBar: async (icons) => { await SystemBars.setStyle({ style: icons === 'light' ? SystemBarsStyle.Dark : SystemBarsStyle.Light }) },
+  // Android's own recognizer (the Google app or Speech Services), one utterance at a time; the mic is asked for first
+  listen: async (lang) => {
+    if ((await SpeechRecognition.requestPermissions()).speechRecognition !== 'granted') throw new Error('the microphone is not allowed. Allow it in Settings, Apps, CardPulse, Permissions.')
+    if (!(await SpeechRecognition.available()).available) throw new Error('this phone has no speech recognition. Install or update the Google app.')
+    const r = await SpeechRecognition.start({ language: lang, maxResults: 1, popup: false, partialResults: false })
+    return r.matches?.[0] ?? ''
+  },
+  stopListening: async () => { await SpeechRecognition.stop() },
 }

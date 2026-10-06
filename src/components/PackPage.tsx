@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useBackClose } from '../lib/useBackClose'
+import { speechSupported, startDictation } from '../lib/speech'
 import { checkFile, checkLink, emptyPack, fileSize, loadPack, MAX_FILES, MAX_LABEL, MAX_NOTE, savePack, type Pack, type PackDraft, type PackFile } from '../lib/visitorpack'
 import Icon from './Icon'
 import './brief.css'
@@ -23,6 +24,14 @@ export default function PackPage({ eventId, eventName, userId, online, onClose }
   const [busy, setBusy] = useState(false)
   const [flash, setFlash] = useState('')
   const picker = useRef<HTMLInputElement>(null)
+  const [listening, setListening] = useState(false)
+  const stopListening = useRef<(() => void) | null>(null)
+  useEffect(() => () => stopListening.current?.(), [])
+  const dictate = () => {
+    if (listening) { stopListening.current?.(); return }
+    const stop = startDictation((t) => setDraft((d) => ({ ...d, note: [d.note, t].filter(Boolean).join(' ').slice(0, MAX_NOTE) })), () => { setListening(false); stopListening.current = null })
+    if (stop) { stopListening.current = stop; setListening(true) }
+  }
 
   const load = () => {
     setLoadError('')
@@ -68,8 +77,11 @@ export default function PackPage({ eventId, eventName, userId, online, onClose }
         : (
           <>
             <h3 className="group band">Note <span className="band-count num">{draft.note.length}/{MAX_NOTE}</span></h3>
-            <textarea className="pack-note-input" rows={3} maxLength={MAX_NOTE} value={draft.note} onChange={(e) => setDraft({ ...draft, note: e.target.value })}
-              placeholder="A line for visitors, like what the files are and how to reach you" aria-label="Note for visitors" />
+            <div className="log-note pack-note">
+              <textarea className="pack-note-input" rows={3} maxLength={MAX_NOTE} value={draft.note} onChange={(e) => setDraft({ ...draft, note: e.target.value })}
+                placeholder="A line for visitors, like what the files are and how to reach you" aria-label="Note for visitors" />
+              {speechSupported && <button className={`mic${listening ? ' on' : ''}`} onClick={dictate} aria-label={listening ? 'Stop dictating' : 'Dictate note'} aria-pressed={listening}><Icon name="mic" size={16} /></button>}
+            </div>
 
             <h3 className="group band">Files <span className="band-count num">{draft.files.length}/{MAX_FILES}</span></h3>
             <div className="pack-rows edit">

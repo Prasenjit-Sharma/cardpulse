@@ -83,7 +83,8 @@ export async function savePack(owner: string, eventId: string, before: Pack, dra
     if (!(f instanceof File)) { files.push(f); continue }
     const path = packPath(owner, eventId, f.name)
     const { error } = await sb.storage.from(BUCKET).upload(path, f, { contentType: f.type, upsert: false })
-    if (error) throw new Error(`Could not upload ${f.name}. Check your connection and try again.`)
+    // the server's own reason is shown: "Check your connection" hid a refusal that was not about the connection
+    if (error) throw new Error(`Could not upload ${f.name}: ${error.message || 'no reason given'}.`)
     files.push({ name: f.name, path, size: f.size, type: f.type })
   }
   const link = checkLink(draft.linkUrl)

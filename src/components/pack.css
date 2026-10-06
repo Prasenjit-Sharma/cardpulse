@@ -28,3 +28,4 @@
 /* opens over the stall's Show QR sheet too */
 .brief-page.pack-page { z-index: 35 }
 .pack-entry { align-self: flex-start; gap: 6px; font-size: var(--t-s) }
+.pack-note .mic { bottom: 12px }
