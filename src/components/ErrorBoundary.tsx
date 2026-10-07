@@ -1,9 +1,11 @@
 import { Component, type ReactNode } from 'react'
+import { hideSplash } from '../lib/platform'
 
 /** Last line of defence: a friendly recovery screen instead of a blank page. */
 export default class ErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false }
   static getDerivedStateFromError() { return { failed: true } }
+  componentDidCatch() { hideSplash() }
   render() {
     if (!this.state.failed) return this.props.children
     return (
