@@ -163,7 +163,7 @@ its own commit on `main`; tag `pre-redesign` marks the app before it. Awaiting t
 The store title is "Pulse - Business Card Reader", and everywhere else it is "Pulse", with the tagline "The pulse of your network". Four parts:
 1. Rename and the new mark (a scan frame, a teal beat, three people-dots): built, awaiting the phone check.
 2. First-run welcome and in-context tips, plus the splash held until the app has drawn: built, awaiting the phone check.
-3. SEO and store listings (business card reader, card scanner, card reader, expo, exhibition), plus the website landing page.
+3. Google Play listing (text, 8 screenshots, feature graphic, Data safety draft): built, in `store/`. The website and the App Store listing come later.
 4. Native payments: Play Billing, then Apple IAP (Razorpay later). This is Phase 4 part 2 below.
 
 ### Phase 4: Packs and payments (about 2 weeks)

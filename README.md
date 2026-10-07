@@ -22,6 +22,8 @@ npm test           # unit tests
 npm run test:sync  # two phones syncing through a stand-in server, using the real sync engine
 npm run test:db    # the Supabase migrations against a real Postgres (PGlite)
 npm run icons      # re-render every icon and splash from the mark in src/lib/brandMark.ts
+npm run store:capture  # capture the app's screens for the Play listing (headless Chromium, made-up data)
+npm run store:render   # compose the Play screenshots and feature graphic from those captures (store/README.md)
 ```
 
 Deploying under a sub-path (e.g. GitHub Pages project site): `VITE_BASE=/cardpulse/ npm run build`.
