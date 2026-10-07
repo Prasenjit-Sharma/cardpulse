@@ -34,7 +34,7 @@ import { deletePack } from './lib/visitorpack'
 import PackPage from './components/PackPage'
 import { localISO } from './lib/followups'
 import { getNative, hideSplash, onNotice, statusBarIcons } from './lib/platform'
-import { markTipSeen, markTourSeen, storage, tipDue, tipForScreen, TIP_TEXT, tourVariant, type TipId, type TourVariant } from './lib/onboarding'
+import { markTipSeen, markTourSeen, storage, tipDue, tipForScreen, tourVariant, type TipId, type TourVariant } from './lib/onboarding'
 import Welcome from './components/Welcome'
 import Tip from './components/Tip'
 import { deleteMyCard, emptyCard, listMyCards, MAX_CARDS, planCardRestore, putMyCard, type MyCard } from './lib/mycards'
@@ -678,7 +678,7 @@ export default function App() {
       )}
       <input ref={fallbackInput} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { if (e.target.files) void addFiles(e.target.files); e.target.value = '' }} />
       {tour && <Welcome variant={tour} onDone={endTour} />}
-      {tipOn && <Tip key={tipOn} id={tipOn} text={TIP_TEXT[tipOn]} onShown={() => { tipShown.current = true }} onDismiss={endTip} />}
+      {tipOn && <Tip key={tipOn} id={tipOn} onShown={() => { tipShown.current = true }} onDismiss={endTip} />}
       <Toast toast={toast} onDone={() => setToast(null)} />
       <EventSheet open={!!eventSheet} event={events.find((e) => e.id === eventSheet?.id)} onSave={(d) => saveEvent(d, eventSheet?.id)} onClose={() => setEventSheet(null)} />
       <DialogHost />

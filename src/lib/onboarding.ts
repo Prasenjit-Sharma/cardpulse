@@ -63,27 +63,41 @@ export function swipeStep(dx: number, ms: number): -1 | 0 | 1 {
   return !far ? 0 : dx < 0 ? 1 : -1
 }
 
-export interface TipPlace { top: number; left: number; side: 'above' | 'below'; arrow: number }
-/** Below the target when it fits, else above; centred on it, kept inside 16px gutters, never over the target. */
-export function placeTip(t: { top: number; bottom: number; left: number; width: number }, b: { w: number; h: number }, v: { w: number; h: number }, gutter = 16, gap = 10): TipPlace {
-  const below = t.bottom + gap + b.h <= v.h - gutter
-  const centre = t.left + t.width / 2
-  const left = Math.min(Math.max(centre - b.w / 2, gutter), v.w - gutter - b.w)
-  return { top: below ? t.bottom + gap : t.top - gap - b.h, left, side: below ? 'below' : 'above', arrow: Math.min(Math.max(centre - left, 14), b.w - 14) }
+export interface CoachLayout { above: boolean; msgTop: number; arrow: { x1: number; y1: number; x2: number; y2: number } }
+/**
+ * Where a coach mark's message goes: above a target in the lower half of the screen, below one in the upper half, with
+ * room between for the hand-drawn arrow. The arrow runs from the message's edge to just off the target's middle.
+ */
+export function coachLayout(t: { top: number; bottom: number; left: number; width: number }, v: { w: number; h: number }, msgH: number, gap = 96, inset = 72): CoachLayout {
+  const above = (t.top + t.bottom) / 2 > v.h / 2
+  const msgTop = above ? Math.max(inset, t.top - gap - msgH) : Math.min(v.h - msgH - 24, t.bottom + gap)
+  const x2 = Math.min(Math.max(t.left + t.width / 2, t.left + 8), t.left + t.width - 8)
+  return {
+    above, msgTop,
+    arrow: { x1: v.w / 2 - 36, y1: above ? msgTop + msgH + 10 : msgTop - 10, x2, y2: above ? t.top - 10 : t.bottom + 10 },
+  }
 }
 
-export type TourArt = 'mark' | 'cards' | 'event' | 'follow'
+/** A title's hand-written phrase is marked with asterisks: 'Several cards, *one photo*' gives [before, phrase, after]. */
+export function splitHand(title: string): [string, string, string] {
+  const m = /^(.*?)\*(.+?)\*(.*)$/.exec(title)
+  return m ? [m[1], m[2], m[3]] : [title, '', '']
+}
+
+export type TourArt = 'mark' | 'cards' | 'event' | 'card' | 'follow'
+/** The welcome tour. The words between asterisks are hand-written (Caveat) in the brand colour. */
 export const TOUR: { art: TourArt; title: (v: TourVariant) => string; text: string }[] = [
-  { art: 'mark', title: (v) => (v === 'existing' ? 'CardPulse is now Pulse' : 'Meet Pulse'), text: 'Business cards become contacts you can call or WhatsApp, in seconds. The pulse of your network.' },
-  { art: 'cards', title: () => 'Several cards, one photo', text: 'Lay a stack of cards flat and take one picture. Everyone on them becomes a contact.' },
-  { art: 'event', title: () => 'Built for expos and exhibitions', text: 'Create an event and every card you scan is filed under it. Duplicates are flagged, and you export each event when it ends.' },
-  { art: 'follow', title: () => "Follow up while it's warm", text: 'Call, WhatsApp or save to your phone in one tap. Pulse Brief researches the person before you call.' },
+  { art: 'mark', title: (v) => (v === 'existing' ? 'CardPulse is now *Pulse*' : 'Meet *Pulse*'), text: 'Business cards become contacts you can call or WhatsApp, in seconds. The pulse of your network.' },
+  { art: 'cards', title: () => 'Several cards, *one photo*', text: 'Lay a stack of cards flat and take one picture. Everyone on them becomes a contact.' },
+  { art: 'event', title: () => 'Built for *expos* and exhibitions', text: 'Create an event and every card you scan is filed under it. Duplicates are flagged, and you export each event when it ends.' },
+  { art: 'card', title: () => 'Your card, *one scan away*', text: 'Make your digital card and share it on WhatsApp. At your stall, visitors scan its QR to leave their details.' },
+  { art: 'follow', title: () => "Follow up while it's *warm*", text: 'Call, WhatsApp or save to your phone in one tap. Pulse Brief researches the person before you call.' },
 ]
 export const lastAction = (v: TourVariant): string => (v === 'new' ? 'Scan your first card' : v === 'existing' ? "Let's go" : 'Done')
 
-export const TIP_TEXT: Record<TipId, string> = {
-  'scan-modes': 'Card, 2-sided, or Group: lay many cards flat for one photo.',
-  events: 'Create an event, and every card you scan is filed under it, ready to export.',
-  contact: 'Call, WhatsApp or save to your phone in one tap. Brief researches them before you call.',
-  mycard: 'Make your digital card. At your stall, visitors scan its QR to leave their details.',
+export const TIP_TEXT: Record<TipId, { line: string; sub: string }> = {
+  'scan-modes': { line: 'Card, 2-sided or Group', sub: 'Lay many cards flat and take one photo.' },
+  events: { line: 'Create an event first', sub: 'Every card you scan is filed under it, ready to export.' },
+  contact: { line: 'Call or WhatsApp anyone in one tap', sub: 'Pulse Brief researches them before you call.' },
+  mycard: { line: 'Make your digital card', sub: 'At your stall, visitors scan its QR to leave their details.' },
 }
