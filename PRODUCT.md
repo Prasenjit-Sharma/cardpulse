@@ -83,9 +83,9 @@ Constraints:
 
 ## Brand Commitments
 
-Name: **CardPulse** (kept by default, but the user has confirmed nothing is fixed — name, logo, colours and
-structure are all open to replacement). Existing logo is a business card carrying a pulse line. The accent is
-user-selectable (Settings > Appearance), Blue by default.
+Name: **Pulse** (store title "Pulse - Business Card Reader"; tagline "The pulse of your network"), renamed from
+CardPulse on 2026-10-06. The mark is a scan frame around a teal beat whose peaks are three people (D1; geometry in
+`src/lib/brandMark.ts`). The accent is user-selectable (Settings > Appearance), Blue by default.
 
 **Standing look preference (user, 2026-09-24, revised the same day):** professional, modern and compact, and
 distinct from the other scanner apps rather than in their class. The earlier "sit beside Covve and HiHello"
