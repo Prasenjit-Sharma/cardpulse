@@ -41,9 +41,9 @@ const RAJESH = person({
   followUp: iso(0), priority: true, tags: ['Hot lead'],
   note: 'Wants 2-colour printed woven sacks, 40k a month. Send samples.',
   brief: {
-    person: 'Rajesh Shah has led ABC Polymers for over a decade and oversees its export business.',
-    company: 'ABC Polymers makes woven polypropylene sacks and FIBC bags in Surat, and has opened a second plant this year.',
-    starters: ['Ask how the new Surat plant is coming along', 'Their exports to Kenya doubled this year'],
+    person: 'Rajesh Shah is a director at ABC Polymers and looks after its sales.',
+    company: 'ABC Polymers is a packaging maker based in Surat, exhibiting at India Plast this year.',
+    starters: ['Ask how India Plast is going for them', 'Ask what they are looking for at the show'],
     links: [], sources: [{ title: 'abcpolymers.in', uri: 'https://abcpolymers.in' }], suggestions: '',
     at: now - 2 * 3_600_000, model: 'sample',
   },

@@ -29,6 +29,10 @@ h1 { font-size: 100px; font-weight: 800; line-height: 1.02; letter-spacing: -.04
 .phone.bare { padding: 0; background: none; border-radius: 56px; overflow: hidden }
 .phone.bare img { border-radius: 56px }
 
+/* cut-outs: a part of a real capture, floating (the card itself, a sheet) */
+.cut { position: absolute; background-repeat: no-repeat; border-radius: 40px; box-shadow: 0 0 0 2px rgba(21,20,42,.06), 0 70px 120px -50px rgba(40,30,140,.5) }
+.cut.sheet { border-radius: 44px 44px 0 0 }
+
 /* floating chips: real-looking content that tells the story without copy */
 .chip { position: absolute; z-index: 6; display: flex; align-items: center; gap: 18px; padding: 22px 30px 22px 22px; border-radius: 30px; background: #fff; color: #15142A;
   font-size: 34px; font-weight: 650; line-height: 1.2; white-space: nowrap; box-shadow: 0 40px 70px -28px rgba(10,6,60,.55) }

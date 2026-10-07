@@ -39,7 +39,7 @@ export default defineConfig({
           { src: 'pwa-maskable-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
-      workbox: { globPatterns: ['**/*.{js,css,html,png,woff2,webmanifest}'], navigateFallback: `${base}index.html`, navigateFallbackDenylist: [/privacy\.html$/] },
+      workbox: { globPatterns: ['**/*.{js,css,html,png,woff2,webmanifest}'], navigateFallback: `${base}index.html`, navigateFallbackDenylist: [/privacy\.html$/, /delete-account\.html$/] },
     }),
   ],
 })

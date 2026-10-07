@@ -44,7 +44,7 @@ Full description structure: an opening line naming Pulse a business card reader 
 India's expos and trade fairs; then short headed sections in the slide order (scan; exhibition mode; many cards in one
 photo; digital business card; India-first reading; Pulse Brief and conversation starters; call, WhatsApp, save to phone,
 export to Excel); then "Your contacts stay yours" (on-device by default, export any time); then the plan line (20 cards
-a month free; paid plans and packs). Each of "business card scanner/reader", "visiting card", "card reader",
+a month free; paid plans are not mentioned until Play Billing ships: the app cannot sell them yet). Each of "business card scanner/reader", "visiting card", "card reader",
 "exhibition" and "expo" appears naturally, about 2–3% density in total; no keyword lists, no "best" or "#1".
 
 ## Screenshots: `store/screens/`

@@ -13,8 +13,9 @@ const OUT = 'store/screens/raw'
 /** Starts Vite and resolves once it is serving. */
 export function startVite() {
   return new Promise((resolve, reject) => {
-    const vite = spawn('npx', ['vite', '--mode', 'android', '--port', String(PORT), '--strictPort'], { stdio: ['ignore', 'pipe', 'pipe'] })
-    const timer = setTimeout(() => reject(new Error('Vite did not start in 30 s')), 30_000)
+    // vite itself, not through npx, so killing the child stops the server
+    const vite = spawn('node_modules/.bin/vite', ['--mode', 'android', '--port', String(PORT), '--strictPort'], { stdio: ['ignore', 'pipe', 'pipe'] })
+    const timer = setTimeout(() => { vite.kill(); reject(new Error('Vite did not start in 30 s')) }, 30_000)
     const watch = (b) => { if (/ready in|Local:/.test(String(b))) { clearTimeout(timer); resolve(vite) } }
     vite.stdout.on('data', watch); vite.stderr.on('data', watch)
     vite.on('exit', (code) => reject(new Error(`Vite exited (${code})`)))
@@ -25,8 +26,9 @@ export const BASE_URL = BASE
 async function main() {
   mkdirSync(OUT, { recursive: true })
   const vite = await startVite()
-  const browser = await chromium.launch()
+  let browser
   try {
+    browser = await chromium.launch()
     const ctx = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width: 412, height: 915 }, deviceScaleFactor: 3, colorScheme: 'light', locale: 'en-IN', timezoneId: 'Asia/Kolkata' })
     const page = await ctx.newPage()
     page.on('pageerror', (e) => console.warn('page error:', e.message))
@@ -56,7 +58,7 @@ async function main() {
     await toTop()
     await shot('contact', null)
     await page.getByRole('button', { name: /brief/i }).first().click()
-    await shot('brief', 'Ask how the new Surat plant')
+    await shot('brief', 'Ask how India Plast is going')
     await page.goBack().catch(() => {})
     await page.keyboard.press('Escape').catch(() => {})
     await page.goto(BASE + '/'); await page.waitForLoadState('networkidle')
@@ -71,7 +73,7 @@ async function main() {
     await review.screenshot({ path: `${OUT}/review.png` })
     console.log('captured review')
   } finally {
-    await browser.close()
+    await browser?.close()
     vite.kill()
   }
 }

@@ -12,8 +12,9 @@ const SLIDES = readdirSync('store/slides').filter((f) => /^\d\d-.*\.html$/.test(
 async function main() {
   mkdirSync('store/play/phone', { recursive: true })
   const vite = await startVite()
-  const browser = await chromium.launch()
+  let browser
   try {
+    browser = await chromium.launch()
     const ctx = await browser.newContext({ ignoreHTTPSErrors: true, deviceScaleFactor: 1 })
     const page = await ctx.newPage()
     const render = async (file, w, h, out) => {
@@ -28,7 +29,7 @@ async function main() {
     for (const f of SLIDES) await render(f, 1080, 1920, `store/play/phone/${f.replace('.html', '.png')}`)
     await render('feature-graphic.html', 1024, 500, 'store/play/feature-graphic.png')
   } finally {
-    await browser.close()
+    await browser?.close()
     vite.kill()
   }
   // the thumbnail test: every slide at 160 px wide, side by side

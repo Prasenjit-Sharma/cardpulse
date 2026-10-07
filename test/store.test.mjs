@@ -46,3 +46,22 @@ test('eight Play screenshots at 1080x1920, no alpha', () => {
 test('the feature graphic at 1024x500, no alpha', () => {
   assert.deepEqual(head('store/play/feature-graphic.png'), { w: 1024, h: 500, type: 2 })
 })
+test('no purchase is advertised before Play Billing ships (the app cannot sell anything yet)', () => {
+  assert.ok(!/paid plans?|card packs?|exhibition pass|subscription/i.test(L.fullDescription))
+  assert.match(L.fullDescription, /20 cards a month free/)
+})
+test('Data safety covers every path data leaves the phone, and the Gemini tier it depends on', () => {
+  const d = readFileSync('store/data-safety.md', 'utf8')
+  for (const k of ['User IDs', 'Pulse Brief', 'paid tier', 'delete-account.html']) assert.ok(d.includes(k), k)
+})
+test('a public page explains how to delete the account, as Play requires', () => {
+  const p = readFileSync('public/delete-account.html', 'utf8')
+  assert.match(p, /Delete account/)
+  assert.match(p, /Delete cloud data/)
+  assert.match(p, /privacy\.html/)
+})
+test('slides show only what the screens show', () => {
+  const all = SLIDES.map((s) => readFileSync(`store/slides/${s}.html`, 'utf8')).join('\n')
+  assert.ok(!/XLS|left her details|Follow-ups due today/.test(all))
+  assert.ok(!/Kenya|doubled/.test(readFileSync('store/capture/seed.ts', 'utf8')))
+})
