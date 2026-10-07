@@ -29,7 +29,7 @@ app still in memory). That is expected behaviour.
 
 **Fix:** add `@capacitor/splash-screen` (Capacitor 8 line). It installs the Android 12+ splash and holds it until the
 web app says it is ready.
-- `capacitor.config.ts` `plugins.SplashScreen`: `launchAutoHide: false`, `launchShowDuration: 0`, `showSpinner: false`,
+- `capacitor.config.ts` `plugins.SplashScreen`: `launchAutoHide: false`, `launchShowDuration: 4000` (above 0: at 0 the plugin skips the launch splash), `showSpinner: false`,
   `backgroundColor: '#F4F4FA'` (it reads `@color/splash_ground` on Android 12+ anyway).
 - `Native` (platform.ts) gains `hideSplash?(): Promise<void>`, wired in `src/lib/native.ts` to `SplashScreen.hide({ fadeOutDuration: 200 })`.
 - `App` calls `getNative()?.hideSplash?.()` once, after its first render (Home or the tour has painted).
