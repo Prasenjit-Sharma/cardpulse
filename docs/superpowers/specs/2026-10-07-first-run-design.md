@@ -94,6 +94,47 @@ works and also dismisses the tip.
   with a scanned contact opened before skip `contact` (counted as having any card), and those with a My Card skip `mycard`.
   `scan-modes` is skipped once any card was ever scanned from a photo.
 
+## Redesign (from the user, 2026-10-07, after mockups)
+
+This section supersedes the tour's layout and screens and the tips' look above. The behaviour rules (once only,
+seeding, blocked storage, Back, replay, one tip at a time, under sheets) are unchanged.
+
+**Voice:** "We are building relationships." The key words of each title are hand-written in **Caveat** (bundled
+with `@fontsource/caveat`, weight 700, never loaded from the network) in indigo (`--brand`; light indigo #A9A3FF on
+dark grounds). Everything else stays in Inter.
+
+**The tour, five screens.** Each screen has an indigo band across the top with a curved wave edge and soft violet and
+teal glows, and a 3D scene drawn in code (CSS perspective, layered surfaces with soft offset shadows). Below it, the
+title is centred in Inter 800 with its key words in Caveat, then the text, then dash dots. At the foot: **Skip** on the left
+and a solid ink **Next** with an arrow on the right. From screen 2 on, a back chevron sits top left. The last screen
+replaces the foot with one full-width indigo button and, for a new install, "Look around first".
+
+| # | Scene | Title (hand-written words in *italics*) | Text |
+|---|---|---|---|
+| 1 | The Pulse mark as a glossy 3D tile | Meet *Pulse* · existing users: CardPulse is now *Pulse* | Business cards become contacts you can call or WhatsApp, in seconds. The pulse of your network. |
+| 2 | A 3D stack of cards in the teal scan frame, with contact chips lifting off it | Several cards, *one photo* | Lay a stack of cards flat and take one picture. Everyone on them becomes a contact. |
+| 3 | A tilted live event board (LIVE, the event name, the count, +N today, duplicates, Export CSV) with cards flying in | Built for *expos* and exhibitions | Create an event and every card you scan is filed under it. Duplicates are flagged, and you export each event when it ends. |
+| 4 | A tilted digital card with its QR, and a "left her details at your stall" chip | Your card, *one scan away* | Make your digital card and share it on WhatsApp. At your stall, visitors scan its QR to leave their details. |
+| 5 | A tilted contact card with Call and WhatsApp, and a Pulse Brief card in front | Follow up while it's *warm* | Call, WhatsApp or save to your phone in one tap. Pulse Brief researches the person before you call. |
+
+People and events in the scenes are made up (Rajesh Shah, Anita Kapoor, Neha Gupta, Aarav Mehta, India Plast 2026);
+nothing in them comes from the user's data.
+
+**Tips, Swiggy-style coach marks.** The screen dims (ink at 82%), except for a rounded cut-out around the target. The
+cut-out is made with `clip-path` and its even-odd rule, so the target stays bright and tappable through it. A curly
+hand-drawn arrow in light indigo runs from the message to the target. The message is centred: the opener "psst, quick
+tip" in Caveat, one bold line in light indigo (Inter 700, 21px), one supporting line in white at 74%, and a
+rounded indigo **Got it**. A ✕ sits top right. Tapping the dim, the ✕ or Got it closes the tip, and tapping the target
+closes it and still does what the target does. The message goes above the target when the target is in the lower half of
+the screen, otherwise below. The layout is placed again on resize and scroll.
+
+| Id | Bold line | Supporting line |
+|---|---|---|
+| `scan-modes` | Card, 2-sided or Group | Lay many cards flat and take one photo. |
+| `events` | Create an event first | Every card you scan is filed under it, ready to export. |
+| `contact` | Call or WhatsApp anyone in one tap | Pulse Brief researches them before you call. |
+| `mycard` | Make your digital card | At your stall, visitors scan its QR to leave their details. |
+
 ## State and code
 
 **`src/lib/onboarding.ts`** (pure, no React, tested). It reads and writes through an injected storage
