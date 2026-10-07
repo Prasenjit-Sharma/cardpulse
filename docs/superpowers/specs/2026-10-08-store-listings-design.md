@@ -38,7 +38,7 @@ One file holds every field, so both the tests and the Play Console copy-paste re
 |---|---|---|
 | Title | 30 | `Pulse - Business Card Reader` (28) |
 | Short description | 80 | `Scan business & visiting cards to contacts. Many cards in one photo. Expo-ready.` (80) |
-| Full description | 4,000 | ~2,500 characters, structured below |
+| Full description | 4,000 | about 2,000 characters, structured below |
 
 Full description structure: an opening line naming Pulse a business card reader and visiting card scanner built for
 India's expos and trade fairs; then short headed sections in the slide order (scan; exhibition mode; many cards in one
