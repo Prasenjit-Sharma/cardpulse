@@ -52,11 +52,11 @@ a month free; paid plans and packs). Each of "business card scanner/reader", "vi
 |---|---|---|
 | Name | 30 | `Pulse - Business Card Reader` |
 | Subtitle | 30 | `Card Scanner for Expos` (22) |
-| Keywords | 100 bytes | `visiting,contact,ocr,expo,exhibition,trade,fair,lead,vcard,qr,gst,whatsapp,crm,digital,networking` (96) |
+| Keywords | 100 bytes | `visiting,contact,ocr,expo,exhibition,trade,fair,lead,vcard,qr,gst,whatsapp,crm,digital,networking` (97 bytes) |
 | Promotional text | 170 | One line on exhibition mode |
 
 Apple indexes each word once across name, subtitle and keywords, so the keyword field repeats none of the words in the
-name or subtitle (pulse, business, card, reader, scanner, for, expos). "expo" stays: Apple treats it apart from "expos".
+name or subtitle (pulse, business, card, reader, scanner, for, expos). "expo" stays for now; whether Apple already matches it through "expos" is checked when the iPhone listing is made.
 
 ## Screenshots: `store/screens/`
 
