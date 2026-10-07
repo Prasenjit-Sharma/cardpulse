@@ -126,12 +126,14 @@ export default function App() {
   const [qrOpen, setQrOpen] = useState(false)
   // the welcome tour: decided once the stored cards are read, so someone with contacts never sees "Meet Pulse"
   const [tour, setTour] = useState<TourVariant | null>(null)
+  const [tourDecided, setTourDecided] = useState(false)
   useEffect(() => {
     void Promise.all([listCards(), listMyCards()]).then(([cs, mine]) => {
       setTour(tourVariant(storage(), { cards: cs.length, photoCards: cs.filter((c) => c.source !== 'qr').length, events: loadEvents().length, myCards: mine.length }))
-      requestAnimationFrame(() => hideSplash())
-    }, () => hideSplash())
+    }).finally(() => setTourDecided(true))
   }, [])
+  // let the splash go once the decision has rendered (not on an animation frame: the held splash stops frames)
+  useEffect(() => { if (tourDecided) hideSplash() }, [tourDecided])
   // Android app: the status bar sits over the page top, so its icons follow the screen under them
   const deepTop = !open && !editingCard && (tab === 'home' || tab === 'contacts' || tab === 'exhibition' || tab === 'mycard')
   const darkTheme = settings.theme === 'dark' || (settings.theme !== 'light' && typeof matchMedia !== 'undefined' && matchMedia('(prefers-color-scheme: dark)').matches)
