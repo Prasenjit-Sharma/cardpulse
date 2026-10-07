@@ -14,8 +14,10 @@ const FILES = [
   'android/app/src/main/res/values/strings.xml', 'server/worker.ts',
 ]
 
+// the welcome tour announces the rename to people already using the app: the one place the old name is shown on purpose
+const ANNOUNCEMENT = /CardPulse is now Pulse/
 test('no file users read from says CardPulse', () => {
-  const hits = FILES.flatMap((f) => read(f).split('\n').flatMap((l, i) => (/CardPulse/.test(l) ? [`${f}:${i + 1}`] : [])))
+  const hits = FILES.flatMap((f) => read(f).split('\n').flatMap((l, i) => (/CardPulse/.test(l) && !ANNOUNCEMENT.test(l) ? [`${f}:${i + 1}`] : [])))
   assert.deepEqual(hits, [])
 })
 test('the app is named Pulse on the phone, in the browser and in the store title', () => {

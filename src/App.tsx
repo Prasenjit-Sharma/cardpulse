@@ -33,7 +33,9 @@ import { eventState, openingEvent, showEvent } from './lib/eventname'
 import { deletePack } from './lib/visitorpack'
 import PackPage from './components/PackPage'
 import { localISO } from './lib/followups'
-import { getNative, onNotice, statusBarIcons } from './lib/platform'
+import { getNative, hideSplash, onNotice, statusBarIcons } from './lib/platform'
+import { markTourSeen, storage, tourVariant, type TourVariant } from './lib/onboarding'
+import Welcome from './components/Welcome'
 import { deleteMyCard, emptyCard, listMyCards, MAX_CARDS, planCardRestore, putMyCard, type MyCard } from './lib/mycards'
 import Companies from './components/Companies'
 import Home from './components/Home'
@@ -121,10 +123,18 @@ export default function App() {
   }, [myCards, editingCard, sharingCard, stallCard])
   const [camOpen, setCamOpen] = useState(false)
   const [qrOpen, setQrOpen] = useState(false)
+  // the welcome tour: decided once the stored cards are read, so someone with contacts never sees "Meet Pulse"
+  const [tour, setTour] = useState<TourVariant | null>(null)
+  useEffect(() => {
+    void Promise.all([listCards(), listMyCards()]).then(([cs, mine]) => {
+      setTour(tourVariant(storage(), { cards: cs.length, photoCards: cs.filter((c) => c.source !== 'qr').length, events: loadEvents().length, myCards: mine.length }))
+      requestAnimationFrame(() => hideSplash())
+    }, () => hideSplash())
+  }, [])
   // Android app: the status bar sits over the page top, so its icons follow the screen under them
   const deepTop = !open && !editingCard && (tab === 'home' || tab === 'contacts' || tab === 'exhibition' || tab === 'mycard')
   const darkTheme = settings.theme === 'dark' || (settings.theme !== 'light' && typeof matchMedia !== 'undefined' && matchMedia('(prefers-color-scheme: dark)').matches)
-  useEffect(() => { void getNative()?.setStatusBar(statusBarIcons({ deepTop, dark: darkTheme, camera: camOpen || qrOpen, stall: !!stallCard })) }, [deepTop, darkTheme, camOpen, qrOpen, stallCard])
+  useEffect(() => { void getNative()?.setStatusBar(statusBarIcons({ deepTop: deepTop || !!tour, dark: darkTheme, camera: camOpen || qrOpen, stall: !!stallCard })) }, [deepTop, tour, darkTheme, camOpen, qrOpen, stallCard])
   // failures the user should hear about (a file that could not be saved, a sign-in that did not finish) show as the banner
   useEffect(() => onNotice(setBanner), [])
   const [qrText, setQrText] = useState('')
@@ -406,6 +416,7 @@ export default function App() {
     if (g === 'sign_in') setGate('sign_in')
     else if (g === 'open') { if (hasLiveCamera) setCamOpen(true); else fallbackInput.current?.click() }
   }
+  const endTour = (action: 'scan' | 'close') => { markTourSeen(storage()); setTour(null); if (action === 'scan') scan() }
   useEffect(() => { if (sessionKnown && scanWaiting.current) scan() }, [sessionKnown])   // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     const params = new URLSearchParams(location.search)
@@ -593,6 +604,7 @@ export default function App() {
             }}
             onBackup={backupNow} onRestore={restoreFrom} onAccuracy={() => goto('accuracy', 'settings')} onInsights={() => goto('insights', 'settings')} onPlans={() => goto('plans', 'settings')} plansHint={balance ? cardsLine(balance) : userId ? 'What you have left, and what to add' : `Free: ${ALLOWANCE.free.cards} cards a month`}
             onBack={() => setTab('home')}
+            onTour={() => setTour('replay')}
           />
         )}
         </div>
@@ -644,6 +656,7 @@ export default function App() {
           }} />
       )}
       <input ref={fallbackInput} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { if (e.target.files) void addFiles(e.target.files); e.target.value = '' }} />
+      {tour && <Welcome variant={tour} onDone={endTour} />}
       <Toast toast={toast} onDone={() => setToast(null)} />
       <EventSheet open={!!eventSheet} event={events.find((e) => e.id === eventSheet?.id)} onSave={(d) => saveEvent(d, eventSheet?.id)} onClose={() => setEventSheet(null)} />
       <DialogHost />

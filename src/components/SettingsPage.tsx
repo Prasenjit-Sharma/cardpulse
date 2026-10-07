@@ -53,7 +53,7 @@ type Sub = 'account' | 'prefs' | 'help'
  * Settings is a hub, not one long list: who you are and what this phone holds at the top, the tools you reach for as four
  * keys, and the rest (preferences, account, help) each on a page of its own, so nothing is more than one tap deep.
  */
-export default function SettingsPage({ cards, events, settings, install, sync, onChange, onWipe, onBackup, onRestore, onAccuracy, onInsights, onPlans, plansHint, onBack }: {
+export default function SettingsPage({ cards, events, settings, install, sync, onChange, onWipe, onBackup, onRestore, onAccuracy, onInsights, onPlans, plansHint, onBack, onTour }: {
   cards: CardRecord[]
   events: EventRec[]
   sync: SyncControl
@@ -69,6 +69,8 @@ export default function SettingsPage({ cards, events, settings, install, sync, o
   onPlans: () => void
   plansHint: string
   onBack: () => void
+  /** Shows the welcome tour again. */
+  onTour: () => void
 }) {
   const [lines, setLines] = useState(readLog)
   useEffect(() => subscribe(() => setLines(readLog())), [])
@@ -139,6 +141,9 @@ export default function SettingsPage({ cards, events, settings, install, sync, o
   if (sub === 'help') return (
     <>
       {head('Help & support', () => setSub(null))}
+      <SettingGroup title="Getting started">
+        <SettingRow icon="spark" label="Take the tour again" hint="What Pulse does, in four screens" onClick={onTour} />
+      </SettingGroup>
       <SettingGroup title="Talk to us">
         <SettingRow icon="chat" label="Send feedback" hint="Something wrong, or an idea?" onClick={() => setSheet('feedback')} />
       </SettingGroup>
