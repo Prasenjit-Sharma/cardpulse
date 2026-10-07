@@ -28,3 +28,12 @@ test('no claims we cannot back', () => {
   const all = Object.values(L).join(' ')
   assert.ok(!/\b(best|#1|number one|million|award|rated|trusted by|\d[\d,]*\+? (users|downloads|installs))\b/i.test(all))
 })
+
+test('the Data safety draft exists, is marked a draft, and covers what Play asks', () => {
+  assert.ok(existsSync('store/data-safety.md'))
+  const d = readFileSync('store/data-safety.md', 'utf8')
+  assert.match(d, /draft/i)
+  for (const h of ['Data collected', 'Data shared', 'Security practices', 'Deletion']) assert.ok(d.includes(h), h)
+  for (const k of ['Name', 'Email address', 'Photos', 'Contacts', 'App interactions']) assert.ok(d.includes(k), k)
+  assert.match(d, /privacy\.html/)
+})
