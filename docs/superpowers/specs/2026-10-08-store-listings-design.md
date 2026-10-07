@@ -1,10 +1,10 @@
-# Store listings: text, screenshots, feature graphic, Data safety (rebrand, part 3 of 4)
+# Google Play listing: text, screenshots, feature graphic, Data safety (rebrand, part 3 of 4)
 
 Date: 2026-10-08. Branch `pulse-brand`. Status: awaiting the user's review.
 
 ## Goal
 
-Everything Google Play needs to publish Pulse, and the App Store text for later, written to rank for **business card
+Everything Google Play needs to publish Pulse, written to rank for **business card
 reader, card scanner, card reader, visiting card, expo, exhibition, digital business card** and to convert people who
 see the listing. All of it lives in `store/`, and is generated or checked by scripts and tests, so a later change is
 one edit.
@@ -18,7 +18,8 @@ one edit.
 | Screenshots | Claude captures the real app (headless Chrome, sample data) and frames them; the user does no phone work |
 | Slide order | 1 Scan · 2 Exhibition mode · 3 Many cards · 4 Digital card · 5 Read right · 6 Pulse Brief · 7 One tap · 8 Feature wall |
 | Data safety | Draft the Play Console answers from the privacy policy |
-| Skills used | `aso` (limits, what each store indexes), `app-store-screenshots` (deck design rules), `webapp-testing` (capture) |
+| Apple App Store | Not in this part (user, 2026-10-08). Written when the iPhone app is built, using Play's real search and install data |
+| Skills used | `aso` (limits, what Play indexes), `app-store-screenshots` (deck design rules), `webapp-testing` (capture) |
 
 ## Positioning (from research, 2026-10-07)
 
@@ -45,18 +46,6 @@ photo; digital business card; India-first reading; Pulse Brief and conversation 
 export to Excel); then "Your contacts stay yours" (on-device by default, export any time); then the plan line (20 cards
 a month free; paid plans and packs). Each of "business card scanner/reader", "visiting card", "card reader",
 "exhibition" and "expo" appears naturally, about 2–3% density in total; no keyword lists, no "best" or "#1".
-
-**Apple App Store (en-IN, for the iPhone app later)**
-
-| Field | Limit | Text |
-|---|---|---|
-| Name | 30 | `Pulse - Business Card Reader` |
-| Subtitle | 30 | `Card Scanner for Expos` (22) |
-| Keywords | 100 bytes | `visiting,contact,ocr,expo,exhibition,trade,fair,lead,vcard,qr,gst,whatsapp,crm,digital,networking` (97 bytes) |
-| Promotional text | 170 | One line on exhibition mode |
-
-Apple indexes each word once across name, subtitle and keywords, so the keyword field repeats none of the words in the
-name or subtitle (pulse, business, card, reader, scanner, for, expos). "expo" stays for now; whether Apple already matches it through "expos" is checked when the iPhone listing is made.
 
 ## Screenshots: `store/screens/`
 
@@ -94,7 +83,6 @@ Every claim on a slide is something the app does today.
 Reader", the tagline, and the 3D card stack. No text in the outer 15% (Play crops it on some surfaces).
 
 Output: `store/play/phone/01-scan.png` … `08-more.png` (1080×1920, RGB, no alpha), `store/play/feature-graphic.png`.
-iPhone sizes are made when the iPhone app exists.
 
 ## Data safety draft: `store/data-safety.md`
 
@@ -110,14 +98,13 @@ Each answer cites the privacy-policy line it comes from. It is marked "draft, to
 
 ## Testing (`test/store.test.mjs`)
 
-- Every text field is within its store limit: characters for Play, bytes for Apple keywords.
+- Every text field is within its Play limit.
 - The Play title has no emoji, no ALL CAPS, and no "best", "#1" or "free".
-- No Apple keyword repeats a word in the name or subtitle.
 - The full description contains each target phrase at least twice and names "exhibition mode".
 - Images: 8 Play screenshots at 1080×1920 with no alpha channel, and the feature graphic at 1024×500 with no alpha channel.
 - `data-safety.md` exists and says "draft".
 
 ## Out of scope
 
-The website and landing page; Hindi and other locales; iPhone screenshot sizes; a store preview video; submitting to
+The website and landing page; the Apple App Store listing and iPhone screenshots; Hindi and other locales; a store preview video; submitting to
 Play Console. The user does the submission, and that comes with part 4, payments.
