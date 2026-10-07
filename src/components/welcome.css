@@ -11,7 +11,7 @@
 .welcome-body p { margin: 0; color: var(--ink-3); font-size: 15px; line-height: 1.45 }
 .welcome-foot { width: 100%; max-width: 560px; margin: auto auto 0; padding: 16px 24px calc(18px + var(--inset-bottom)); display: flex; flex-direction: column; align-items: stretch }
 .welcome-dots { display: flex; gap: 6px; justify-content: center; margin-bottom: 16px }
-.welcome-dots i { width: 6px; height: 6px; border-radius: 3px; background: var(--brand); opacity: .25; transition: width var(--dur-2) var(--ease), opacity var(--dur-2) var(--ease) }
+.welcome-dots i { width: 6px; height: 6px; border-radius: 3px; background: var(--brand); opacity: .25; transition: opacity var(--dur-2) var(--ease) }
 .welcome-dots i.on { width: 18px; opacity: 1 }
 .welcome-foot .cta { width: 100% }
 .welcome-alt { align-self: center; margin-top: 10px; min-height: 44px }
