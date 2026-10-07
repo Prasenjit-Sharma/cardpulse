@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Android 12+ splash: the app's light ground; values-night holds the dark one -->
-    <color name="splash_ground">#F4F4FA</color>
+    <!-- Android 12+ splash: Pulse indigo; values-night holds the deep indigo -->
+    <color name="splash_ground">#3B2FC9</color>
 </resources>

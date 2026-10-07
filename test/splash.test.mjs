@@ -18,6 +18,7 @@ test('the plugin holds the launch splash until the app lets it go (a launchShowD
   const s = config.plugins.SplashScreen
   assert.equal(s.launchAutoHide, false)
   assert.ok(s.launchShowDuration > 0)
+  assert.equal(s.backgroundColor, '#3B2FC9')   // indigo, like the Android 12+ splash ground
 })
 test('a tip sits above the camera but under sheets, dialogs and the photo adjuster', async () => {
   const { readFileSync } = await import('node:fs')
