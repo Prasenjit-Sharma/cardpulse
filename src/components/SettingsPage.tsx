@@ -142,7 +142,7 @@ export default function SettingsPage({ cards, events, settings, install, sync, o
     <>
       {head('Help & support', () => setSub(null))}
       <SettingGroup title="Getting started">
-        <SettingRow icon="spark" label="Take the tour again" hint="What Pulse does, in four screens" onClick={onTour} />
+        <SettingRow icon="spark" label="Take the tour again" hint="What Pulse does, and its tips, once more" onClick={onTour} />
       </SettingGroup>
       <SettingGroup title="Talk to us">
         <SettingRow icon="chat" label="Send feedback" hint="Something wrong, or an idea?" onClick={() => setSheet('feedback')} />

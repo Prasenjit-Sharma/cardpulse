@@ -163,12 +163,19 @@ function Scene({ art }: { art: TourArt }) {
     </div>
   )
   return (
-    <div className="wl-3d" style={{ transform: 'rotateX(18deg) rotateY(-14deg)' }}>
-      <div className="wl-panel">
+    <div className="wl-3d" style={{ transform: 'rotateX(16deg) rotateY(-14deg)' }}>
+      <div className="wl-panel wl-behind">
         <div className="wl-row-c"><i className="wl-av">RS</i><span><b>Rajesh Shah</b><small>ABC Polymers · Surat</small></span></div>
         <div className="wl-keys"><span className="brand">Call</span><span>WhatsApp</span></div>
       </div>
-      <div className="wl-brief"><b>PULSE BRIEF</b><i /><i style={{ width: '70%' }} /></div>
+      <div className="wl-brief">
+        <b>PULSE BRIEF</b>
+        <p className="wl-brief-h">Conversation starters</p>
+        <ul>
+          <li style={{ animationDelay: '520ms' }}>Ask how the new Surat plant is coming along</li>
+          <li style={{ animationDelay: '680ms' }}>Their exports to Kenya doubled this year</li>
+        </ul>
+      </div>
     </div>
   )
 }

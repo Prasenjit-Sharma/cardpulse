@@ -36,24 +36,29 @@ export default function Tip({ id, onShown, onDismiss }: { id: TipId; onShown: ()
   const text = TIP_TEXT[id]
 
   useLayoutEffect(() => {
-    const target = document.querySelector<HTMLElement>(`[data-tip="${id}"]`)
+    // the target can be drawn after the tip mounts (the camera's mode rail waits for the camera): keep looking for a while
+    let target: HTMLElement | null = null
+    const used = () => dismiss.current()
+    const find = () => {
+      const t = document.querySelector<HTMLElement>(`[data-tip="${id}"]`)
+      if (t !== target) { target?.removeEventListener('click', used, { capture: true }); t?.addEventListener('click', used, { capture: true }); target = t }
+      return t
+    }
     const place = () => {
-      const m = msg.current
-      if (!target || !m || !target.isConnected) { setGeo(null); return }
-      const b = target.getBoundingClientRect()
+      const t = find(), m = msg.current
+      if (!t || !m || !t.isConnected) { setGeo(null); return }
+      const b = t.getBoundingClientRect()
       if (!b.width || !b.height) { setGeo(null); return }
       const v = { w: window.innerWidth, h: window.innerHeight }
       setGeo({ r: { x: b.left, y: b.top, w: b.width, h: b.height }, v, lay: coachLayout(b, v, m.offsetHeight) })
     }
-    // the camera and sheets slide in: place again once the layout has settled
     const raf = requestAnimationFrame(() => requestAnimationFrame(place))
-    const late = window.setTimeout(place, 400)
-    const used = () => dismiss.current()
-    target?.addEventListener('click', used, { capture: true })
+    let tries = 0
+    const poll = window.setInterval(() => { place(); if (++tries >= 20) clearInterval(poll) }, 300)   // 6 s, then it stays as it is
     window.addEventListener('resize', place)
     window.addEventListener('scroll', place, { capture: true, passive: true })
     return () => {
-      cancelAnimationFrame(raf); clearTimeout(late)
+      cancelAnimationFrame(raf); clearInterval(poll)
       target?.removeEventListener('click', used, { capture: true })
       window.removeEventListener('resize', place)
       window.removeEventListener('scroll', place, { capture: true })

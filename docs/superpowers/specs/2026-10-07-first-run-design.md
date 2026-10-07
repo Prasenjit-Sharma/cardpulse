@@ -111,14 +111,16 @@ replaces the foot with one full-width indigo button and, for a new install, "Loo
 
 | # | Scene | Title (hand-written words in *italics*) | Text |
 |---|---|---|---|
-| 1 | The Pulse mark as a glossy 3D tile | Meet *Pulse* · existing users: CardPulse is now *Pulse* | Business cards become contacts you can call or WhatsApp, in seconds. The pulse of your network. |
+| 1 | The Pulse mark as a glossy 3D tile | Meet *Pulse* (everyone, changed 2026-10-07 at the user's request) | Business cards become contacts you can call or WhatsApp, in seconds. The pulse of your network. |
 | 2 | A 3D stack of cards in the teal scan frame, with contact chips lifting off it | Several cards, *one photo* | Lay a stack of cards flat and take one picture. Everyone on them becomes a contact. |
 | 3 | A tilted live event board (LIVE, the event name, the count, +N today, duplicates, Export CSV) with cards flying in | Built for *expos* and exhibitions | Create an event and every card you scan is filed under it. Duplicates are flagged, and you export each event when it ends. |
 | 4 | A tilted digital card with its QR, and a "left her details at your stall" chip | Your card, *one scan away* | Make your digital card and share it on WhatsApp. At your stall, visitors scan its QR to leave their details. |
-| 5 | A tilted contact card with Call and WhatsApp, and a Pulse Brief card in front | Follow up while it's *warm* | Call, WhatsApp or save to your phone in one tap. Pulse Brief researches the person before you call. |
+| 5 | A Pulse Brief card with two conversation starters, in front of the contact with Call and WhatsApp | Never go into a call *cold* | Pulse Brief reads up on the person and their company, and gives you conversation starters before you call or WhatsApp. |
 
 People and events in the scenes are made up (Rajesh Shah, Anita Kapoor, Neha Gupta, Aarav Mehta, India Plast 2026);
 nothing in them comes from the user's data.
+
+**Replay:** "Take the tour again" also brings every tip back (`resetTips`), so the tips can be seen again on an install that has already used each feature.
 
 **Tips, Swiggy-style coach marks.** The screen dims (ink at 82%), except for a rounded cut-out around the target. The
 cut-out is made with `clip-path` and its even-odd rule, so the target stays bright and tappable through it. A curly

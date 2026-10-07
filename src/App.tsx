@@ -34,7 +34,7 @@ import { deletePack } from './lib/visitorpack'
 import PackPage from './components/PackPage'
 import { localISO } from './lib/followups'
 import { getNative, hideSplash, onNotice, statusBarIcons } from './lib/platform'
-import { markTipSeen, markTourSeen, storage, tipDue, tipForScreen, tourVariant, type TipId, type TourVariant } from './lib/onboarding'
+import { markTipSeen, markTourSeen, resetTips, storage, tipDue, tipForScreen, tourVariant, type TipId, type TourVariant } from './lib/onboarding'
 import Welcome from './components/Welcome'
 import Tip from './components/Tip'
 import { deleteMyCard, emptyCard, listMyCards, MAX_CARDS, planCardRestore, putMyCard, type MyCard } from './lib/mycards'
@@ -625,7 +625,7 @@ export default function App() {
             }}
             onBackup={backupNow} onRestore={restoreFrom} onAccuracy={() => goto('accuracy', 'settings')} onInsights={() => goto('insights', 'settings')} onPlans={() => goto('plans', 'settings')} plansHint={balance ? cardsLine(balance) : userId ? 'What you have left, and what to add' : `Free: ${ALLOWANCE.free.cards} cards a month`}
             onBack={() => setTab('home')}
-            onTour={() => setTour('replay')}
+            onTour={() => { resetTips(storage()); setTour('replay') }}
           />
         )}
         </div>

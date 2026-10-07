@@ -67,9 +67,13 @@
 .wl-keys .dark { background: #15142A; color: #fff }
 .wl-keys .brand { background: #3B2FC9; color: #fff }
 .wl-av { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; font-style: normal; font-size: 13px; font-weight: 700; color: #fff; background: linear-gradient(135deg, #9B8CFF, #3B2FC9) }
-.wl-brief { position: absolute; right: -18px; top: -30px; width: 124px; padding: 10px; border-radius: 14px; background: #15142A; color: #fff; transform: translateZ(40px); box-shadow: 0 20px 30px -12px rgba(16,10,80,.7); animation: wl-lift 420ms var(--ease) 420ms both }
-.wl-brief b { display: block; margin-bottom: 6px; font-size: 11px; font-weight: 750; letter-spacing: .04em; color: #5DD6C8 }
-.wl-brief i { display: block; height: 5px; margin-top: 5px; border-radius: 2px; background: rgba(255,255,255,.45) }
+.wl-behind { transform: translate(-18px, -30px) scale(.94); opacity: .9 }
+.wl-brief { position: absolute; left: 4px; right: -26px; top: 58px; padding: 14px 14px 12px; border-radius: 16px; background: #15142A; color: #fff; transform: translateZ(50px); box-shadow: 0 26px 36px -14px rgba(8,6,40,.8), inset 0 1px 0 rgba(255,255,255,.12); animation: wl-lift 440ms var(--ease) 300ms both }
+.wl-brief b { display: block; font-size: 11px; font-weight: 750; letter-spacing: .05em; color: #5DD6C8 }
+.wl-brief-h { margin: 6px 0 8px; font-family: 'Caveat', cursive; font-weight: 700; font-size: 21px; line-height: 1; color: #fff }
+.wl-brief ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px }
+.wl-brief li { position: relative; padding: 7px 9px 7px 22px; border-radius: 9px; background: rgba(255,255,255,.08); font-size: 12px; line-height: 1.35; color: rgba(255,255,255,.9); animation: wl-lift 360ms var(--ease) both }
+.wl-brief li::before { content: ''; position: absolute; left: 9px; top: 12px; width: 6px; height: 6px; border-radius: 50%; background: #A9A3FF }
 
 .wl-dcard { position: relative; width: 236px; height: 142px; padding: 16px; overflow: hidden; border-radius: 16px; color: #fff; background: linear-gradient(135deg, #2A1F9E, #15142A); box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 34px 44px -18px rgba(8,6,40,.8) }
 .wl-dcard b { display: block; font-size: 17px; font-weight: 750; letter-spacing: -.02em }
