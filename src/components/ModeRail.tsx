@@ -17,7 +17,7 @@ const RAIL: { id: ScanMode; label: string; icon: 'card' | 'sided' | 'group' | 'q
  */
 export default function ModeRail({ mode, onPick, qr = true }: { mode: ScanMode; onPick: (m: ScanMode) => void; qr?: boolean }) {
   return (
-    <div className="mode-rail" role="radiogroup" aria-label="Scan mode">
+    <div className="mode-rail" data-tip="scan-modes" role="radiogroup" aria-label="Scan mode">
       {RAIL.filter((m) => qr || m.id !== 'qr').map((m) => (
         <button key={m.id} role="radio" aria-checked={mode === m.id} aria-label={m.label} className={mode === m.id ? 'on' : ''}
           onClick={() => { if (mode !== m.id) onPick(m.id) }}>

@@ -34,8 +34,9 @@ import { deletePack } from './lib/visitorpack'
 import PackPage from './components/PackPage'
 import { localISO } from './lib/followups'
 import { getNative, hideSplash, onNotice, statusBarIcons } from './lib/platform'
-import { markTourSeen, storage, tourVariant, type TourVariant } from './lib/onboarding'
+import { markTipSeen, markTourSeen, storage, tipDue, tipForScreen, TIP_TEXT, tourVariant, type TipId, type TourVariant } from './lib/onboarding'
 import Welcome from './components/Welcome'
+import Tip from './components/Tip'
 import { deleteMyCard, emptyCard, listMyCards, MAX_CARDS, planCardRestore, putMyCard, type MyCard } from './lib/mycards'
 import Companies from './components/Companies'
 import Home from './components/Home'
@@ -479,6 +480,24 @@ export default function App() {
   /** Plan & cards, coming back to wherever it was opened from: over an open contact (or its brief), so Back returns there. */
   const [plansOver, setPlansOver] = useState(false)
   useBackClose(plansOver, () => setPlansOver(false))
+
+  // one tip at a time, for the screen in front of the user (onboarding.ts decides; the components only mark targets)
+  const page = camOpen ? 'camera' : openCard ? (!open?.review && openCard.status === 'done' ? 'contact' : 'detail') : editorCard ? 'editor' : tab
+  const overlay = gate !== null || !!eventSheet || !!sharingCard || !!stallCard || !!packEvent || plansOver || qrOpen
+  const tipHere = tipForScreen({ tour: !!tour, overlay, page })
+  const [tipOn, setTipOn] = useState<TipId | null>(null)
+  const tipShown = useRef(false)
+  useEffect(() => {
+    if (tipOn && tipOn !== tipHere) {
+      // the screen it belonged to has closed: it was read, or ignored, either way it is done
+      if (tipShown.current) markTipSeen(storage(), tipOn)
+      tipShown.current = false
+      setTipOn(null)
+      return
+    }
+    if (!tipOn && tipHere && tipDue(storage(), tipHere)) setTipOn(tipHere)
+  }, [tipHere, tipOn])
+  const endTip = () => { if (tipOn) markTipSeen(storage(), tipOn); tipShown.current = false; setTipOn(null) }
   const openPlans = () => { if (open) setPlansOver(true); else goto('plans', tab === 'plans' ? backTab : tab) }
   const gotoTab = (t: Tab) => { setContactsFilter(undefined); setContactsCompany(''); goto(t) }
   /** Open Contacts pre-filtered from Home or Companies. The list spans every event, so the event tab resets to All. */
@@ -657,6 +676,7 @@ export default function App() {
       )}
       <input ref={fallbackInput} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { if (e.target.files) void addFiles(e.target.files); e.target.value = '' }} />
       {tour && <Welcome variant={tour} onDone={endTour} />}
+      {tipOn && <Tip key={tipOn} id={tipOn} text={TIP_TEXT[tipOn]} onShown={() => { tipShown.current = true }} onDismiss={endTip} />}
       <Toast toast={toast} onDone={() => setToast(null)} />
       <EventSheet open={!!eventSheet} event={events.find((e) => e.id === eventSheet?.id)} onSave={(d) => saveEvent(d, eventSheet?.id)} onClose={() => setEventSheet(null)} />
       <DialogHost />

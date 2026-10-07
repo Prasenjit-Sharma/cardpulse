@@ -42,7 +42,7 @@ export default function Exhibition({ cards, events, activeEvent, onNew, onEdit, 
       <div className="page-top deep">
         <header className="page-head">
           <h1>Events {events.length > 0 && <span className="count num">{events.length}</span>}</h1>
-          <button className="icon-btn ghost" onClick={onNew} aria-label="New event"><Icon name="plus" size={20} /></button>
+          <button className="icon-btn ghost" onClick={onNew} aria-label="New event" data-tip="events"><Icon name="plus" size={20} /></button>
         </header>
         {events.length > 0 && (
           <div className="figgrid" role="group" aria-label="Events at a glance">
