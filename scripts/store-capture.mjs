@@ -50,6 +50,7 @@ async function main() {
     await nav('Events'); await shot('events', 'India Plast 2026')
     await nav('Contacts')
     await page.getByText('Rajesh Shah').first().click()   // a row opens its quick actions; Open goes to the contact
+    await shot('quick', 'WhatsApp')   // the row's quick actions: Call, WhatsApp, Email
     await page.getByRole('button', { name: /^open$/i }).first().click()
     await page.getByText('24AABCA1234F1Z5').first().waitFor({ timeout: 15_000 })
     await toTop()
