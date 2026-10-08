@@ -56,3 +56,9 @@ test('copyIn names the type from the extension when the picker gives none, and f
   const unreadable = { name: 'drive.pdf', type: 'application/pdf', size: 9, arrayBuffer: async () => { throw new Error('NotReadableError') } }
   await assert.rejects(copyIn(unreadable), /drive\.pdf could not be read/)
 })
+
+test('a pack the server refuses for lack of a plan says how to get lead capture', async () => {
+  const { packErrorMessage } = await import('../src/lib/visitorpack.ts')
+  assert.equal(packErrorMessage('new row violates row-level security policy for table "visitor_packs"'), 'Lead capture and brochures come with any plan or the Exhibition pass.')
+  assert.equal(packErrorMessage('Payload too large'), 'Payload too large')
+})

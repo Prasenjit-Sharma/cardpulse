@@ -93,6 +93,11 @@ export async function loadPack(eventId: string): Promise<Pack> {
 }
 
 /** Uploads new files, removes the ones taken out, and stores the rest. An empty pack is deleted instead. */
+/** The server refuses pack rows and files without a plan or pass (migration 0007): say how to get lead capture. */
+export function packErrorMessage(serverText: string): string {
+  return /row-level security|not_collecting/i.test(serverText) ? 'Lead capture and brochures come with any plan or the Exhibition pass.' : serverText
+}
+
 export async function savePack(owner: string, eventId: string, before: Pack, draft: PackDraft): Promise<Pack> {
   const sb = need()
   const files: PackFile[] = []
@@ -101,7 +106,7 @@ export async function savePack(owner: string, eventId: string, before: Pack, dra
     const path = packPath(owner, eventId, f.name)
     const { error } = await sb.storage.from(BUCKET).upload(path, f, { contentType: f.type, upsert: false })
     // the server's own reason is shown: "Check your connection" hid a refusal that was not about the connection
-    if (error) throw new Error(`Could not upload ${f.name}: ${error.message || 'no reason given'}.`)
+    if (error) throw new Error(/row-level security/i.test(error.message) ? packErrorMessage(error.message) : `Could not upload ${f.name}: ${error.message || 'no reason given'}.`)
     files.push({ name: f.name, path, size: f.size, type: f.type })
   }
   const link = checkLink(draft.linkUrl)
@@ -109,7 +114,7 @@ export async function savePack(owner: string, eventId: string, before: Pack, dra
   const pack: Pack = { note: draft.note.trim().slice(0, MAX_NOTE), linkUrl: link.url, linkLabel: draft.linkLabel.trim().slice(0, MAX_LABEL), files }
   if (isEmptyPack(pack)) { await deletePack(eventId, before); return emptyPack() }
   const { error } = await sb.from('visitor_packs').upsert({ owner_id: owner, event_id: eventId, note: pack.note, link_url: pack.linkUrl, link_label: pack.linkLabel, files: pack.files, updated_at: new Date().toISOString() })
-  if (error) throw new Error('Could not save. Check your connection and try again.')
+  if (error) throw new Error(/row-level security/i.test(error.message) ? packErrorMessage(error.message) : 'Could not save. Check your connection and try again.')
   const gone = removedPaths(before.files, pack.files)
   if (gone.length) await sb.storage.from(BUCKET).remove(gone)               // best effort: a leftover file is harmless
   return pack

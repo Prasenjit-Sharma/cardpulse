@@ -37,6 +37,7 @@ import { localISO } from './lib/followups'
 import { getNative, hideSplash, onNotice, statusBarIcons } from './lib/platform'
 import { markTipSeen, markTourSeen, resetTips, storage, tipDue, tipForScreen, tourVariant, type TipId, type TourVariant } from './lib/onboarding'
 import Welcome from './components/Welcome'
+import LeadLock from './components/LeadLock'
 import Tip from './components/Tip'
 import { deleteMyCard, emptyCard, listMyCards, MAX_CARDS, planCardRestore, putMyCard, type MyCard } from './lib/mycards'
 import Companies from './components/Companies'
@@ -110,6 +111,7 @@ export default function App() {
   const [sharingCard, setSharingCard] = useState<string | null>(null)
   const [stallCard, setStallCard] = useState<string | null>(null)
   const [packEvent, setPackEvent] = useState<string | null>(null)   // the event whose visitor pack is being edited
+  const [leadLock, setLeadLock] = useState(false)   // what lead capture does, for an account without a plan or pass
   const newCard = useMemo(() => (editingCard === 'new' ? emptyCard(settings.accent) : null), [editingCard])   // eslint-disable-line react-hooks/exhaustive-deps
   const editorCard = editingCard === 'new' ? newCard : myCards.find((c) => c.id === editingCard)
   const refreshMyCards = useCallback(async () => setMyCards(await listMyCards()), [])
@@ -596,7 +598,7 @@ export default function App() {
           <Contacts onScan={scan} onPlans={openPlans} cards={cards} events={events} activeEvent={activeEvent} onSelectEvent={setActiveEvent} dupes={dupes} initialFilter={contactsFilter} initialCompany={contactsCompany} onTogglePriority={(id, idx) => void togglePriority(id, idx)}
             onOpen={(id, idx) => setOpen({ id, idx })} onRetryFailed={retryFailed} onUpload={(f) => void addFiles(f)} onMoveToEvent={moveToEvent} onDeleteContacts={deleteContacts} />
         ) : tab === 'exhibition' ? (
-          <Exhibition cards={cards} events={events} activeEvent={activeEvent} onNew={() => setEventSheet({})} onEdit={(id) => setEventSheet({ id })} onDelete={removeEvent} onPack={setPackEvent}
+          <Exhibition cards={cards} events={events} activeEvent={activeEvent} onNew={() => setEventSheet({})} onEdit={(id) => setEventSheet({ id })} onDelete={removeEvent} onPack={setPackEvent} entitled={!!balance?.canCollect} onLocked={() => setLeadLock(true)}
             onScanHere={scanHere} onView={(id) => { setActiveEvent(id); goto('contacts') }}
             onOpenContact={(id, idx) => setOpen({ id, idx })} onTogglePriority={(id, idx) => void togglePriority(id, idx)} />
         ) : tab === 'insights' ? (
@@ -634,7 +636,7 @@ export default function App() {
         <CardShare card={myCards.find((c) => c.id === sharingCard)!} onClose={() => setSharingCard(null)} onStall={() => setStallCard(sharingCard)} />
       )}
       {stallCard && myCards.find((c) => c.id === stallCard) && (
-        <StallMode card={myCards.find((c) => c.id === stallCard)!} events={events} initialEventId={activeEvent || undefined} onClose={() => setStallCard(null)} onPack={setPackEvent} />
+        <StallMode card={myCards.find((c) => c.id === stallCard)!} events={events} initialEventId={activeEvent || undefined} onClose={() => setStallCard(null)} onPack={setPackEvent} entitled={!!balance?.canCollect} onLocked={() => { setStallCard(null); setLeadLock(true) }} />   {/* the stall sits above sheets: close it so the preview shows */}
       )}
       {packEvent && (
         <PackPage eventId={packEvent} eventName={showEvent(events.find((e) => e.id === packEvent)?.name ?? '')} userId={userId} online={online} onClose={() => setPackEvent(null)} />
@@ -679,6 +681,7 @@ export default function App() {
       <input ref={fallbackInput} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { if (e.target.files) void addFiles(e.target.files); e.target.value = '' }} />
       {tour && <Welcome variant={tour} onDone={endTour} />}
       {tipOn && <Tip key={tipOn} id={tipOn} onShown={() => { tipShown.current = true }} onDismiss={endTip} />}
+      <LeadLock open={leadLock} onClose={() => setLeadLock(false)} onPlans={() => { setStallCard(null); openPlans() }} />
       <Toast toast={toast} onDone={() => setToast(null)} />
       <EventSheet open={!!eventSheet} event={events.find((e) => e.id === eventSheet?.id)} onSave={(d) => saveEvent(d, eventSheet?.id)} onClose={() => setEventSheet(null)} />
       <DialogHost />

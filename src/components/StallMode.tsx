@@ -28,7 +28,7 @@ type Step = 'setup' | 'show'
  * screen kept awake. "Just share" is the offline vCard QR (works with zero signal on either phone); "Collect leads"
  * publishes the card and encodes a link instead, so the visitor's own phone can leave their details.
  */
-export default function StallMode({ card, events, initialEventId, onClose, onPack }: { card: MyCard; events: EventRec[]; initialEventId?: string; onClose: () => void; /** "What visitors get" for an event. */ onPack: (eventId: string) => void }) {
+export default function StallMode({ card, events, initialEventId, onClose, onPack, entitled, onLocked }: { card: MyCard; events: EventRec[]; initialEventId?: string; onClose: () => void; /** "What visitors get" for an event. */ onPack: (eventId: string) => void; /** Lead capture comes with a plan or pass (balance.canCollect). */ entitled: boolean; /** Shows what lead capture does, for an account without it. */ onLocked: () => void }) {
   const canvas = useRef<HTMLCanvasElement>(null)
   const [step, setStep] = useState<Step>('setup')
   const photoUrl = useObjectUrl(card.photo)
@@ -92,7 +92,9 @@ export default function StallMode({ card, events, initialEventId, onClose, onPac
           {cloudEnabled && (
             <div className="seg stall-seg" role="group" aria-label="Stall mode">
               <button aria-pressed={mode === 'share'} onClick={() => chooseMode('share')}>Just share</button>
-              <button aria-pressed={mode === 'leads'} onClick={() => chooseMode('leads')} disabled={!canCollect}>Collect leads</button>
+              {canCollect && !entitled
+                ? <button aria-pressed={false} onClick={onLocked}><span className="locked-key"><Icon name="lock" size={14} />Collect leads</span></button>
+                : <button aria-pressed={mode === 'leads'} onClick={() => chooseMode('leads')} disabled={!canCollect}>Collect leads</button>}
             </div>
           )}
           {mode === 'leads' && !canCollect && <p className="hint">Sign in from Settings to collect leads.</p>}
