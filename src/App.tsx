@@ -111,7 +111,9 @@ export default function App() {
   const [sharingCard, setSharingCard] = useState<string | null>(null)
   const [stallCard, setStallCard] = useState<string | null>(null)
   const [packEvent, setPackEvent] = useState<string | null>(null)   // the event whose visitor pack is being edited
-  const [leadLock, setLeadLock] = useState(false)   // what lead capture does, for an account without a plan or pass
+  // what lead capture does, for an account without a plan or pass; opened from the stall it closes the stall first,
+  // since the stall sits above sheets
+  const [leadLock, setLeadLock] = useState(false)
   const newCard = useMemo(() => (editingCard === 'new' ? emptyCard(settings.accent) : null), [editingCard])   // eslint-disable-line react-hooks/exhaustive-deps
   const editorCard = editingCard === 'new' ? newCard : myCards.find((c) => c.id === editingCard)
   const refreshMyCards = useCallback(async () => setMyCards(await listMyCards()), [])
@@ -636,7 +638,7 @@ export default function App() {
         <CardShare card={myCards.find((c) => c.id === sharingCard)!} onClose={() => setSharingCard(null)} onStall={() => setStallCard(sharingCard)} />
       )}
       {stallCard && myCards.find((c) => c.id === stallCard) && (
-        <StallMode card={myCards.find((c) => c.id === stallCard)!} events={events} initialEventId={activeEvent || undefined} onClose={() => setStallCard(null)} onPack={setPackEvent} entitled={!!balance?.canCollect} onLocked={() => { setStallCard(null); setLeadLock(true) }} />   {/* the stall sits above sheets: close it so the preview shows */}
+        <StallMode card={myCards.find((c) => c.id === stallCard)!} events={events} initialEventId={activeEvent || undefined} onClose={() => setStallCard(null)} onPack={setPackEvent} entitled={!!balance?.canCollect} onLocked={() => { setStallCard(null); setLeadLock(true) }} />
       )}
       {packEvent && (
         <PackPage eventId={packEvent} eventName={showEvent(events.find((e) => e.id === packEvent)?.name ?? '')} userId={userId} online={online} onClose={() => setPackEvent(null)} />
