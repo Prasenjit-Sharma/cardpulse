@@ -464,7 +464,7 @@ test('pricing: a charge that fails still returns the read, with the balance from
   } finally { m.restore() }
 })
 
-test('pricing: briefs are checked with begin_brief, charged with charge_brief; pro_only and no_briefs are 402', async () => {
+test('pricing: briefs are checked with begin_brief, charged with charge_brief; plan_needed and no_briefs are 402', async () => {
   let m = mockSupa({ gemini: briefOk, begin: () => [{ allowed: true, reason: null, day_limit: 10, balance: BAL }] })
   try {
     const res = await worker.fetch(briefReq({ contact: who, auth: token('p-5') }), env(SUPA))
@@ -473,7 +473,7 @@ test('pricing: briefs are checked with begin_brief, charged with charge_brief; p
     assert.ok(m.calls.some((c) => c.url.endsWith('/rpc/charge_brief')))
     assert.ok((await res.json()).balance)
   } finally { m.restore() }
-  for (const reason of ['pro_only', 'no_briefs']) {
+  for (const reason of ['plan_needed', 'no_briefs']) {
     m = mockSupa({ begin: () => [{ allowed: false, reason, day_limit: 10, balance: BAL }] })
     try {
       const res = await worker.fetch(briefReq({ contact: who, auth: token('p-6') }), env(SUPA))

@@ -118,14 +118,14 @@ export default function BriefPage({ contact, briefKey, onSave, onAddLink, onPlan
         </div>
       ) : (
         <>
-          {error && (error.code === 'pro_only' || error.code === 'no_briefs') ? (
+          {error && (error.code === 'plan_needed' || error.code === 'no_briefs') ? (
             <div className={`brief-locked${brief ? ' small' : ''}`} role="status">
               <span className="tool-well"><Icon name="spark" size={20} /></span>
               <div className="grow">
-                <strong>{error.code === 'pro_only' ? 'Pulse Brief is part of Pro' : 'No briefs left this month'}</strong>
-                <p>{error.code === 'pro_only'
-                  ? `Pro gives ${ALLOWANCE.pro.briefs} briefs and ${ALLOWANCE.pro.cards} cards a month, for ${rupees(PLANS.find((p) => p.tier === 'pro')!.monthly)} a month.`
-                  : `Your ${ALLOWANCE.pro.briefs} come back on ${balance ? new Date(balance.periodEnd).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'the 1st'}. Or add ${EXTRA_BRIEFS.briefs} extra for ${rupees(EXTRA_BRIEFS.price)}.`}
+                <strong>{error.code === 'plan_needed' ? 'Pulse Brief comes with every plan' : 'No briefs left this month'}</strong>
+                <p>{error.code === 'plan_needed'
+                  ? `Starter gives ${ALLOWANCE.starter.briefs} briefs a month for ${rupees(PLANS.find((p) => p.tier === 'starter')!.monthly)}; Pro gives ${ALLOWANCE.pro.briefs}.`
+                  : `Your ${balance?.briefs.month.allowance ?? ''} come back on ${balance ? new Date(balance.periodEnd).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'the 1st'}. Or add ${EXTRA_BRIEFS.briefs} extra for ${rupees(EXTRA_BRIEFS.price)}.`}
                   {brief ? ' This saved brief still opens.' : ' Saved briefs always open.'}</p>
                 <button className="cta small" onClick={onPlans}>See plans</button>
               </div>

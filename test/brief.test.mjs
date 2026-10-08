@@ -72,8 +72,8 @@ test('one search per contact at a time: a second start joins the first', async (
   assert.equal(pendingBrief('k'), undefined)
 })
 
-test('requestBrief: pro_only and no_briefs keep their codes, and the balance is handed on', async () => {
-  for (const code of ['pro_only', 'no_briefs']) {
+test('requestBrief: plan_needed and no_briefs keep their codes, and the balance is handed on', async () => {
+  for (const code of ['plan_needed', 'no_briefs']) {
     let seen
     const f = async () => new Response(JSON.stringify({ error: { code, message: 'x' }, balance: { tier: 'free' } }), { status: 402 })
     await assert.rejects(requestBrief(person(), { url: 'https://api', token: 't', online: true, fetch: f, onBalance: (b) => { seen = b } }), (e) => e instanceof BriefFailure && e.code === code)
@@ -97,4 +97,9 @@ test('requestBrief keeps the server\'s unchecked mark (written without a web sea
   const f = (unchecked) => async () => new Response(JSON.stringify({ person: 'P', company: 'C', starters: [], links: [], sources: [{ title: 'x.in', uri: 'https://v/1' }], ...(unchecked ? { unchecked: true } : {}) }))
   assert.equal((await requestBrief(person(), { url: 'https://api', token: 't', online: true, fetch: f(true) })).unchecked, true)
   assert.equal('unchecked' in (await requestBrief(person(), { url: 'https://api', token: 't', online: true, fetch: f(false) })), false)
+})
+
+test('requestBrief: a free account out of trial briefs is told Brief comes with every plan', async () => {
+  const f = async () => new Response(JSON.stringify({ error: { code: 'plan_needed' } }), { status: 402 })
+  await assert.rejects(requestBrief(person(), { url: 'https://api', token: 't', online: true, fetch: f }), (e) => e.code === 'plan_needed' && e.message === 'Pulse Brief comes with every plan.')
 })

@@ -1,11 +1,13 @@
 // What the account has left, as the server last said (migration 0005's balance). Kept in memory and localStorage so
 // Home and Pulse Brief can show it offline; every read and brief answer brings a newer one. Pure apart from the small
 // store at the bottom; the fetching hook is in useBalance.ts.
-import { LOW_CARDS, TRIAL_BRIEFS, type Tier } from '../../shared/plans.ts'
+import { isUnlimited, LOW_CARDS, TRIAL_BRIEFS, type Tier } from '../../shared/plans.ts'
 
 export interface Balance {
   tier: Tier
   periodEnd: string
+  /** Lead capture and brochures: an active paid plan or Exhibition pass (migration 0007). */
+  canCollect: boolean
   cards: { month: { used: number; allowance: number }; pass: { used: number; allowance: number; endsAt: string } | null; pack: number; left: number }
   briefs: { month: { used: number; allowance: number }; extra: number; trial: number; left: number }
 }
@@ -16,21 +18,22 @@ const pair = (x: unknown) => !!x && typeof x === 'object' && num((x as { used?: 
 /** The balance from a server answer, or null if it is missing or not in the expected shape. */
 export function parseBalance(x: unknown): Balance | null {
   const b = x as Partial<Balance> | null
-  if (!b || typeof b !== 'object' || !['free', 'plus', 'pro'].includes(b.tier as string) || typeof b.periodEnd !== 'string') return null
+  if (!b || typeof b !== 'object' || !['free', 'starter', 'plus', 'pro', 'unlimited'].includes(b.tier as string) || typeof b.periodEnd !== 'string') return null
   const c = b.cards, r = b.briefs
   if (!c || !pair(c.month) || !num(c.pack) || !num(c.left) || (c.pass !== null && !(pair(c.pass) && typeof c.pass?.endsAt === 'string'))) return null
   if (!r || !pair(r.month) || !num(r.extra) || !num(r.trial) || !num(r.left)) return null
-  return b as Balance
+  // a balance cached before 0007 has no canCollect: off until the server says otherwise
+  return { ...(b as Balance), canCollect: b.canCollect === true }
 }
 
-export const cardsLine = (b: Balance) => (b.cards.left === 0 ? 'No cards left' : `${b.cards.left} ${b.cards.left === 1 ? 'card' : 'cards'} left`)
-export const isLow = (b: Balance) => b.cards.left <= LOW_CARDS
+export const cardsLine = (b: Balance) => (isUnlimited(b.tier) ? 'Unlimited cards' : b.cards.left === 0 ? 'No cards left' : `${b.cards.left} ${b.cards.left === 1 ? 'card' : 'cards'} left`)
+export const isLow = (b: Balance) => !isUnlimited(b.tier) && b.cards.left <= LOW_CARDS
 
-/** The line under Pulse Brief: Pro's month (and extra), or the trial; empty when none are left. */
+/** The line under Pulse Brief: a paid plan's month (and extra), or the trial; empty when none are left. */
 export function briefLine(b: Balance): string {
   if (b.briefs.left === 0) return ''
   const month = Math.max(b.briefs.month.allowance - b.briefs.month.used, 0)
-  if (b.tier === 'pro') return `${month} briefs left this month${b.briefs.extra ? `, ${b.briefs.extra} extra` : ''}`
+  if (b.tier !== 'free') return `${month} ${month === 1 ? 'brief' : 'briefs'} left this month${b.briefs.extra ? `, ${b.briefs.extra} extra` : ''}`
   if (b.briefs.extra) return `${b.briefs.extra} extra briefs left`
   return `${b.briefs.trial} of ${TRIAL_BRIEFS} trial briefs left`
 }

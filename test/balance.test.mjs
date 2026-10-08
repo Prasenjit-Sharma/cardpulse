@@ -7,9 +7,10 @@ const base = { tier: 'free', periodEnd: '2026-11-01T00:00:00+05:30', cards: { mo
 const withCards = (left) => ({ ...base, cards: { ...base.cards, left } })
 
 test('parseBalance accepts the server shape and refuses anything else', () => {
-  assert.deepEqual(parseBalance(base), base)
+  assert.deepEqual(parseBalance(base), { ...base, canCollect: false }, 'a balance cached before 0007 has no canCollect: off')
   const pass = { ...base, cards: { ...base.cards, pass: { used: 3, allowance: 1000, endsAt: '2026-10-12T10:00:00Z' } } }
-  assert.deepEqual(parseBalance(pass), pass)
+  assert.deepEqual(parseBalance(pass), { ...pass, canCollect: false })
+  for (const tier of ['starter', 'plus', 'pro', 'unlimited']) assert.equal(parseBalance({ ...base, tier, canCollect: true })?.canCollect, true, tier)
   for (const bad of [null, {}, 'x', { ...base, tier: 'gold' }, { ...base, cards: { left: 'x' } }, { ...base, briefs: null }]) assert.equal(parseBalance(bad), null)
 })
 
@@ -54,4 +55,13 @@ test('scanGate: ask to sign in only once the session is known to be empty', asyn
   assert.equal(scanGate({ ...base, signedIn: true }), 'open')
   assert.equal(scanGate({ ...base, accounts: false }), 'open')
   assert.equal(scanGate({ ...base, ownKey: true }), 'open')
+})
+
+test('v2: Unlimited shows as unlimited, and every paid plan counts its month of briefs', () => {
+  const unl = { ...base, tier: 'unlimited', canCollect: true, cards: { ...base.cards, month: { used: 40, allowance: 1000000 }, left: 999960 } }
+  assert.equal(cardsLine(unl), 'Unlimited cards')
+  assert.equal(isLow(unl), false)
+  const starter = { ...base, tier: 'starter', briefs: { month: { used: 2, allowance: 3 }, extra: 0, trial: 0, left: 1 } }
+  assert.equal(briefLine(starter), '1 brief left this month')
+  assert.equal(briefLine({ ...starter, tier: 'pro', briefs: { month: { used: 0, allowance: 20 }, extra: 0, trial: 0, left: 20 } }), '20 briefs left this month')
 })
