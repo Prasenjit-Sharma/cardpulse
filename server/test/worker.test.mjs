@@ -695,3 +695,12 @@ test('brake: a Gemini 400 about billing, region or our own setup is the service\
     } finally { m.restore() }
   }
 })
+
+test('rollout: an older database still saying pro_only gets the same plan_needed answer, never a daily-limit message', async () => {
+  const m = mockSupa({ begin: () => [{ allowed: false, reason: 'pro_only', day_limit: 10, balance: BAL }] })
+  try {
+    const res = await worker.fetch(briefReq({ contact: who, auth: token('p-roll') }), env(SUPA))
+    assert.equal(res.status, 402)
+    assert.equal((await res.json()).error.code, 'plan_needed')
+  } finally { m.restore() }
+})

@@ -146,8 +146,8 @@ function Scene({ art }: { art: TourArt }) {
       </div>
       {/* the visitor's phone: your brochure, the moment they sent their details */}
       <div className="wl-visitor">
-        <b>Thanks for visiting!</b>
-        <div className="wl-file"><span className="wl-pdf">PDF</span><span>Mehta Exports catalogue<small>2.4 MB</small></span></div>
+        <b>Thanks — they'll be in touch.</b>
+        <div className="wl-file"><span className="wl-pdf">PDF</span><span>Mehta Exports catalogue<small>PDF · 2.4 MB</small></span></div>
         <div className="wl-file link"><span className="wl-pdf">↗</span><span>mehtaexports.in<small>Our website</small></span></div>
       </div>
     </div>

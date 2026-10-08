@@ -95,7 +95,7 @@ export type TourArt = 'mark' | 'cards' | 'leads' | 'card' | 'brief'
 export const TOUR: { art: TourArt; title: (v: TourVariant) => string; text: string }[] = [
   { art: 'mark', title: () => 'Meet *Pulse*', text: 'Business cards become contacts you can call or WhatsApp, in seconds. The pulse of your network.' },
   { art: 'cards', title: () => 'Several cards, *one photo*', text: 'Lay a stack of cards flat and take one picture. Everyone on them becomes a contact.' },
-  { art: 'leads', title: () => '*Leads* walk in. *Brochures* walk out.', text: 'At your stall, visitors scan your QR, leave their details and get your brochure. Every card you scan is filed under the expo.' },
+  { art: 'leads', title: () => '*Leads* walk in. *Brochures* walk out.', text: 'At your stall, visitors scan your QR, leave their details and get your brochure. Scan with an expo open and every card is filed under it.' },
   { art: 'card', title: () => 'Your card, *one scan away*', text: 'Make your digital card and share it on WhatsApp. At your stall, visitors scan its QR to leave their details.' },
   { art: 'brief', title: () => 'Never go into a call *cold*', text: 'Pulse Brief reads up on the person and their company, and gives you conversation starters before you call or WhatsApp.' },
 ]

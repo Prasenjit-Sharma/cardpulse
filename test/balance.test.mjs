@@ -1,7 +1,7 @@
 // Run: node --test test/balance.test.mjs
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { parseBalance, cardsLine, isLow, briefLine, shouldResume, setBalance, getBalance, forgetBalance } from '../src/lib/balance.ts'
+import { parseBalance, cardsLine, cardsFigure, isLow, briefLine, shouldResume, setBalance, getBalance, forgetBalance } from '../src/lib/balance.ts'
 
 const base = { tier: 'free', periodEnd: '2026-11-01T00:00:00+05:30', cards: { month: { used: 0, allowance: 20 }, pass: null, pack: 0, left: 20 }, briefs: { month: { used: 0, allowance: 0 }, extra: 0, trial: 3, left: 3 } }
 const withCards = (left) => ({ ...base, cards: { ...base.cards, left } })
@@ -64,4 +64,9 @@ test('v2: Unlimited shows as unlimited, and every paid plan counts its month of 
   const starter = { ...base, tier: 'starter', briefs: { month: { used: 2, allowance: 3 }, extra: 0, trial: 0, left: 1 } }
   assert.equal(briefLine(starter), '1 brief left this month')
   assert.equal(briefLine({ ...starter, tier: 'pro', briefs: { month: { used: 0, allowance: 20 }, extra: 0, trial: 0, left: 20 } }), '20 briefs left this month')
+})
+
+test('the Home figure: a count, or Unlimited (never 1000000)', () => {
+  assert.equal(cardsFigure(withCards(132)), '132')
+  assert.equal(cardsFigure({ ...base, tier: 'unlimited', cards: { ...base.cards, left: 1000012 } }), 'Unlimited')
 })

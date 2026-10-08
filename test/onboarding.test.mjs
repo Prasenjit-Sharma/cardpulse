@@ -87,7 +87,7 @@ test('the tour: five screens, each title with its hand-written phrases; everyone
   for (const v of ['new', 'existing', 'replay']) assert.deepEqual(splitHand(TOUR[0].title(v)), ['Meet ', 'Pulse', ''])
   assert.deepEqual(TOUR.map((s) => s.art), ['mark', 'cards', 'leads', 'card', 'brief'])
   assert.equal(TOUR[2].title('new'), '*Leads* walk in. *Brochures* walk out.')
-  assert.equal(TOUR[2].text, 'At your stall, visitors scan your QR, leave their details and get your brochure. Every card you scan is filed under the expo.')
+  assert.equal(TOUR[2].text, 'At your stall, visitors scan your QR, leave their details and get your brochure. Scan with an expo open and every card is filed under it.')
   assert.deepEqual(TOUR.slice(1).map((s) => handParts(s.title('new')).map((p) => p.text).join('')), ['Several cards, one photo', 'Leads walk in. Brochures walk out.', 'Your card, one scan away', 'Never go into a call cold'])
   assert.equal(TOUR[3].text, 'Make your digital card and share it on WhatsApp. At your stall, visitors scan its QR to leave their details.')
   assert.equal(TOUR[4].text, 'Pulse Brief reads up on the person and their company, and gives you conversation starters before you call or WhatsApp.')

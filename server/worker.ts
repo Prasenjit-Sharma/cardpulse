@@ -238,7 +238,8 @@ async function brief(req: Request, env: Env, origin: string | null, ctx?: { wait
   if (use.kind === 'refused') { refused('brief', 'sign_in', rateKey); return fail(401, 'sign_in', 'Sign in to use Pulse Brief.', origin) }
   if (use.kind === 'over') {
     refused('brief', use.reason, rateKey)
-    if (use.reason === 'plan_needed') return json({ error: { code: 'plan_needed', message: 'Pulse Brief comes with every plan.' }, balance: use.balance }, 402, origin)
+    // 'pro_only' is what a database before 0007 says: the same answer, whichever is live first
+    if (use.reason === 'plan_needed' || use.reason === 'pro_only') return json({ error: { code: 'plan_needed', message: 'Pulse Brief comes with every plan.' }, balance: use.balance }, 402, origin)
     if (use.reason === 'no_briefs') return json({ error: { code: 'no_briefs', message: 'No briefs left this month.' }, balance: use.balance }, 402, origin)
     return fail(429, 'daily_limit', `You've used today's ${use.limit} fresh briefs. Saved briefs still open. Resets at 5:30 am.`, origin)
   }

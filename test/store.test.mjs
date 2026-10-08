@@ -63,5 +63,8 @@ test('a public page explains how to delete the account, as Play requires', () =>
 test('slides show only what the screens show', () => {
   const all = SLIDES.map((s) => readFileSync(`store/slides/${s}.html`, 'utf8')).join('\n')
   assert.ok(!/XLS|left her details|Follow-ups due today/.test(all))
+  // the visitor's page says "Thanks — they'll be in touch." and "More from …"; the stall gets contacts and a toast
+  assert.ok(!/Thanks for visiting|tap to open|Your stall · live/.test(all))
+  assert.match(readFileSync('store/slides/01-leads.html', 'utf8'), /they'll be in touch/)
   assert.ok(!/Kenya|doubled/.test(readFileSync('store/capture/seed.ts', 'utf8')))
 })

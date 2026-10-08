@@ -85,7 +85,8 @@ export default function Home({ cards, events, dupes, ready, needsKey, install, b
   onScan: () => void
   onMyCard: () => void
   /** What the account has left to read, when known (signed in); the row opens Plan & cards. */
-  cardsLeft?: { left: number; low: boolean }
+  /** `figure` is the count, or "Unlimited" (balance.ts cardsFigure). */
+  cardsLeft?: { left: number; low: boolean; figure: string }
   onPlans: () => void
 }) {
   const today = localISO()
@@ -166,10 +167,10 @@ export default function Home({ cards, events, dupes, ready, needsKey, install, b
             <button className={`mini${toCheck ? ' check' : ''}`} onClick={onAttention}><span>To check</span><b className="num">{toCheck}</b></button>
             {cardsLeft && (
               // the account's buying power, across the whole grid so the columns above stay aligned
-              <button className={`mini wide${cardsLeft.low ? ' check' : ''}`} onClick={onPlans} aria-label={`${cardsLeft.left} cards left${cardsLeft.left === 0 ? ', none left' : cardsLeft.low ? ', running low' : ''}. Plan and cards`}>
+              <button className={`mini wide${cardsLeft.low ? ' check' : ''}`} onClick={onPlans} aria-label={`${cardsLeft.figure} cards left${cardsLeft.left === 0 ? ', none left' : cardsLeft.low ? ', running low' : ''}. Plan and cards`}>
                 <span>Cards left</span>
                 <em>{cardsLeft.left === 0 ? 'None left · Add cards' : cardsLeft.low ? 'Running low · Add cards' : 'Plan & cards'}</em>
-                <b className="num">{cardsLeft.left}</b>
+                <b className="num">{cardsLeft.figure}</b>
               </button>
             )}
           </div>

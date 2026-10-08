@@ -27,6 +27,8 @@ export function parseBalance(x: unknown): Balance | null {
 }
 
 export const cardsLine = (b: Balance) => (isUnlimited(b.tier) ? 'Unlimited cards' : b.cards.left === 0 ? 'No cards left' : `${b.cards.left} ${b.cards.left === 1 ? 'card' : 'cards'} left`)
+/** The figure Home shows: the count, or "Unlimited" (Unlimited's allowance is a large number, never shown). */
+export const cardsFigure = (b: Balance) => (isUnlimited(b.tier) ? 'Unlimited' : String(b.cards.left))
 export const isLow = (b: Balance) => !isUnlimited(b.tier) && b.cards.left <= LOW_CARDS
 
 /** The line under Pulse Brief: a paid plan's month (and extra), or the trial; empty when none are left. */

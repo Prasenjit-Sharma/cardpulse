@@ -175,6 +175,14 @@ Starter ₹99 (100 cards, 3 Briefs); Plus ₹199 (250, 5); Pro ₹399 (400, 20);
 plan or the Exhibition pass, enforced where leads and brochures arrive. Play Billing (part 2) creates its products from
 this list.
 
+**Rollout order (0007 refuses free accounts' leads the moment it runs):**
+1. Deploy the Worker (it answers the old and the new Brief code alike).
+2. Merge `pulse-brand` to `main`, so GitHub Pages publishes the visitor page that explains "This stall isn't collecting
+   details right now", and ship the app build.
+3. Then run `supabase/migrations/0007_plans_v2.sql` in the Supabase SQL editor.
+
+Free users' Collect-leads QR stops taking details at step 3. Grant test plans with `npm run grant -- <email> starter`.
+
 **Part 1 built 2026-10-05 on branch `pricing`, awaiting migration 0005 and the real-phone check** (spec
 `docs/superpowers/specs/2026-10-05-pricing-design.md`, plan `docs/superpowers/plans/2026-10-05-pricing.md`).
 
