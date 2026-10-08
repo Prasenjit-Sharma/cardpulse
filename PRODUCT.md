@@ -77,15 +77,18 @@ Constraints:
   before Gemini is called and charged after, one card per contact; a daily brake of 300 reads still applies.
 - **Free Gemini tier** may use submitted images to improve Google's products; a paid tier is required before
   real customers.
+- **Plans (v2, 2026-10-09, `shared/plans.ts`):** Free, Starter, Plus, Pro and Unlimited, with Pulse Brief on every paid
+  plan. Lead capture with brochures at a stall is the paid highlight: any plan or the Exhibition pass. Nothing can be
+  bought until Play Billing.
 - **No payments, no team features, no CRM integrations** yet.
 - **Undecided:** pricing, whether the wrapper is Capacitor or a React Native rewrite. DPDP groundwork (consent,
   deletion, retention, privacy page) is built but has not had a legal review.
 
 ## Brand Commitments
 
-Name: **CardPulse** (kept by default, but the user has confirmed nothing is fixed — name, logo, colours and
-structure are all open to replacement). Existing logo is a business card carrying a pulse line. The accent is
-user-selectable (Settings > Appearance), Blue by default.
+Name: **Pulse** (store title "Pulse - Business Card Reader"; tagline "The pulse of your network"), renamed from
+CardPulse on 2026-10-06. The mark is a scan frame around a teal beat whose peaks are three people (D1; geometry in
+`src/lib/brandMark.ts`). The accent is user-selectable (Settings > Appearance), Blue by default.
 
 **Standing look preference (user, 2026-09-24, revised the same day):** professional, modern and compact, and
 distinct from the other scanner apps rather than in their class. The earlier "sit beside Covve and HiHello"

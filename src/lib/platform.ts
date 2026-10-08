@@ -51,6 +51,8 @@ export interface Native {
   waSend?(o: { uris: string[]; jid: string; pkg: string }): Promise<void>
   /** The phone's speech recognizer (Capgo's speech plugin), driven by speech.ts's nativeDictation. */
   speech?: SpeechPlugin
+  /** Lets the start-up splash go (the splash-screen plugin holds it until asked). */
+  hideSplash?(): Promise<void>
 }
 
 /** The parts of the speech plugin dictation uses (kept here so shared code never imports Capacitor). */
@@ -67,6 +69,14 @@ export interface SpeechPlugin {
 let native: Native | null = null
 export const setNative = (n: Native): void => { native = n }
 export const getNative = (): Native | null => native
+
+let splashHidden = false
+/** Lets the start-up splash go, once: App after its first real paint, main.tsx's safety timer, or the error screen. */
+export function hideSplash(): void {
+  if (splashHidden || !native?.hideSplash) return
+  splashHidden = true
+  native.hideSplash().catch(() => { /* already hidden */ })
+}
 
 /** A file name Android's cache and every share target accept: letters and their vowel signs in any script, digits, dot, dash, underscore. */
 export function cacheName(name: string): string {

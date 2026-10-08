@@ -16,7 +16,8 @@ import { useSync } from './lib/useSync'
 import { findDuplicates } from './lib/dupes'
 import { backupDue, backupFileName, backupNudgeUntil, buildBackup, lastBackupAt, markBackedUp, mergeEvents, parseBackup, planRestore, saveBackupFile, snoozeBackupNudge } from './lib/backup'
 import { classifyFailure } from './lib/errors'
-import { cardsLine, forgetBalance, isLow, scanGate, getBalance, parseBalance, setBalance, shouldResume } from './lib/balance'
+import { MAX_ATTEMPTS, nextRetry } from './lib/retry'
+import { cardsFigure, cardsLine, forgetBalance, isLow, scanGate, getBalance, parseBalance, setBalance, shouldResume } from './lib/balance'
 import { ALLOWANCE } from '../shared/plans'
 import PlanPage from './components/PlanPage'
 import { useBalance } from './lib/useBalance'
@@ -33,7 +34,11 @@ import { eventState, openingEvent, showEvent } from './lib/eventname'
 import { deletePack } from './lib/visitorpack'
 import PackPage from './components/PackPage'
 import { localISO } from './lib/followups'
-import { getNative, onNotice, statusBarIcons } from './lib/platform'
+import { getNative, hideSplash, onNotice, statusBarIcons } from './lib/platform'
+import { markTipSeen, markTourSeen, resetTips, storage, tipDue, tipForScreen, tourVariant, type TipId, type TourVariant } from './lib/onboarding'
+import Welcome from './components/Welcome'
+import LeadLock from './components/LeadLock'
+import Tip from './components/Tip'
 import { deleteMyCard, emptyCard, listMyCards, MAX_CARDS, planCardRestore, putMyCard, type MyCard } from './lib/mycards'
 import Companies from './components/Companies'
 import Home from './components/Home'
@@ -57,8 +62,6 @@ type Tab = 'home' | 'companies' | 'mycard' | 'contacts' | 'exhibition' | 'insigh
 const TABS: Tab[] = ['home', 'companies', 'mycard', 'contacts', 'exhibition', 'insights', 'settings', 'accuracy', 'plans']
 const CONCURRENCY = 2
 /** A read that failed for a passing reason (busy reader, weak signal) is tried again by itself this many times. */
-const MAX_ATTEMPTS = 3
-const RETRY_DELAY_MS = 30_000
 // Photos read per Gemini call. 1 = every card is read on its own (the setting in use).
 // Batching is built, tested and deployed: set this to 2-6 and single photos are read together, with Gemini numbering
 // which photo each person came from. Measured on six real cards: 26% fewer input tokens, about 18% cheaper, half the
@@ -108,6 +111,9 @@ export default function App() {
   const [sharingCard, setSharingCard] = useState<string | null>(null)
   const [stallCard, setStallCard] = useState<string | null>(null)
   const [packEvent, setPackEvent] = useState<string | null>(null)   // the event whose visitor pack is being edited
+  // what lead capture does, for an account without a plan or pass; opened from the stall it closes the stall first,
+  // since the stall sits above sheets
+  const [leadLock, setLeadLock] = useState(false)
   const newCard = useMemo(() => (editingCard === 'new' ? emptyCard(settings.accent) : null), [editingCard])   // eslint-disable-line react-hooks/exhaustive-deps
   const editorCard = editingCard === 'new' ? newCard : myCards.find((c) => c.id === editingCard)
   const refreshMyCards = useCallback(async () => setMyCards(await listMyCards()), [])
@@ -121,10 +127,20 @@ export default function App() {
   }, [myCards, editingCard, sharingCard, stallCard])
   const [camOpen, setCamOpen] = useState(false)
   const [qrOpen, setQrOpen] = useState(false)
+  // the welcome tour: decided once the stored cards are read, so someone with contacts never sees "Meet Pulse"
+  const [tour, setTour] = useState<TourVariant | null>(null)
+  const [tourDecided, setTourDecided] = useState(false)
+  useEffect(() => {
+    void Promise.all([listCards(), listMyCards()]).then(([cs, mine]) => {
+      setTour(tourVariant(storage(), { cards: cs.length, photoCards: cs.filter((c) => c.source !== 'qr').length, events: loadEvents().length, myCards: mine.length }))
+    }).finally(() => setTourDecided(true))
+  }, [])
+  // let the splash go once the decision has rendered (not on an animation frame: the held splash stops frames)
+  useEffect(() => { if (tourDecided) hideSplash() }, [tourDecided])
   // Android app: the status bar sits over the page top, so its icons follow the screen under them
   const deepTop = !open && !editingCard && (tab === 'home' || tab === 'contacts' || tab === 'exhibition' || tab === 'mycard')
   const darkTheme = settings.theme === 'dark' || (settings.theme !== 'light' && typeof matchMedia !== 'undefined' && matchMedia('(prefers-color-scheme: dark)').matches)
-  useEffect(() => { void getNative()?.setStatusBar(statusBarIcons({ deepTop, dark: darkTheme, camera: camOpen || qrOpen, stall: !!stallCard })) }, [deepTop, darkTheme, camOpen, qrOpen, stallCard])
+  useEffect(() => { void getNative()?.setStatusBar(statusBarIcons({ deepTop: deepTop || !!tour, dark: darkTheme, camera: camOpen || qrOpen, stall: !!stallCard })) }, [deepTop, tour, darkTheme, camOpen, qrOpen, stallCard])
   // failures the user should hear about (a file that could not be saved, a sign-in that did not finish) show as the banner
   useEffect(() => onNotice(setBanner), [])
   const [qrText, setQrText] = useState('')
@@ -253,13 +269,14 @@ export default function App() {
       for (const c of cards) {
         const cur = (await getCard(c.id)) ?? c
         const online = navigator.onLine
-        const attempts = (cur.attempts ?? 0) + (online ? 1 : 0)          // being offline is not the card's fault
+        const plan = nextRetry(failure, online)                          // offline, or the server's brake: not the card's fault
+        const attempts = (cur.attempts ?? 0) + (plan.countsAsAttempt ? 1 : 0)
         if (failure.transient && attempts < MAX_ATTEMPTS) {
           await putCard({ ...cur, status: 'pending', error: undefined, attempts, waiting: online ? 'retry' : 'offline' })
           if (online) later.push(c.id)
         } else await putCard({ ...cur, status: 'error', error: failure.message, waiting: undefined })
       }
-      if (later.length) setTimeout(() => void enqueueRef.current(later), RETRY_DELAY_MS)
+      if (later.length) setTimeout(() => void enqueueRef.current(later), nextRetry(failure, true).delayMs)
     }
     await refresh()
   }, [refresh, notifyAdded])
@@ -406,6 +423,7 @@ export default function App() {
     if (g === 'sign_in') setGate('sign_in')
     else if (g === 'open') { if (hasLiveCamera) setCamOpen(true); else fallbackInput.current?.click() }
   }
+  const endTour = (action: 'scan' | 'close') => { markTourSeen(storage()); setTour(null); if (action === 'scan') scan() }
   useEffect(() => { if (sessionKnown && scanWaiting.current) scan() }, [sessionKnown])   // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     const params = new URLSearchParams(location.search)
@@ -468,6 +486,24 @@ export default function App() {
   /** Plan & cards, coming back to wherever it was opened from: over an open contact (or its brief), so Back returns there. */
   const [plansOver, setPlansOver] = useState(false)
   useBackClose(plansOver, () => setPlansOver(false))
+
+  // one tip at a time, for the screen in front of the user (onboarding.ts decides; the components only mark targets)
+  const page = camOpen ? 'camera' : openCard ? (!open?.review && openCard.status === 'done' ? 'contact' : 'detail') : editorCard ? 'editor' : tab
+  const overlay = gate !== null || !!eventSheet || !!sharingCard || !!stallCard || !!packEvent || plansOver || qrOpen
+  const tipHere = tipForScreen({ tour: !!tour, overlay, page })
+  const [tipOn, setTipOn] = useState<TipId | null>(null)
+  const tipShown = useRef(false)
+  useEffect(() => {
+    if (tipOn && tipOn !== tipHere) {
+      // the screen it belonged to has closed: it was read, or ignored, either way it is done
+      if (tipShown.current) markTipSeen(storage(), tipOn)
+      tipShown.current = false
+      setTipOn(null)
+      return
+    }
+    if (!tipOn && tipHere && tipDue(storage(), tipHere)) setTipOn(tipHere)
+  }, [tipHere, tipOn])
+  const endTip = () => { if (tipOn) markTipSeen(storage(), tipOn); tipShown.current = false; setTipOn(null) }
   const openPlans = () => { if (open) setPlansOver(true); else goto('plans', tab === 'plans' ? backTab : tab) }
   const gotoTab = (t: Tab) => { setContactsFilter(undefined); setContactsCompany(''); goto(t) }
   /** Open Contacts pre-filtered from Home or Companies. The list spans every event, so the event tab resets to All. */
@@ -551,7 +587,7 @@ export default function App() {
             }}
           />
         ) : tab === 'home' ? (
-          <Home cards={cards} events={events} dupes={dupes} cardsLeft={balance ? { left: balance.cards.left, low: isLow(balance) } : undefined} onPlans={openPlans} ready={readerReady(settings)} needsKey={!serverMode || !!settings.useOwnKey} install={install} backupNudge={nudgeBackup}
+          <Home cards={cards} events={events} dupes={dupes} cardsLeft={balance ? { left: balance.cards.left, low: isLow(balance), figure: cardsFigure(balance) } : undefined} onPlans={openPlans} ready={readerReady(settings)} needsKey={!serverMode || !!settings.useOwnKey} install={install} backupNudge={nudgeBackup}
             onBackup={() => void backupNow().then((m) => setBanner(m), () => setBanner('The export could not be saved. Try again.'))} onSnoozeBackup={() => { snoozeBackupNudge(); setBackupTick((n) => n + 1) }}
             onOpenContact={(id, idx) => setOpen({ id, idx })} onTogglePriority={(id, idx) => void togglePriority(id, idx)} onContacts={() => openContacts()} onCompanies={() => goto('companies')} onStarred={() => openContacts('priority')}
             onAttention={() => openContacts('attention')} onInsights={() => goto('insights', 'home')} onSetup={() => goto('settings', 'home')} onSettings={() => goto('settings', 'home')}
@@ -564,7 +600,7 @@ export default function App() {
           <Contacts onScan={scan} onPlans={openPlans} cards={cards} events={events} activeEvent={activeEvent} onSelectEvent={setActiveEvent} dupes={dupes} initialFilter={contactsFilter} initialCompany={contactsCompany} onTogglePriority={(id, idx) => void togglePriority(id, idx)}
             onOpen={(id, idx) => setOpen({ id, idx })} onRetryFailed={retryFailed} onUpload={(f) => void addFiles(f)} onMoveToEvent={moveToEvent} onDeleteContacts={deleteContacts} />
         ) : tab === 'exhibition' ? (
-          <Exhibition cards={cards} events={events} activeEvent={activeEvent} onNew={() => setEventSheet({})} onEdit={(id) => setEventSheet({ id })} onDelete={removeEvent} onPack={setPackEvent}
+          <Exhibition cards={cards} events={events} activeEvent={activeEvent} onNew={() => setEventSheet({})} onEdit={(id) => setEventSheet({ id })} onDelete={removeEvent} onPack={setPackEvent} entitled={!!balance?.canCollect} onLocked={() => setLeadLock(true)}
             onScanHere={scanHere} onView={(id) => { setActiveEvent(id); goto('contacts') }}
             onOpenContact={(id, idx) => setOpen({ id, idx })} onTogglePriority={(id, idx) => void togglePriority(id, idx)} />
         ) : tab === 'insights' ? (
@@ -593,6 +629,7 @@ export default function App() {
             }}
             onBackup={backupNow} onRestore={restoreFrom} onAccuracy={() => goto('accuracy', 'settings')} onInsights={() => goto('insights', 'settings')} onPlans={() => goto('plans', 'settings')} plansHint={balance ? cardsLine(balance) : userId ? 'What you have left, and what to add' : `Free: ${ALLOWANCE.free.cards} cards a month`}
             onBack={() => setTab('home')}
+            onTour={() => { resetTips(storage()); setTour('replay') }}
           />
         )}
         </div>
@@ -601,7 +638,7 @@ export default function App() {
         <CardShare card={myCards.find((c) => c.id === sharingCard)!} onClose={() => setSharingCard(null)} onStall={() => setStallCard(sharingCard)} />
       )}
       {stallCard && myCards.find((c) => c.id === stallCard) && (
-        <StallMode card={myCards.find((c) => c.id === stallCard)!} events={events} initialEventId={activeEvent || undefined} onClose={() => setStallCard(null)} onPack={setPackEvent} />
+        <StallMode card={myCards.find((c) => c.id === stallCard)!} events={events} initialEventId={activeEvent || undefined} onClose={() => setStallCard(null)} onPack={setPackEvent} entitled={!!balance?.canCollect} onLocked={() => { setStallCard(null); setLeadLock(true) }} />
       )}
       {packEvent && (
         <PackPage eventId={packEvent} eventName={showEvent(events.find((e) => e.id === packEvent)?.name ?? '')} userId={userId} online={online} onClose={() => setPackEvent(null)} />
@@ -644,6 +681,9 @@ export default function App() {
           }} />
       )}
       <input ref={fallbackInput} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { if (e.target.files) void addFiles(e.target.files); e.target.value = '' }} />
+      {tour && <Welcome variant={tour} onDone={endTour} />}
+      {tipOn && <Tip key={tipOn} id={tipOn} onShown={() => { tipShown.current = true }} onDismiss={endTip} />}
+      <LeadLock open={leadLock} onClose={() => setLeadLock(false)} onPlans={() => { setStallCard(null); openPlans() }} />
       <Toast toast={toast} onDone={() => setToast(null)} />
       <EventSheet open={!!eventSheet} event={events.find((e) => e.id === eventSheet?.id)} onSave={(d) => saveEvent(d, eventSheet?.id)} onClose={() => setEventSheet(null)} />
       <DialogHost />

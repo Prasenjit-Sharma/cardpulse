@@ -12,6 +12,9 @@ const FILES = [
   ...walk('src').filter((p) => /\.(ts|tsx|css)$/.test(p)),
   'index.html', 'vite.config.ts', 'capacitor.config.ts', 'public/privacy.html',
   'android/app/src/main/res/values/strings.xml', 'server/worker.ts',
+  ...walk('shared').filter((p) => p.endsWith('.ts')),
+  ...walk('android/app/src/main/java').filter((p) => p.endsWith('.java')),
+  'android/app/src/main/AndroidManifest.xml',
 ]
 
 test('no file users read from says CardPulse', () => {

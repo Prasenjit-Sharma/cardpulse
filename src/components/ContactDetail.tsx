@@ -521,7 +521,7 @@ export default function ContactDetail({ card, index, events, dupes, myCards, onC
       {card.status === 'done' && c && !editing && (
         <>
           {/* the trade bar: the next action is always one tap, never behind a menu */}
-          <div className="trade-bar" role="group" aria-label="Contact actions">
+          <div className="trade-bar" role="group" aria-label="Contact actions" data-tip="contact">
             {callNumber(c)
               ? <a className="trade primary" href={telHref(callNumber(c)!)}><Icon name="phone" size={18} />Call</a>
               : c.emails[0] ? <a className="trade primary" href={`mailto:${c.emails[0]}`}><Icon name="mail" size={18} />Email</a> : null}

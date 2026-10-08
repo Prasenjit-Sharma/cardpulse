@@ -11,7 +11,7 @@ import { rowFigure, shortDate } from '../lib/watch'
 import { localISO } from '../lib/followups'
 import WatchRow from './WatchRow'
 
-export default function Exhibition({ cards, events, activeEvent, onNew, onEdit, onDelete, onPack, onScanHere, onView, onOpenContact, onTogglePriority }: {
+export default function Exhibition({ cards, events, activeEvent, onNew, onEdit, onDelete, onPack, onScanHere, onView, onOpenContact, onTogglePriority, entitled, onLocked }: {
   cards: CardRecord[]
   events: EventRec[]
   activeEvent: string
@@ -20,6 +20,9 @@ export default function Exhibition({ cards, events, activeEvent, onNew, onEdit, 
   onDelete: (id: string) => void
   /** "What visitors get": files and a link for the event's Collect-leads page. */
   onPack: (id: string) => void
+  /** Lead capture comes with a plan or pass; without it What visitors get shows the preview. */
+  entitled: boolean
+  onLocked: () => void
   onScanHere: (id: string) => void
   onView: (id: string) => void
   onOpenContact: (id: string, idx: number) => void
@@ -42,7 +45,7 @@ export default function Exhibition({ cards, events, activeEvent, onNew, onEdit, 
       <div className="page-top deep">
         <header className="page-head">
           <h1>Events {events.length > 0 && <span className="count num">{events.length}</span>}</h1>
-          <button className="icon-btn ghost" onClick={onNew} aria-label="New event"><Icon name="plus" size={20} /></button>
+          <button className="icon-btn ghost" onClick={onNew} aria-label="New event" data-tip="events"><Icon name="plus" size={20} /></button>
         </header>
         {events.length > 0 && (
           <div className="figgrid" role="group" aria-label="Events at a glance">
@@ -85,7 +88,7 @@ export default function Exhibition({ cards, events, activeEvent, onNew, onEdit, 
               <Sheet open={menu === e.id} onClose={() => setMenu('')} title={showEvent(e.name)}>
                 <SheetItem icon="file" label="Export CSV" disabled={!done.length} onClick={() => { setMenu(''); download(`${fileSafe(e.name)}.csv`, buildCsv(done, eventName), 'text/csv') }} />
                 <SheetItem icon="download" label="Export vCard" disabled={!done.length} onClick={() => { setMenu(''); download(`${fileSafe(e.name)}.vcf`, buildVcf(done, eventName, currentNameFormat()), 'text/vcard') }} />
-                <SheetItem icon="upload" label="What visitors get" hint="Files and a link for your Collect-leads page" onClick={() => { setMenu(''); onPack(e.id) }} />
+                <SheetItem icon="upload" label="What visitors get" hint={entitled ? 'Files and a link for your Collect-leads page' : 'With any plan or the Exhibition pass'} onClick={() => { setMenu(''); if (entitled) onPack(e.id); else onLocked() }} />
                 <SheetItem icon="edit" label="Edit name and dates" onClick={() => { setMenu(''); onEdit(e.id) }} />
                 <SheetItem icon="trash" danger label="Delete event" onClick={() => { setMenu(''); onDelete(e.id) }} />
               </Sheet>

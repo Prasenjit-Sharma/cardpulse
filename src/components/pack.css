@@ -29,3 +29,10 @@
 .brief-page.pack-page { z-index: 35 }
 .pack-entry { align-self: flex-start; gap: 6px; font-size: var(--t-s) }
 .pack-note .mic { bottom: 12px }
+
+/* lead capture preview (LeadLock): three steps, a visitor's side of the stall */
+.lead-steps { list-style: none; margin: 4px 0 14px; padding: 0; display: grid; gap: 10px }
+.lead-steps li { display: flex; align-items: center; gap: 12px; color: var(--ink) }
+.lead-steps b { color: var(--brand); margin-right: 4px }
+.lead-step-icon { flex: none; width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; background: var(--brand-wash); color: var(--brand) }
+.locked-key { display: inline-flex; align-items: center; gap: 6px }

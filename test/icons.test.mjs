@@ -30,9 +30,22 @@ test('splash screens, light and dark, portrait and landscape', () => {
       const l = head(`${RES}/drawable-land${night}-${d}/splash.png`); assert.deepEqual([l.w, l.h], [h, w])
     }
   }
-  assert.match(readFileSync(`${RES}/values/splash_ground.xml`, 'utf8'), /#F4F4FA/)
-  assert.match(readFileSync(`${RES}/values-night/splash_ground.xml`, 'utf8'), /#0F0F17/)
+  assert.match(readFileSync(`${RES}/values/splash_ground.xml`, 'utf8'), /#3B2FC9/)
+  assert.match(readFileSync(`${RES}/values-night/splash_ground.xml`, 'utf8'), /#221A7E/)
   assert.match(readFileSync(`${RES}/values/styles.xml`, 'utf8'), /<item name="windowSplashScreenBackground">@color\/splash_ground<\/item>/)
+  // on indigo the tile would vanish: the splash shows the mark alone, drawing its beat and then beating once
+  const styles = readFileSync(`${RES}/values/styles.xml`, 'utf8')
+  assert.match(styles, /<item name="windowSplashScreenAnimatedIcon">@drawable\/splash_animated<\/item>/)
+  assert.match(styles, /<item name="windowSplashScreenAnimationDuration">1000<\/item>/)
+})
+test('the animated splash icon draws the beat, pops the three people in and beats once, within a second', () => {
+  const avd = readFileSync(`${RES}/drawable/splash_animated.xml`, 'utf8')
+  assert.match(avd, /<animated-vector/)
+  assert.match(avd, /android:propertyName="trimPathEnd"/)
+  assert.equal(new Set(avd.match(/android:name="dot\d"/g)).size, 3)
+  assert.match(avd, /<keyframe android:fraction="0.8" android:value="1.08"/)
+  const ends = [...avd.matchAll(/android:duration="(\d+)"(?:\s+android:startOffset="(\d+)")?/g)].map(([, d, o]) => Number(d) + Number(o ?? 0))
+  assert.ok(ends.length >= 5 && Math.max(...ends) <= 1000, String(ends))
 })
 test('store icons: Play 512, App Store 1024 with no alpha channel (Apple rejects one)', () => {
   assert.equal(head('store/play-icon-512.png').w, 512)

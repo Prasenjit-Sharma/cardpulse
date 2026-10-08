@@ -6,12 +6,12 @@ import { secretKey } from './secret.mjs'
 
 const URL = 'https://xqwslvteyhfmnxcnlpsg.supabase.co'
 const ITEMS = {
-  plus: ['grant_plan', 'plus'], pro: ['grant_plan', 'pro'],
+  starter: ['grant_plan', 'starter'], plus: ['grant_plan', 'plus'], pro: ['grant_plan', 'pro'], unlimited: ['grant_plan', 'unlimited'],
   pack50: ['grant_pack', 'cards', 50], pack100: ['grant_pack', 'cards', 100], pack200: ['grant_pack', 'cards', 200],
   briefs10: ['grant_pack', 'briefs', 10], pass: ['grant_pass'],
 }
 const [email, what, n] = process.argv.slice(2)
-if (!email || !ITEMS[what]) { console.error('Usage: npm run grant -- <email> plus|pro [months] | pack50|pack100|pack200 | briefs10 | pass'); process.exit(1) }
+if (!email || !ITEMS[what]) { console.error('Usage: npm run grant -- <email> starter|plus|pro|unlimited [months] | pack50|pack100|pack200 | briefs10 | pass'); process.exit(1) }
 
 const SECRET = await secretKey()
 const admin = createClient(URL, SECRET, { auth: { autoRefreshToken: false, persistSession: false } })
@@ -31,4 +31,4 @@ const args = fn === 'grant_plan' ? { p_user: user.id, p_tier: a, p_months: Numbe
 const { data, error } = await admin.rpc(fn, args)
 if (error) { console.error(error.message); process.exit(1) }
 console.log(`Granted ${what} to ${email}. Now:`)
-console.log(`  plan ${data.tier}, cards left ${data.cards.left} (month ${data.cards.month.used}/${data.cards.month.allowance}, pack ${data.cards.pack}${data.cards.pass ? `, pass ${data.cards.pass.used}/${data.cards.pass.allowance}` : ''}), briefs left ${data.briefs.left}`)
+console.log(`  plan ${data.tier}, cards left ${data.cards.left} (month ${data.cards.month.used}/${data.cards.month.allowance}, pack ${data.cards.pack}${data.cards.pass ? `, pass ${data.cards.pass.used}/${data.cards.pass.allowance}` : ''}), briefs left ${data.briefs.left}, lead capture ${data.canCollect ? 'on' : 'off'}`)

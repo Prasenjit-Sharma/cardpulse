@@ -3,6 +3,7 @@ import { App } from '@capacitor/app'
 import { Browser } from '@capacitor/browser'
 import { Directory, Filesystem } from '@capacitor/filesystem'
 import { Share } from '@capacitor/share'
+import { SplashScreen } from '@capacitor/splash-screen'
 import { SpeechRecognition } from '@capgo/capacitor-speech-recognition'
 import { sliceRanges, type ContactFields, type Native, type SpeechPlugin } from './platform'
 
@@ -44,4 +45,6 @@ export const native: Native = {
   setStatusBar: async (icons) => { await SystemBars.setStyle({ style: icons === 'light' ? SystemBarsStyle.Dark : SystemBarsStyle.Light }) },
   // the phone's speech recognizer, for dictation (speech.ts)
   speech: SpeechRecognition as unknown as SpeechPlugin,
+  // the splash stays up (launchAutoHide: false in capacitor.config.ts) until the app has drawn its first real screen
+  hideSplash: async () => { await SplashScreen.hide({ fadeOutDuration: 200 }) },
 }

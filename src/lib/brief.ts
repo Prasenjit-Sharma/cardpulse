@@ -54,7 +54,7 @@ export function addLink(c: Contact, l: BriefLink): Contact {
 
 /* ---------- the call ---------- */
 
-export type FailureCode = 'sign_in' | 'daily_limit' | 'offline' | 'failed' | 'pro_only' | 'no_briefs'
+export type FailureCode = 'sign_in' | 'daily_limit' | 'offline' | 'failed' | 'plan_needed' | 'no_briefs'
 export class BriefFailure extends Error {
   code: FailureCode
   constructor(code: FailureCode, message: string) { super(message); this.code = code }
@@ -62,9 +62,9 @@ export class BriefFailure extends Error {
 const MESSAGE: Record<FailureCode, string> = {
   sign_in: 'Sign in to use Pulse Brief.', daily_limit: "You've used today's 10 fresh briefs. Saved briefs still open. Resets at 5:30 am.",
   offline: 'Pulse Brief needs a connection.', failed: "Couldn't make the brief. Try again.",
-  pro_only: 'Pulse Brief is part of Pro.', no_briefs: 'No briefs left this month.',
+  plan_needed: 'Pulse Brief comes with every plan.', no_briefs: 'No briefs left this month.',
 }
-const SERVER_CODES = new Set<FailureCode>(['daily_limit', 'sign_in', 'pro_only', 'no_briefs'])
+const SERVER_CODES = new Set<FailureCode>(['daily_limit', 'sign_in', 'plan_needed', 'no_briefs'])
 
 /** Asks the server for a brief. Every failure becomes a BriefFailure the page can show as it is. */
 /**

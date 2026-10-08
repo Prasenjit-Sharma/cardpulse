@@ -1,0 +1,191 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "inter",
+        "createdAt": "2026-09-29T16:16:48.235Z",
+        "reason": "Project design system: src/styles.css header names Inter as the one UI face; predates this session"
+      },
+      {
+        "rule": "clipped-overflow-container",
+        "value": "*",
+        "files": [
+          ".superpowers/brainstorm/12308-1791309279/content/tour-style.html"
+        ],
+        "createdAt": "2026-10-06T18:34:51.248Z",
+        "reason": "Claude: brainstorm mockup; the phone frame clips its screen on purpose, no popovers inside"
+      },
+      {
+        "rule": "low-contrast",
+        "value": "*",
+        "files": [
+          ".superpowers/brainstorm/12308-1791309279/content/onboarding-v2.html"
+        ],
+        "createdAt": "2026-10-07T14:00:24.466Z",
+        "reason": "Claude: throwaway brainstorm mockup; phone frame clips on purpose, contrast is checked in the real build"
+      },
+      {
+        "rule": "clipped-overflow-container",
+        "value": "*",
+        "files": [
+          ".superpowers/brainstorm/12308-1791309279/content/onboarding-v2.html"
+        ],
+        "createdAt": "2026-10-07T14:00:24.475Z",
+        "reason": "Claude: throwaway brainstorm mockup; phone frame clips on purpose, contrast is checked in the real build"
+      },
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          ".superpowers/brainstorm/12308-1791309279/content/onboarding-v2.html"
+        ],
+        "createdAt": "2026-10-07T14:00:39.388Z",
+        "reason": "Claude: throwaway brainstorm mockup; the tiny text is decorative illustration inside a phone mock, not functional UI"
+      },
+      {
+        "rule": "undersized-ui-text",
+        "value": "*",
+        "files": [
+          ".superpowers/brainstorm/12308-1791309279/content/onboarding-v2.html"
+        ],
+        "createdAt": "2026-10-07T14:00:39.398Z",
+        "reason": "Claude: throwaway brainstorm mockup; the tiny text is decorative illustration inside a phone mock, not functional UI"
+      },
+      {
+        "rule": "low-contrast",
+        "value": "*",
+        "files": [
+          ".superpowers/brainstorm/5845-1791381722/content/onboarding-v3.html"
+        ],
+        "createdAt": "2026-10-07T14:07:57.500Z",
+        "reason": "Claude: throwaway brainstorm mockup (phone frames, decorative illustration text)"
+      },
+      {
+        "rule": "clipped-overflow-container",
+        "value": "*",
+        "files": [
+          ".superpowers/brainstorm/5845-1791381722/content/onboarding-v3.html"
+        ],
+        "createdAt": "2026-10-07T14:07:57.510Z",
+        "reason": "Claude: throwaway brainstorm mockup (phone frames, decorative illustration text)"
+      },
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          ".superpowers/brainstorm/5845-1791381722/content/onboarding-v3.html"
+        ],
+        "createdAt": "2026-10-07T14:07:57.519Z",
+        "reason": "Claude: throwaway brainstorm mockup (phone frames, decorative illustration text)"
+      },
+      {
+        "rule": "undersized-ui-text",
+        "value": "*",
+        "files": [
+          ".superpowers/brainstorm/5845-1791381722/content/onboarding-v3.html"
+        ],
+        "createdAt": "2026-10-07T14:07:57.528Z",
+        "reason": "Claude: throwaway brainstorm mockup (phone frames, decorative illustration text)"
+      },
+      {
+        "rule": "low-contrast",
+        "value": "*",
+        "files": [
+          ".superpowers/brainstorm/5845-1791381722/content/tips-fonts.html"
+        ],
+        "createdAt": "2026-10-07T14:10:46.626Z",
+        "reason": "Claude: throwaway brainstorm mockup (phone frames, decorative placeholder UI)"
+      },
+      {
+        "rule": "clipped-overflow-container",
+        "value": "*",
+        "files": [
+          ".superpowers/brainstorm/5845-1791381722/content/tips-fonts.html"
+        ],
+        "createdAt": "2026-10-07T14:10:46.635Z",
+        "reason": "Claude: throwaway brainstorm mockup (phone frames, decorative placeholder UI)"
+      },
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          ".superpowers/brainstorm/5845-1791381722/content/tips-fonts.html"
+        ],
+        "createdAt": "2026-10-07T14:10:46.644Z",
+        "reason": "Claude: throwaway brainstorm mockup (phone frames, decorative placeholder UI)"
+      },
+      {
+        "rule": "undersized-ui-text",
+        "value": "*",
+        "files": [
+          ".superpowers/brainstorm/5845-1791381722/content/tips-fonts.html"
+        ],
+        "createdAt": "2026-10-07T14:10:46.651Z",
+        "reason": "Claude: throwaway brainstorm mockup (phone frames, decorative placeholder UI)"
+      },
+      {
+        "rule": "low-contrast",
+        "value": "*",
+        "files": [
+          ".superpowers/brainstorm/5845-1791381722/content/compare-fonts.html"
+        ],
+        "createdAt": "2026-10-07T14:14:09.861Z",
+        "reason": "Claude: throwaway brainstorm mockup (phone frames, decorative placeholder UI)"
+      },
+      {
+        "rule": "clipped-overflow-container",
+        "value": "*",
+        "files": [
+          ".superpowers/brainstorm/5845-1791381722/content/compare-fonts.html"
+        ],
+        "createdAt": "2026-10-07T14:14:09.869Z",
+        "reason": "Claude: throwaway brainstorm mockup (phone frames, decorative placeholder UI)"
+      },
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          ".superpowers/brainstorm/5845-1791381722/content/compare-fonts.html"
+        ],
+        "createdAt": "2026-10-07T14:14:09.877Z",
+        "reason": "Claude: throwaway brainstorm mockup (phone frames, decorative placeholder UI)"
+      },
+      {
+        "rule": "undersized-ui-text",
+        "value": "*",
+        "files": [
+          ".superpowers/brainstorm/5845-1791381722/content/compare-fonts.html"
+        ],
+        "createdAt": "2026-10-07T14:14:09.885Z",
+        "reason": "Claude: throwaway brainstorm mockup (phone frames, decorative placeholder UI)"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "caveat",
+        "createdAt": "2026-10-07T14:25:52.890Z",
+        "reason": "user confirmed 2026-10-07: Caveat hand-written accent for first-run titles and tips; recorded in DESIGN.md"
+      },
+      {
+        "rule": "dark-glow",
+        "value": "*",
+        "files": [
+          "store/slides/01-leads.html"
+        ],
+        "createdAt": "2026-10-08T19:19:19.029Z",
+        "reason": "user approved 2026-10-07/08: the store slides' soft brand glows and indigo-tinted phone shadows match slides 02-08 and the tour"
+      },
+      {
+        "rule": "nested-cards",
+        "value": "*",
+        "files": [
+          "store/slides/01-leads.html"
+        ],
+        "createdAt": "2026-10-08T19:29:43.521Z",
+        "reason": "Claude: store screenshot draws two phone mockups whose rows depict the app's own list UI; the nesting is the phone frame, not a page layout"
+      }
+    ]
+  }
+}

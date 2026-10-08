@@ -70,10 +70,13 @@ export class GeminiError extends Error {
   /** Our server's error code (no_cards, sign_in, daily_limit…) and, with no_cards, the balance it sent. */
   code?: string
   balance?: unknown
-  constructor(message: string, status?: number, extra?: { code?: string; balance?: unknown }) {
+  /** Seconds the server asked us to wait (its Retry-After), for our own brake. */
+  retryAfter?: number
+  constructor(message: string, status?: number, extra?: { code?: string; balance?: unknown; retryAfter?: number }) {
     super(message)
     this.status = status
     this.code = extra?.code
+    this.retryAfter = extra?.retryAfter
     this.balance = extra?.balance
   }
 }

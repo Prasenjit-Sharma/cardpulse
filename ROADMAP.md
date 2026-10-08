@@ -162,11 +162,26 @@ its own commit on `main`; tag `pre-redesign` marks the app before it. Awaiting t
 
 The store title is "Pulse - Business Card Reader", and everywhere else it is "Pulse", with the tagline "The pulse of your network". Four parts:
 1. Rename and the new mark (a scan frame, a teal beat, three people-dots): built, awaiting the phone check.
-2. First-run welcome and in-context tips.
-3. SEO and store listings (business card reader, card scanner, card reader, expo, exhibition), plus the website landing page.
+2. First-run welcome and in-context tips, plus the splash held until the app has drawn: built, awaiting the phone check.
+3. Google Play listing (text, 8 screenshots, feature graphic, Data safety draft): built, in `store/`. The website and the App Store listing come later.
 4. Native payments: Play Billing, then Apple IAP (Razorpay later). This is Phase 4 part 2 below.
 
 ### Phase 4: Packs and payments (about 2 weeks)
+
+**Plans v2 built 2026-10-09 on `pulse-brand`, awaiting migration 0007 and the phone check** (spec
+`docs/superpowers/specs/2026-10-09-plans-v2-design.md`). Supersedes the tiers below: Free 20 cards and 3 trial Briefs;
+Starter ₹99 (100 cards, 3 Briefs); Plus ₹199 (250, 5); Pro ₹399 (400, 20); Unlimited ₹799 (fair use 200 cards a day,
+30 Briefs); yearly at about two months free; the pass and packs as before. Lead capture with brochures comes with any
+plan or the Exhibition pass, enforced where leads and brochures arrive. Play Billing (part 2) creates its products from
+this list.
+
+**Rollout order (0007 refuses free accounts' leads the moment it runs):**
+1. Deploy the Worker (it answers the old and the new Brief code alike).
+2. Merge `pulse-brand` to `main`, so GitHub Pages publishes the visitor page that explains "This stall isn't collecting
+   details right now", and ship the app build.
+3. Then run `supabase/migrations/0007_plans_v2.sql` in the Supabase SQL editor.
+
+Free users' Collect-leads QR stops taking details at step 3. Grant test plans with `npm run grant -- <email> starter`.
 
 **Part 1 built 2026-10-05 on branch `pricing`, awaiting migration 0005 and the real-phone check** (spec
 `docs/superpowers/specs/2026-10-05-pricing-design.md`, plan `docs/superpowers/plans/2026-10-05-pricing.md`).

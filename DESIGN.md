@@ -306,6 +306,14 @@ in-app `Logo` draws from it (its tile follows the accent colour; `tone="light"` 
 `npm run icons` renders every launcher icon, splash, web icon and store icon from it. The wordmark is "Pulse" in Inter
 at weight 750, and the tagline is "The pulse of your network".
 
+## First run: the one hand-written, layered surface
+
+The welcome tour and the coach-mark tips sit above the app, so they are the one place that uses depth (soft offset
+shadows, CSS perspective scenes) and a second typeface. The key words of each tour title, and each tip's opener
+("psst, quick tip"), are hand-written in **Caveat 700** (bundled via `@fontsource/caveat`, Latin only), in `--brand`
+on light grounds and light indigo #A9A3FF on dark. Everything else on these surfaces stays Inter. Decided with the
+user on 2026-10-07: "We are building relationships." Code: `src/components/Welcome.tsx`, `Tip.tsx`, `welcome.css`.
+
 ## Colors
 
 A trading screen in one brand colour, Neel Indigo, with neutrals tinted toward it and three state colours that each mean one thing.

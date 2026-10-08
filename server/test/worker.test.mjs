@@ -1,7 +1,7 @@
 // Run: node --test server/test
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import worker, { checkRate, usageLine } from '../worker.ts'
+import worker, { checkRate, rateHit, rateWait, usageLine } from '../worker.ts'
 
 const GOOD = 'https://prasenjit-sharma.github.io'
 const png = Buffer.from('fake-image-bytes').toString('base64')
@@ -464,7 +464,7 @@ test('pricing: a charge that fails still returns the read, with the balance from
   } finally { m.restore() }
 })
 
-test('pricing: briefs are checked with begin_brief, charged with charge_brief; pro_only and no_briefs are 402', async () => {
+test('pricing: briefs are checked with begin_brief, charged with charge_brief; plan_needed and no_briefs are 402', async () => {
   let m = mockSupa({ gemini: briefOk, begin: () => [{ allowed: true, reason: null, day_limit: 10, balance: BAL }] })
   try {
     const res = await worker.fetch(briefReq({ contact: who, auth: token('p-5') }), env(SUPA))
@@ -473,7 +473,7 @@ test('pricing: briefs are checked with begin_brief, charged with charge_brief; p
     assert.ok(m.calls.some((c) => c.url.endsWith('/rpc/charge_brief')))
     assert.ok((await res.json()).balance)
   } finally { m.restore() }
-  for (const reason of ['pro_only', 'no_briefs']) {
+  for (const reason of ['plan_needed', 'no_briefs']) {
     m = mockSupa({ begin: () => [{ allowed: false, reason, day_limit: 10, balance: BAL }] })
     try {
       const res = await worker.fetch(briefReq({ contact: who, auth: token('p-6') }), env(SUPA))
@@ -633,5 +633,74 @@ test('a brief that ran no search is nudged once, in the same conversation and th
   try {
     const body = await (await worker.fetch(briefReq({ contact: who, auth: token('r-3') }), env({ ...SUPA, BRIEF_SEARCH: '1', BRIEF_THINKING: 'minimal' }))).json()
     assert.equal(geminiCalls(m).length, 1); assert.equal('unchecked' in body, false)
+  } finally { m.restore() }
+})
+
+function mockGemini(status, body) {
+  return mockUpstream((url) => (String(url).startsWith('https://supa.test')
+    ? new Response(JSON.stringify([{ allowed: true, used: 1, day_limit: 300 }]))
+    : new Response(JSON.stringify(body), { status })))
+}
+test('brake: reads Gemini rejects are 422 unreadable and never use up the brake; 30 good reads do', async () => {
+  const user = token('brake-user')
+  let m = mockGemini(400, { error: { status: 'INVALID_ARGUMENT', message: 'Unable to process input image.' } })
+  try {
+    for (let i = 0; i < 31; i++) {
+      const res = await worker.fetch(post({ images: [{ mime: 'image/png', data: png }], auth: user }), env(SUPA))
+      assert.equal(res.status, 422, `call ${i}`)
+      assert.equal((await res.json()).error.code, 'unreadable')
+    }
+  } finally { m.restore() }
+  m = mockGemini(200, geminiOk)
+  try {
+    for (let i = 0; i < 30; i++) assert.equal((await worker.fetch(post({ images: [{ mime: 'image/png', data: png }], auth: user }), env(SUPA))).status, 200, `good ${i}`)
+    const over = await worker.fetch(post({ images: [{ mime: 'image/png', data: png }], auth: user }), env(SUPA))
+    assert.equal(over.status, 429)
+    const ob = await over.json()
+    assert.equal(ob.error.code, 'rate_limited')
+    assert.ok(ob.error.retryAfter > 0)
+    assert.ok(Number(over.headers.get('Retry-After')) > 0)
+    // the app runs on another origin: the header must be exposed, and the wait is in the body too
+    assert.match(over.headers.get('Access-Control-Expose-Headers') ?? '', /Retry-After/)
+  } finally { m.restore() }
+})
+test('brake: a Gemini key, payment or access problem is the service\'s, not the photo\'s', async () => {
+  for (const status of [401, 402, 403]) {
+    const m = mockGemini(status, { error: { message: 'nope' } })
+    try {
+      const res = await worker.fetch(post({ images: [{ mime: 'image/png', data: png }], auth: token(`svc-${status}`) }), env(SUPA))
+      assert.equal(res.status, 502, String(status))
+    } finally { m.restore() }
+  }
+})
+test('rateWait looks without recording; rateHit records', () => {
+  const k = 'look-test', t = 5_000_000
+  for (let i = 0; i < 50; i++) assert.equal(rateWait(k, t + i), 0)
+  for (let i = 0; i < 30; i++) rateHit(k, t + i)
+  assert.ok(rateWait(k, t + 40) > 0)
+})
+
+test('brake: a Gemini 400 about billing, region or our own setup is the service\'s problem, not the photo\'s', async () => {
+  const cases = [
+    { status: 'FAILED_PRECONDITION', message: 'User location is not supported for the API use.' },
+    { status: 'FAILED_PRECONDITION', message: 'Gemini API free tier is not available in your country. Please enable billing.' },
+    { status: 'INVALID_ARGUMENT', message: 'thinking_config is not supported by this model.' },
+    { status: 'INVALID_ARGUMENT', message: 'API key not valid.', details: [{ reason: 'API_KEY_INVALID' }] },
+  ]
+  for (const error of cases) {
+    const m = mockGemini(400, { error })
+    try {
+      const res = await worker.fetch(post({ images: [{ mime: 'image/png', data: png }], auth: token('svc-400') }), env(SUPA))
+      assert.equal(res.status, 502, error.message)
+    } finally { m.restore() }
+  }
+})
+
+test('rollout: an older database still saying pro_only gets the same plan_needed answer, never a daily-limit message', async () => {
+  const m = mockSupa({ begin: () => [{ allowed: false, reason: 'pro_only', day_limit: 10, balance: BAL }] })
+  try {
+    const res = await worker.fetch(briefReq({ contact: who, auth: token('p-roll') }), env(SUPA))
+    assert.equal(res.status, 402)
+    assert.equal((await res.json()).error.code, 'plan_needed')
   } finally { m.restore() }
 })

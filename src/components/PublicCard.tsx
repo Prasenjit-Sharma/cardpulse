@@ -5,7 +5,7 @@ import { cardFileName } from '../lib/cardshare'
 import { recordCardView } from '../lib/cloudaccount'
 import { fetchPublicCard, type PublicCardData } from '../lib/cloudcards'
 import { canSendLead, formatPhone } from '../lib/leadform'
-import { submitLead } from '../lib/leads'
+import { leadErrorMessage, submitLead } from '../lib/leads'
 import { emptyCard, type FontId, type MyCard, type TemplateId } from '../lib/mycards'
 import { withTimeout } from '../lib/withTimeout'
 import { fileSize, fileUrl, isEmptyPack, type Pack } from '../lib/visitorpack'
@@ -102,7 +102,7 @@ export default function PublicCard({ slug }: { slug: string }) {
     setSending(true)
     const fullPhone = phone.trim() ? formatPhone(code, phone) : ''
     try { setPack(await submitLead(cardId, eventId, eventName, { name, phone: fullPhone, email, company })); setSent(true) }
-    catch { setError('Could not send. Try again.') }
+    catch (e) { setError(leadErrorMessage(e)) }
     finally { setSending(false) }
   }
 

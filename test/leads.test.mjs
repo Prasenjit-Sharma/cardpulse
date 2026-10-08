@@ -41,3 +41,9 @@ test('every write failing marks nothing', async () => {
   const succeeded = await applyPulledLeads([{ leadId: 'z', contact: { name: 'Z' } }], async () => { throw new Error('down') })
   assert.deepEqual(succeeded, [])
 })
+
+test('a visitor at a stall that is not collecting is told so plainly; anything else asks them to try again', async () => {
+  const { leadErrorMessage } = await import('../src/lib/leads.ts')
+  assert.equal(leadErrorMessage({ message: 'not_collecting', code: 'P0001' }), "This stall isn't collecting details right now.")
+  assert.equal(leadErrorMessage(new Error('fetch failed')), 'Could not send. Try again.')
+})

@@ -37,6 +37,12 @@ export async function submitLead(cardId: string, eventId: string | null, eventNa
   return null
 }
 
+/** What the visitor sees when their details could not be sent: a stall without a plan or pass is not collecting. */
+export function leadErrorMessage(e: unknown): string {
+  const text = e instanceof Error ? e.message : String((e as { message?: unknown } | null)?.message ?? e)
+  return /not_collecting/.test(text) ? "This stall isn't collecting details right now." : 'Could not send. Try again.'
+}
+
 export interface PulledLead { leadId: string; contact: Contact; eventId?: string }
 
 /**

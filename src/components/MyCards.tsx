@@ -44,7 +44,7 @@ export default function MyCards({ cards, stats, onAdd, onEdit, onShare, onStall 
             <CardStack />
             <h2>Your digital card</h2>
             <p>A card you can show or send in a second. It works with no signal.</p>
-            <button className="cta" onClick={onAdd}><Icon name="plus" size={20} /> Make my card</button>
+            <button className="cta" onClick={onAdd} data-tip="mycard"><Icon name="plus" size={20} /> Make my card</button>
           </div>
         </>
       ) : (
