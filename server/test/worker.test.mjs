@@ -643,7 +643,7 @@ function mockGemini(status, body) {
 }
 test('brake: reads Gemini rejects are 422 unreadable and never use up the brake; 30 good reads do', async () => {
   const user = token('brake-user')
-  let m = mockGemini(400, { error: { message: 'Unable to process input image.' } })
+  let m = mockGemini(400, { error: { status: 'INVALID_ARGUMENT', message: 'Unable to process input image.' } })
   try {
     for (let i = 0; i < 31; i++) {
       const res = await worker.fetch(post({ images: [{ mime: 'image/png', data: png }], auth: user }), env(SUPA))
@@ -656,8 +656,12 @@ test('brake: reads Gemini rejects are 422 unreadable and never use up the brake;
     for (let i = 0; i < 30; i++) assert.equal((await worker.fetch(post({ images: [{ mime: 'image/png', data: png }], auth: user }), env(SUPA))).status, 200, `good ${i}`)
     const over = await worker.fetch(post({ images: [{ mime: 'image/png', data: png }], auth: user }), env(SUPA))
     assert.equal(over.status, 429)
-    assert.equal((await over.json()).error.code, 'rate_limited')
+    const ob = await over.json()
+    assert.equal(ob.error.code, 'rate_limited')
+    assert.ok(ob.error.retryAfter > 0)
     assert.ok(Number(over.headers.get('Retry-After')) > 0)
+    // the app runs on another origin: the header must be exposed, and the wait is in the body too
+    assert.match(over.headers.get('Access-Control-Expose-Headers') ?? '', /Retry-After/)
   } finally { m.restore() }
 })
 test('brake: a Gemini key, payment or access problem is the service\'s, not the photo\'s', async () => {
@@ -674,4 +678,20 @@ test('rateWait looks without recording; rateHit records', () => {
   for (let i = 0; i < 50; i++) assert.equal(rateWait(k, t + i), 0)
   for (let i = 0; i < 30; i++) rateHit(k, t + i)
   assert.ok(rateWait(k, t + 40) > 0)
+})
+
+test('brake: a Gemini 400 about billing, region or our own setup is the service\'s problem, not the photo\'s', async () => {
+  const cases = [
+    { status: 'FAILED_PRECONDITION', message: 'User location is not supported for the API use.' },
+    { status: 'FAILED_PRECONDITION', message: 'Gemini API free tier is not available in your country. Please enable billing.' },
+    { status: 'INVALID_ARGUMENT', message: 'thinking_config is not supported by this model.' },
+    { status: 'INVALID_ARGUMENT', message: 'API key not valid.', details: [{ reason: 'API_KEY_INVALID' }] },
+  ]
+  for (const error of cases) {
+    const m = mockGemini(400, { error })
+    try {
+      const res = await worker.fetch(post({ images: [{ mime: 'image/png', data: png }], auth: token('svc-400') }), env(SUPA))
+      assert.equal(res.status, 502, error.message)
+    } finally { m.restore() }
+  }
 })

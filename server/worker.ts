@@ -74,13 +74,26 @@ function json(body: unknown, status: number, origin: string | null, extra: Recor
     headers: {
       'Content-Type': 'application/json',
       'Cache-Control': 'no-store',
-      ...(origin ? { 'Access-Control-Allow-Origin': origin, Vary: 'Origin' } : {}),
+      // the app is another origin: without this it cannot read how long the brake asked it to wait
+      ...(origin ? { 'Access-Control-Allow-Origin': origin, 'Access-Control-Expose-Headers': 'Retry-After', Vary: 'Origin' } : {}),
       ...extra,
     },
   })
 }
 const fail = (status: number, code: string, message: string, origin: string | null, extra?: Record<string, string>) =>
-  json({ error: { code, message } }, status, origin, extra)
+  json({ error: { code, message, ...(extra?.['Retry-After'] ? { retryAfter: Number(extra['Retry-After']) } : {}) } }, status, origin, extra)
+
+/**
+ * Gemini says 400 for a photo it cannot use, but also for a bad key, billing or region trouble, and our own setup (a
+ * model that rejects our settings). Only the first is the user's photo; the rest are ours and must not blame the photo.
+ */
+export function photoRejected(body: string): boolean {
+  let e: { status?: string; message?: string; details?: { reason?: string }[] } | undefined
+  try { e = (JSON.parse(body) as { error?: typeof e }).error } catch { return false }
+  if (!e || e.status !== 'INVALID_ARGUMENT') return false
+  if (e.details?.some((d) => /API_KEY/.test(d.reason ?? '')) || /api[ _-]?key/i.test(e.message ?? '')) return false
+  return /image|input|payload|media|inline|mime|base64/i.test(e.message ?? '')
+}
 
 function validImages(v: unknown, layout: Layout): ImageInput[] | null {
   if (!Array.isArray(v) || v.length < 1 || v.length > MAX_IMAGES[layout]) return null
@@ -349,8 +362,7 @@ export default {
     if (!upstream.ok) console.log(`extract upstream ${upstream.status} ${model}: ${upstreamError.slice(0, 600)}`)
     if (upstream.status === 429) return fail(429, 'busy', 'The reading service is busy. Try again in a moment.', origin, { 'Retry-After': '20' })
     // Gemini refusing this photo (400) is about the photo: not worth retrying. Key, payment or access trouble stays ours.
-    // (Gemini also says 400 for a bad API key: that one is ours.)
-    if (upstream.status === 400 && !/api[ _-]?key/i.test(upstreamError)) return fail(422, 'unreadable', 'Could not read that photo. Try a clearer one.', origin)
+    if (upstream.status === 400 && photoRejected(upstreamError)) return fail(422, 'unreadable', 'Could not read that photo. Try a clearer one.', origin)
     // Anything else from upstream (bad key, quota, outage) is our problem, not the user's: don't leak details.
     if (!upstream.ok) return fail(502, 'upstream_error', 'The reading service had a problem. Try again.', origin)
     rateHit(rateKey)   // only an answered read counts towards the brake
