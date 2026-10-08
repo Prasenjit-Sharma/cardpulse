@@ -1,7 +1,7 @@
 // Run: node --test server/test
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import worker, { checkRate, usageLine } from '../worker.ts'
+import worker, { checkRate, rateHit, rateWait, usageLine } from '../worker.ts'
 
 const GOOD = 'https://prasenjit-sharma.github.io'
 const png = Buffer.from('fake-image-bytes').toString('base64')
@@ -634,4 +634,44 @@ test('a brief that ran no search is nudged once, in the same conversation and th
     const body = await (await worker.fetch(briefReq({ contact: who, auth: token('r-3') }), env({ ...SUPA, BRIEF_SEARCH: '1', BRIEF_THINKING: 'minimal' }))).json()
     assert.equal(geminiCalls(m).length, 1); assert.equal('unchecked' in body, false)
   } finally { m.restore() }
+})
+
+function mockGemini(status, body) {
+  return mockUpstream((url) => (String(url).startsWith('https://supa.test')
+    ? new Response(JSON.stringify([{ allowed: true, used: 1, day_limit: 300 }]))
+    : new Response(JSON.stringify(body), { status })))
+}
+test('brake: reads Gemini rejects are 422 unreadable and never use up the brake; 30 good reads do', async () => {
+  const user = token('brake-user')
+  let m = mockGemini(400, { error: { message: 'Unable to process input image.' } })
+  try {
+    for (let i = 0; i < 31; i++) {
+      const res = await worker.fetch(post({ images: [{ mime: 'image/png', data: png }], auth: user }), env(SUPA))
+      assert.equal(res.status, 422, `call ${i}`)
+      assert.equal((await res.json()).error.code, 'unreadable')
+    }
+  } finally { m.restore() }
+  m = mockGemini(200, geminiOk)
+  try {
+    for (let i = 0; i < 30; i++) assert.equal((await worker.fetch(post({ images: [{ mime: 'image/png', data: png }], auth: user }), env(SUPA))).status, 200, `good ${i}`)
+    const over = await worker.fetch(post({ images: [{ mime: 'image/png', data: png }], auth: user }), env(SUPA))
+    assert.equal(over.status, 429)
+    assert.equal((await over.json()).error.code, 'rate_limited')
+    assert.ok(Number(over.headers.get('Retry-After')) > 0)
+  } finally { m.restore() }
+})
+test('brake: a Gemini key, payment or access problem is the service\'s, not the photo\'s', async () => {
+  for (const status of [401, 402, 403]) {
+    const m = mockGemini(status, { error: { message: 'nope' } })
+    try {
+      const res = await worker.fetch(post({ images: [{ mime: 'image/png', data: png }], auth: token(`svc-${status}`) }), env(SUPA))
+      assert.equal(res.status, 502, String(status))
+    } finally { m.restore() }
+  }
+})
+test('rateWait looks without recording; rateHit records', () => {
+  const k = 'look-test', t = 5_000_000
+  for (let i = 0; i < 50; i++) assert.equal(rateWait(k, t + i), 0)
+  for (let i = 0; i < 30; i++) rateHit(k, t + i)
+  assert.ok(rateWait(k, t + 40) > 0)
 })

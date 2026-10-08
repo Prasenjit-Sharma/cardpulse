@@ -39,15 +39,28 @@ const MAX_PER_WINDOW = 30 // per client IP, per isolate: a best-effort brake, no
 const LAN = /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+)(:\d+)?$/
 const hits = new Map<string, number[]>()
 
-/** Seconds until the caller may retry, or 0 if under the limit. */
-export function checkRate(ip: string, now = Date.now()): number {
-  const recent = (hits.get(ip) ?? []).filter((t) => now - t < WINDOW_MS)
-  if (recent.length >= MAX_PER_WINDOW) { hits.set(ip, recent); return Math.ceil((WINDOW_MS - (now - recent[0]!)) / 1000) }
-  recent.push(now)
-  hits.set(ip, recent)
-  if (hits.size > 5000) for (const [k, v] of hits) if (!v.some((t) => now - t < WINDOW_MS)) hits.delete(k)
-  return 0
+const recentHits = (key: string, now: number) => (hits.get(key) ?? []).filter((t) => now - t < WINDOW_MS)
+/** Seconds until `key` may call again, or 0. Only looks: a call is recorded (rateHit) once Gemini has answered it. */
+export function rateWait(key: string, now = Date.now()): number {
+  const recent = recentHits(key, now)
+  hits.set(key, recent)
+  return recent.length >= MAX_PER_WINDOW ? Math.ceil((WINDOW_MS - (now - recent[0]!)) / 1000) : 0
 }
+/** Records one answered call. Failed and rejected calls are not recorded, so they never use up the brake. */
+export function rateHit(key: string, now = Date.now()): void {
+  const recent = recentHits(key, now)
+  recent.push(now)
+  hits.set(key, recent)
+  if (hits.size > 5000) for (const [k, v] of hits) if (!v.some((t) => now - t < WINDOW_MS)) hits.delete(k)
+}
+/** Look, and record when allowed (kept for the per-IP test). */
+export function checkRate(key: string, now = Date.now()): number {
+  const wait = rateWait(key, now)
+  if (!wait) rateHit(key, now)
+  return wait
+}
+/** One line per refusal, so `wrangler tail` says which limit answered. No personal data. */
+const refused = (route: 'read' | 'brief', code: string, who: string, wait = 0) => console.log(`refused ${route} ${code} who=${who.slice(0, 8)} wait=${wait}`)
 
 function originAllowed(origin: string | null, env: Env): boolean {
   if (!origin) return false
@@ -208,14 +221,16 @@ async function brief(req: Request, env: Env, origin: string | null, ctx?: { wait
   // Each fresh brief is a model call (and, with search on, paid Google searches): checked against the account's briefs
   // (Pro's month, extra, trial) and its daily brake. A balance outage falls back to the per-IP brake, uncharged.
   const use = await beginUse(body.auth, env, 'brief')
-  if (use.kind === 'refused') return fail(401, 'sign_in', 'Sign in to use Pulse Brief.', origin)
+  const rateKey = use.kind === 'account' ? `brief:${use.userId}` : `brief-ip:${req.headers.get('cf-connecting-ip') ?? 'local'}`
+  if (use.kind === 'refused') { refused('brief', 'sign_in', rateKey); return fail(401, 'sign_in', 'Sign in to use Pulse Brief.', origin) }
   if (use.kind === 'over') {
+    refused('brief', use.reason, rateKey)
     if (use.reason === 'pro_only') return json({ error: { code: 'pro_only', message: 'Pulse Brief is part of Pro.' }, balance: use.balance }, 402, origin)
     if (use.reason === 'no_briefs') return json({ error: { code: 'no_briefs', message: 'No briefs left this month.' }, balance: use.balance }, 402, origin)
     return fail(429, 'daily_limit', `You've used today's ${use.limit} fresh briefs. Saved briefs still open. Resets at 5:30 am.`, origin)
   }
-  const wait = checkRate(use.kind === 'account' ? `brief:${use.userId}` : `brief-ip:${req.headers.get('cf-connecting-ip') ?? 'local'}`)
-  if (wait) return fail(429, 'rate_limited', `Too many briefs. Try again in ${Math.ceil(wait / 60)} min.`, origin, { 'Retry-After': String(wait) })
+  const wait = rateWait(rateKey)
+  if (wait) { refused('brief', 'rate_limited', rateKey, wait); return fail(429, 'rate_limited', `Too many briefs. Try again in ${Math.ceil(wait / 60)} min.`, origin, { 'Retry-After': String(wait) }) }
 
   const model = env.BRIEF_MODEL || env.GEMINI_MODEL || DEFAULT_MODEL
   const search = env.BRIEF_SEARCH === '1'
@@ -242,6 +257,7 @@ async function brief(req: Request, env: Env, origin: string | null, ctx?: { wait
     if (upstream.status === 429) return fail(429, 'busy', 'The service is busy. Try again in a moment.', origin, { 'Retry-After': '20' })
     return fail(502, 'upstream_error', "Couldn't make the brief. Try again.", origin)
   }
+  rateHit(rateKey)   // only an answered brief counts towards the brake
   try {
     let raw = await upstream.json()
     let parsed = parseBriefResponse(raw)
@@ -303,15 +319,18 @@ export default {
     // Reading needs an account once accounts are configured: each contact read uses one card from its plan, pass or
     // packs. Checked here, charged after a good read. The burst limit follows the account, not the hall Wi-Fi.
     const auth = typeof body.auth === 'string' && body.auth ? body.auth : null
-    if (env.SUPABASE_URL && !auth) return fail(401, 'sign_in', 'Sign in to read cards. You get 20 free each month.', origin)
+    const ip = req.headers.get('cf-connecting-ip') ?? 'local'
+    if (env.SUPABASE_URL && !auth) { refused('read', 'sign_in', ip); return fail(401, 'sign_in', 'Sign in to read cards. You get 20 free each month.', origin) }
     const use = await beginUse(auth, env, 'read')
-    if (use.kind === 'refused') return fail(401, 'sign_in', 'Sign in to read cards. You get 20 free each month.', origin)
+    const rateKey = use.kind === 'account' ? `account:${use.userId}` : ip
+    if (use.kind === 'refused') { refused('read', 'sign_in', rateKey); return fail(401, 'sign_in', 'Sign in to read cards. You get 20 free each month.', origin) }
     if (use.kind === 'over') {
+      refused('read', use.reason, rateKey)
       if (use.reason === 'no_cards') return json({ error: { code: 'no_cards', message: 'No cards left. Add a pack or a plan to keep reading.' }, balance: use.balance }, 402, origin)
       return fail(429, 'daily_limit', `You have reached today's limit of ${use.limit} scans. It resets at midnight UTC.`, origin)
     }
-    const wait = checkRate(use.kind === 'account' ? `account:${use.userId}` : req.headers.get('cf-connecting-ip') ?? 'local')
-    if (wait) return fail(429, 'rate_limited', `Too many scans. Try again in ${Math.ceil(wait / 60)} min.`, origin, { 'Retry-After': String(wait) })
+    const wait = rateWait(rateKey)
+    if (wait) { refused('read', 'rate_limited', rateKey, wait); return fail(429, 'rate_limited', `Too many scans. Try again in ${Math.ceil(wait / 60)} min.`, origin, { 'Retry-After': String(wait) }) }
 
     const model = env.GEMINI_MODEL || DEFAULT_MODEL
     let upstream: Response
@@ -326,10 +345,15 @@ export default {
       return fail(502, 'upstream_unreachable', 'The reading service is unavailable. Try again.', origin)
     }
 
-    if (!upstream.ok) console.log(`extract upstream ${upstream.status} ${model}: ${(await upstream.clone().text().catch(() => '')).slice(0, 600)}`)
+    const upstreamError = upstream.ok ? '' : await upstream.clone().text().catch(() => '')
+    if (!upstream.ok) console.log(`extract upstream ${upstream.status} ${model}: ${upstreamError.slice(0, 600)}`)
     if (upstream.status === 429) return fail(429, 'busy', 'The reading service is busy. Try again in a moment.', origin, { 'Retry-After': '20' })
+    // Gemini refusing this photo (400) is about the photo: not worth retrying. Key, payment or access trouble stays ours.
+    // (Gemini also says 400 for a bad API key: that one is ours.)
+    if (upstream.status === 400 && !/api[ _-]?key/i.test(upstreamError)) return fail(422, 'unreadable', 'Could not read that photo. Try a clearer one.', origin)
     // Anything else from upstream (bad key, quota, outage) is our problem, not the user's: don't leak details.
     if (!upstream.ok) return fail(502, 'upstream_error', 'The reading service had a problem. Try again.', origin)
+    rateHit(rateKey)   // only an answered read counts towards the brake
 
     try {
       const raw = await upstream.json()
