@@ -12,7 +12,7 @@ yet. It's written when the iPhone app is built.
 | Main store listing → Full description | `listing.json` → `play.fullDescription` (paste as is; the line breaks are kept) |
 | Graphics → App icon (512 × 512) | `play-icon-512.png` |
 | Graphics → Feature graphic (1024 × 500) | `play/feature-graphic.png` |
-| Graphics → Phone screenshots (upload in this order) | `play/phone/01-scan.png` … `08-more.png` |
+| Graphics → Phone screenshots (upload in this order) | `play/phone/01-leads.png` … `08-more.png` |
 | App content → Data safety | `data-safety.md`, a draft: check it against the app and `public/privacy.html` before submitting |
 | App content → Privacy policy | https://prasenjit-sharma.github.io/cardpulse/privacy.html |
 

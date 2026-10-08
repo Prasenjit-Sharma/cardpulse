@@ -167,6 +167,15 @@
         "value": "caveat",
         "createdAt": "2026-10-07T14:25:52.890Z",
         "reason": "user confirmed 2026-10-07: Caveat hand-written accent for first-run titles and tips; recorded in DESIGN.md"
+      },
+      {
+        "rule": "dark-glow",
+        "value": "*",
+        "files": [
+          "store/slides/01-leads.html"
+        ],
+        "createdAt": "2026-10-08T19:19:19.029Z",
+        "reason": "user approved 2026-10-07/08: the store slides' soft brand glows and indigo-tinted phone shadows match slides 02-08 and the tour"
       }
     ]
   }

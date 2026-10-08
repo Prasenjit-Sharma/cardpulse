@@ -39,7 +39,7 @@ test('the Data safety draft exists, is marked a draft, and covers what Play asks
 })
 
 const head = (f) => { const b = readFileSync(f); return { w: b.readUInt32BE(16), h: b.readUInt32BE(20), type: b[25] } }
-const SLIDES = ['01-scan', '02-exhibition', '03-one-photo', '04-digital-card', '05-read-right', '06-brief', '07-one-tap', '08-more']
+const SLIDES = ['01-leads', '02-scan', '03-one-photo', '04-digital-card', '05-read-right', '06-brief', '07-one-tap', '08-more']
 test('eight Play screenshots at 1080x1920, no alpha', () => {
   for (const s of SLIDES) assert.deepEqual(head(`store/play/phone/${s}.png`), { w: 1080, h: 1920, type: 2 }, s)
 })
