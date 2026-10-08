@@ -56,8 +56,8 @@ the four) or an active Exhibition pass**. The database enforces it; the app's lo
 - **The migration (`0007_plans_v2.sql`)** widens `plans.tier` to `('starter','plus','pro','unlimited')`, puts the new
   numbers into `_allow`, and adds the Unlimited daily brake to `begin_read`.
 - It adds `public._can_collect(v_uid uuid) returns boolean`: a paid plan in its period, or an active pass.
-- **Publishing in Collect-leads mode:** the RPC or the row policy that stores a card's collect-leads publication
-  refuses `not_entitled` when `_can_collect` is false.
+- **Publishing isn't gated.** A published card (`public.cards`) is also the free shareable card link, so the gate sits
+  where leads arrive, below, and on the app's Collect-leads option.
 - **A visitor submitting details** (`submit_lead_pack`, and `submit_lead` where 0004 isn't run): if the card's owner
   can't collect, nothing is stored. The visitor sees "This stall isn't collecting details right now."
 - **Brochure uploads:** the storage policy for visitor-pack files requires `_can_collect(auth.uid())`.
