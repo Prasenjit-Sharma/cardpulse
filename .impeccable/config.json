@@ -176,6 +176,15 @@
         ],
         "createdAt": "2026-10-08T19:19:19.029Z",
         "reason": "user approved 2026-10-07/08: the store slides' soft brand glows and indigo-tinted phone shadows match slides 02-08 and the tour"
+      },
+      {
+        "rule": "nested-cards",
+        "value": "*",
+        "files": [
+          "store/slides/01-leads.html"
+        ],
+        "createdAt": "2026-10-08T19:29:43.521Z",
+        "reason": "Claude: store screenshot draws two phone mockups whose rows depict the app's own list UI; the nesting is the phone frame, not a page layout"
       }
     ]
   }
