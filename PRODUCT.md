@@ -77,6 +77,9 @@ Constraints:
   before Gemini is called and charged after, one card per contact; a daily brake of 300 reads still applies.
 - **Free Gemini tier** may use submitted images to improve Google's products; a paid tier is required before
   real customers.
+- **Plans (v2, 2026-10-09, `shared/plans.ts`):** Free, Starter, Plus, Pro and Unlimited, with Pulse Brief on every paid
+  plan. Lead capture with brochures at a stall is the paid highlight: any plan or the Exhibition pass. Nothing can be
+  bought until Play Billing.
 - **No payments, no team features, no CRM integrations** yet.
 - **Undecided:** pricing, whether the wrapper is Capacitor or a React Native rewrite. DPDP groundwork (consent,
   deletion, retention, privacy page) is built but has not had a legal review.

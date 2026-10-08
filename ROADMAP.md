@@ -168,6 +168,13 @@ The store title is "Pulse - Business Card Reader", and everywhere else it is "Pu
 
 ### Phase 4: Packs and payments (about 2 weeks)
 
+**Plans v2 built 2026-10-09 on `pulse-brand`, awaiting migration 0007 and the phone check** (spec
+`docs/superpowers/specs/2026-10-09-plans-v2-design.md`). Supersedes the tiers below: Free 20 cards and 3 trial Briefs;
+Starter ₹99 (100 cards, 3 Briefs); Plus ₹199 (250, 5); Pro ₹399 (400, 20); Unlimited ₹799 (fair use 200 cards a day,
+30 Briefs); yearly at about two months free; the pass and packs as before. Lead capture with brochures comes with any
+plan or the Exhibition pass, enforced where leads and brochures arrive. Play Billing (part 2) creates its products from
+this list.
+
 **Part 1 built 2026-10-05 on branch `pricing`, awaiting migration 0005 and the real-phone check** (spec
 `docs/superpowers/specs/2026-10-05-pricing-design.md`, plan `docs/superpowers/plans/2026-10-05-pricing.md`).
 
