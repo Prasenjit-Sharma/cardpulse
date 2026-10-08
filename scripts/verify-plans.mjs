@@ -44,6 +44,7 @@ async function main() {
     check('the service role can grant a pack', !r.error && r.data?.cards.pack === 50, r.error?.message)
     r = await admin.rpc('grant_plan', { p_user: id, p_tier: 'pro', p_months: 1 })
     check('the service role can grant Pro', !r.error && r.data?.tier === 'pro' && r.data.briefs.month.allowance === 20, r.error?.message)
+    check('Pro collects leads (0007)', !r.error && r.data?.canCollect === true, r.error?.message ?? 'canCollect missing: run 0007')
     r = await createClient(URL, PUBLISHABLE).rpc('my_balance')
     check('signed out, there is no balance', !!r.error)
   } finally {

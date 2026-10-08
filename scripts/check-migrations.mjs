@@ -250,4 +250,47 @@ await db.exec(`insert into public.usage (owner_id, at, kind, source, qty) values
 b = await bal(G); assert.equal(b.cards.month.used, 0, 'the second month starts fresh'); assert.equal(b.cards.month.allowance, 400)
 console.log('ok month ends in India time; paid plans count month by month')
 
+
+// ── 0007 plans v2 and lead capture as a paid feature (applied after the earlier checks, which test their own migrations) ──
+await db.exec(readFileSync(ROOT + '0007_plans_v2.sql', 'utf8'))
+await db.exec(readFileSync(ROOT + '0007_plans_v2.sql', 'utf8'))   // re-runnable
+const [H, I, J, K] = ['88888888-8888-8888-8888-888888888881', '88888888-8888-8888-8888-888888888882', '88888888-8888-8888-8888-888888888883', '88888888-8888-8888-8888-888888888884']
+await db.exec(`insert into auth.users values ('${H}'), ('${I}'), ('${J}'), ('${K}')`)
+await sudo(`select public.grant_plan('${H}', 'starter', 1)`)
+b = await bal(H)
+assert.equal(b.tier, 'starter'); assert.equal(b.cards.month.allowance, 100); assert.equal(b.briefs.month.allowance, 3)
+assert.equal(b.canCollect, true); assert.equal(b.briefs.trial, 0, 'any paid plan ends the trial')
+await sudo(`select public.grant_plan('${I}', 'unlimited', 1)`)
+b = await bal(I); assert.equal(b.cards.month.allowance, 1000000); assert.equal(b.briefs.month.allowance, 30)
+for (let i = 0; i < 200; i++) assert.equal((await begin(I, 'read')).allowed, true)
+r = await begin(I, 'read'); assert.equal(r.allowed, false); assert.equal(r.reason, 'daily_limit'); assert.equal(r.day_limit, 200)
+b = await bal(J); assert.equal(b.tier, 'free'); assert.equal(b.canCollect, false)
+for (let i = 0; i < 3; i++) await as('authenticated', J, 'select public.charge_brief()')
+r = await begin(J, 'brief'); assert.equal(r.allowed, false); assert.equal(r.reason, 'plan_needed')
+await sudo(`select public.grant_pass('${K}')`)
+assert.equal((await bal(K)).canCollect, true, 'the Exhibition pass collects leads')
+await db.exec(`update public.passes set ends_at = now() - interval '1 minute' where owner_id = '${K}'`)
+assert.equal((await bal(K)).canCollect, false)
+await assert.rejects(sudo(`select public.grant_plan('${H}', 'gold', 1)`), /bad grant/)
+// leads arrive only at a stall that can collect
+await as('authenticated', J, `insert into public.cards (owner_id, local_card_id, slug, name) values ('${J}', 'mj', 'SLUGJ111', 'Free')`)
+await as('authenticated', H, `insert into public.cards (owner_id, local_card_id, slug, name) values ('${H}', 'mh', 'SLUGH111', 'Paid')`)
+const cardOf = async (slug) => (await db.query(`select id from public.cards where slug = '${slug}'`)).rows[0].id
+const jCard = await cardOf('SLUGJ111'), hCard = await cardOf('SLUGH111')
+await assert.rejects(as('anon', null, `select public.submit_lead_pack($1, 'expo', 'Expo', 'V', '999', null, null)`, [jCard]), /not_collecting/)
+await assert.rejects(as('anon', null, `select public.submit_lead($1, 'expo', 'Expo', 'V', '999', null, null)`, [jCard]), /not_collecting/)
+assert.equal((await db.query(`select count(*)::int as n from public.leads where owner_id = '${J}'`)).rows[0].n, 0, 'nothing stored for a stall that cannot collect')
+await as('anon', null, `select public.submit_lead_pack($1, 'expo', 'Expo', 'V', '999', null, null)`, [hCard])
+assert.equal((await db.query(`select count(*)::int as n from public.leads where owner_id = '${H}'`)).rows[0].n, 1)
+// visitor packs and their files: only with a plan or pass
+await assert.rejects(as('authenticated', J, `insert into public.visitor_packs (owner_id, event_id) values ('${J}', 'expo')`), /row-level security/)
+await as('authenticated', H, `insert into public.visitor_packs (owner_id, event_id) values ('${H}', 'expo')`)
+await assert.rejects(as('authenticated', J, `insert into storage.objects (bucket_id, name) values ('visitor-packs', '${J}/expo/a.pdf')`), /row-level security/)
+await as('authenticated', H, `insert into storage.objects (bucket_id, name) values ('visitor-packs', '${H}/expo/a.pdf')`)
+// a lapsed plan stops new leads and keeps the ones received
+await db.exec(`update public.plans set period_end = now() - interval '1 minute' where owner_id = '${H}'`)
+await assert.rejects(as('anon', null, `select public.submit_lead_pack($1, 'expo', 'Expo', 'V2', '888', null, null)`, [hCard]), /not_collecting/)
+assert.equal((await as('authenticated', H, `select count(*)::int as n from public.leads`)).rows[0].n, 1, 'received leads stay')
+console.log('ok 0007 plans v2, Unlimited fair use, Brief on every plan, lead capture gated at leads and packs')
+
 console.log('ALL OK')
