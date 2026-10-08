@@ -53,9 +53,10 @@ async function withRetry(send: (signal: AbortSignal) => Promise<Response>): Prom
     const json = await res.json().catch(() => ({}))
     const ms = Math.round(performance.now() - t0)
     if (res.ok) return { res, json, ms }
-    lastErr = new GeminiError(json?.error?.message ?? `HTTP ${res.status}`, res.status, { code: json?.error?.code, balance: json?.balance })
+    lastErr = new GeminiError(json?.error?.message ?? `HTTP ${res.status}`, res.status, { code: json?.error?.code, balance: json?.balance, retryAfter: Number(res.headers.get('Retry-After')) || undefined })
     if (json?.error?.code === 'daily_limit') throw lastErr            // waiting seconds will not help; it resets tomorrow
     if (json?.error?.code === 'no_cards' || json?.error?.code === 'sign_in') throw lastErr   // nor here: it needs cards or a sign-in
+    if (json?.error?.code === 'rate_limited') throw lastErr   // our own brake: minutes, scheduled by the app (retry.ts)
     if (res.status === 429 || res.status >= 500) continue
     throw lastErr
   }

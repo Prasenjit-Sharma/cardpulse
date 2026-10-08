@@ -16,6 +16,7 @@ import { useSync } from './lib/useSync'
 import { findDuplicates } from './lib/dupes'
 import { backupDue, backupFileName, backupNudgeUntil, buildBackup, lastBackupAt, markBackedUp, mergeEvents, parseBackup, planRestore, saveBackupFile, snoozeBackupNudge } from './lib/backup'
 import { classifyFailure } from './lib/errors'
+import { MAX_ATTEMPTS, nextRetry } from './lib/retry'
 import { cardsLine, forgetBalance, isLow, scanGate, getBalance, parseBalance, setBalance, shouldResume } from './lib/balance'
 import { ALLOWANCE } from '../shared/plans'
 import PlanPage from './components/PlanPage'
@@ -60,8 +61,6 @@ type Tab = 'home' | 'companies' | 'mycard' | 'contacts' | 'exhibition' | 'insigh
 const TABS: Tab[] = ['home', 'companies', 'mycard', 'contacts', 'exhibition', 'insights', 'settings', 'accuracy', 'plans']
 const CONCURRENCY = 2
 /** A read that failed for a passing reason (busy reader, weak signal) is tried again by itself this many times. */
-const MAX_ATTEMPTS = 3
-const RETRY_DELAY_MS = 30_000
 // Photos read per Gemini call. 1 = every card is read on its own (the setting in use).
 // Batching is built, tested and deployed: set this to 2-6 and single photos are read together, with Gemini numbering
 // which photo each person came from. Measured on six real cards: 26% fewer input tokens, about 18% cheaper, half the
@@ -266,13 +265,14 @@ export default function App() {
       for (const c of cards) {
         const cur = (await getCard(c.id)) ?? c
         const online = navigator.onLine
-        const attempts = (cur.attempts ?? 0) + (online ? 1 : 0)          // being offline is not the card's fault
+        const plan = nextRetry(failure, online)                          // offline, or the server's brake: not the card's fault
+        const attempts = (cur.attempts ?? 0) + (plan.countsAsAttempt ? 1 : 0)
         if (failure.transient && attempts < MAX_ATTEMPTS) {
           await putCard({ ...cur, status: 'pending', error: undefined, attempts, waiting: online ? 'retry' : 'offline' })
           if (online) later.push(c.id)
         } else await putCard({ ...cur, status: 'error', error: failure.message, waiting: undefined })
       }
-      if (later.length) setTimeout(() => void enqueueRef.current(later), RETRY_DELAY_MS)
+      if (later.length) setTimeout(() => void enqueueRef.current(later), nextRetry(failure, true).delayMs)
     }
     await refresh()
   }, [refresh, notifyAdded])

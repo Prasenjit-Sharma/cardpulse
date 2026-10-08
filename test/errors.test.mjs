@@ -29,3 +29,17 @@ test('no cards and signed out park the card instead of failing it', () => {
   const e2 = Object.assign(new Error('Sign in to read cards.'), { status: 401, code: 'sign_in' })
   assert.deepEqual(classifyFailure(e2), { message: 'Waiting for sign-in', transient: false, waiting: 'sign_in' })
 })
+
+test('our brake waits the minutes it states and is not the card failing', () => {
+  const e = Object.assign(new Error('Too many scans. Try again in 9 min.'), { status: 429, code: 'rate_limited', retryAfter: 540 })
+  const f = classifyFailure(e)
+  assert.equal(f.transient, true)
+  assert.equal(f.retryAfterMs, 540_000)
+  assert.match(f.message, /few minutes/i)
+  assert.equal(classifyFailure(Object.assign(new Error('Too many scans.'), { status: 429, code: 'rate_limited' })).retryAfterMs, 60_000)
+})
+test('a photo the reader rejected (422) is not retried by itself', () => {
+  const f = classifyFailure(Object.assign(new Error('Could not read that photo. Try a clearer one.'), { status: 422, code: 'unreadable' }))
+  assert.equal(f.transient, false)
+  assert.match(f.message, /could not be read/i)
+})
