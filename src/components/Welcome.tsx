@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react'
 import '@fontsource/caveat/latin-700.css'
 import { MARK } from '../lib/brandMark'
-import { lastAction, splitHand, swipeStep, TOUR, type TourArt, type TourVariant } from '../lib/onboarding'
+import { handParts, lastAction, swipeStep, TOUR, type TourArt, type TourVariant } from '../lib/onboarding'
 import { useBackClose } from '../lib/useBackClose'
 import './welcome.css'
 
@@ -33,7 +33,7 @@ export default function Welcome({ variant, onDone }: { variant: TourVariant; onD
   useEffect(() => { title.current?.focus() }, [i])
 
   const s = TOUR[i]
-  const [before, hand, after] = splitHand(s.title(variant))
+  const parts = handParts(s.title(variant))
   const onDown = (e: PointerEvent) => { down.current = { x: e.clientX, t: e.timeStamp } }
   const onUp = (e: PointerEvent) => {
     if (!down.current) return
@@ -66,7 +66,7 @@ export default function Welcome({ variant, onDone }: { variant: TourVariant; onD
       </div>
 
       <section key={`t${i}`} className={`wl-body ${dir}`} aria-roledescription="slide" aria-label={`${i + 1} of ${TOUR.length}`}>
-        <h2 ref={title} tabIndex={-1}>{before}{hand && <span className="wl-hand">{hand}</span>}{after}</h2>
+        <h2 ref={title} tabIndex={-1}>{parts.map((p, n) => (p.hand ? <span key={n} className="wl-hand">{p.text}</span> : p.text))}</h2>
         <p>{s.text}</p>
       </section>
 
@@ -137,18 +137,19 @@ function Scene({ art }: { art: TourArt }) {
       <Person initials="+2" name="more people" line="from one photo" tone="#F08A2C" style={{ right: '9%', top: '22%', animationDelay: '760ms' }} />
     </>
   )
-  if (art === 'event') return (
-    <div className="wl-3d" style={{ transform: 'rotateX(18deg) rotateY(16deg)' }}>
-      <div className="wl-panel">
+  if (art === 'leads') return (
+    <div className="wl-3d" style={{ transform: 'rotateX(14deg) rotateY(-12deg)' }}>
+      {/* the stall's phone: a lead has just arrived */}
+      <div className="wl-panel wl-behind">
         <div className="wl-row-c"><span className="wl-live">LIVE</span><b>India Plast 2026</b></div>
-        <div className="wl-figs">
-          <div><div className="wl-big">128</div><div className="wl-up">+24 today</div></div>
-          <div className="wl-bars">{[14, 22, 18, 30, 26, 44].map((h, n) => <i key={n} style={{ height: h, background: n === 5 ? '#3B2FC9' : n > 2 ? '#C9C6EA' : '#E2E0F3', animationDelay: `${300 + n * 60}ms` }} />)}</div>
-        </div>
-        <div className="wl-keys"><span>2 duplicates</span><span className="dark">Export CSV</span></div>
+        <div className="wl-toast"><i className="wl-av">NG</i><span><b>1 new lead from your stall</b><small>Neha Gupta · ready to call</small></span></div>
       </div>
-      <BizCard tone="linear-gradient(135deg,#5DD6C8,#2BAE9F)" style={{ position: 'absolute', width: 84, height: 50, left: -34, top: -34, transform: 'translateZ(50px) rotate(-12deg)' }} />
-      <BizCard tone="linear-gradient(135deg,#FFB86B,#F08A2C)" style={{ position: 'absolute', width: 84, height: 50, right: -30, top: -46, transform: 'translateZ(70px) rotate(9deg)' }} />
+      {/* the visitor's phone: your brochure, the moment they sent their details */}
+      <div className="wl-visitor">
+        <b>Thanks for visiting!</b>
+        <div className="wl-file"><span className="wl-pdf">PDF</span><span>Mehta Exports catalogue<small>2.4 MB</small></span></div>
+        <div className="wl-file link"><span className="wl-pdf">↗</span><span>mehtaexports.in<small>Our website</small></span></div>
+      </div>
     </div>
   )
   if (art === 'card') return (

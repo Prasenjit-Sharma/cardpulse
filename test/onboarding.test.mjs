@@ -1,7 +1,7 @@
 // Run: node --test test/onboarding.test.mjs
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { TOUR_KEY, TIPS_KEY, TOUR, TIP_TEXT, lastAction, tourVariant, markTourSeen, tipDue, markTipSeen, tipForScreen, swipeStep, coachLayout, splitHand, resetTips } from '../src/lib/onboarding.ts'
+import { TOUR_KEY, TIPS_KEY, TOUR, TIP_TEXT, lastAction, tourVariant, markTourSeen, tipDue, markTipSeen, tipForScreen, swipeStep, coachLayout, splitHand, resetTips, handParts } from '../src/lib/onboarding.ts'
 
 const mem = (init = {}) => { const m = new Map(Object.entries(init)); return { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => { m.set(k, String(v)) }, m } }
 const none = { cards: 0, photoCards: 0, events: 0, myCards: 0 }
@@ -82,15 +82,23 @@ test('the coach mark puts its message above a low target and below a high one, n
   assert.ok(b.arrow.x2 >= high.left && b.arrow.x2 <= high.left + high.width)
   assert.ok(b.msgTop + msgH <= view.h)
 })
-test('the tour: five screens, each title with one hand-written phrase; everyone meets Pulse first', () => {
+test('the tour: five screens, each title with its hand-written phrases; everyone meets Pulse first', () => {
   assert.equal(TOUR.length, 5)
   for (const v of ['new', 'existing', 'replay']) assert.deepEqual(splitHand(TOUR[0].title(v)), ['Meet ', 'Pulse', ''])
-  assert.deepEqual(TOUR.map((s) => s.art), ['mark', 'cards', 'event', 'card', 'brief'])
-  assert.deepEqual(TOUR.slice(1).map((s) => splitHand(s.title('new')).join('')), ['Several cards, one photo', 'Built for expos and exhibitions', 'Your card, one scan away', 'Never go into a call cold'])
-  assert.deepEqual(TOUR.slice(1).map((s) => splitHand(s.title('new'))[1]), ['one photo', 'expos', 'one scan away', 'cold'])
+  assert.deepEqual(TOUR.map((s) => s.art), ['mark', 'cards', 'leads', 'card', 'brief'])
+  assert.equal(TOUR[2].title('new'), '*Leads* walk in. *Brochures* walk out.')
+  assert.equal(TOUR[2].text, 'At your stall, visitors scan your QR, leave their details and get your brochure. Every card you scan is filed under the expo.')
+  assert.deepEqual(TOUR.slice(1).map((s) => handParts(s.title('new')).map((p) => p.text).join('')), ['Several cards, one photo', 'Leads walk in. Brochures walk out.', 'Your card, one scan away', 'Never go into a call cold'])
   assert.equal(TOUR[3].text, 'Make your digital card and share it on WhatsApp. At your stall, visitors scan its QR to leave their details.')
   assert.equal(TOUR[4].text, 'Pulse Brief reads up on the person and their company, and gives you conversation starters before you call or WhatsApp.')
   assert.deepEqual([lastAction('new'), lastAction('existing'), lastAction('replay')], ['Scan your first card', "Let's go", 'Done'])
+})
+test('handParts splits a title into plain and hand-written parts, any number of each', () => {
+  assert.deepEqual(handParts('*Leads* walk in. *Brochures* walk out.'), [
+    { text: 'Leads', hand: true }, { text: ' walk in. ', hand: false }, { text: 'Brochures', hand: true }, { text: ' walk out.', hand: false },
+  ])
+  assert.deepEqual(handParts('Plain'), [{ text: 'Plain', hand: false }])
+  assert.deepEqual(handParts('Meet *Pulse*'), [{ text: 'Meet ', hand: false }, { text: 'Pulse', hand: true }])
 })
 test('taking the tour again brings the tips back', () => {
   const s = mem()

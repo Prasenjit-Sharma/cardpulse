@@ -81,17 +81,21 @@ export function coachLayout(t: { top: number; bottom: number; left: number; widt
 }
 
 /** A title's hand-written phrase is marked with asterisks: 'Several cards, *one photo*' gives [before, phrase, after]. */
+export function handParts(title: string): { text: string; hand: boolean }[] {
+  return title.split(/\*(.+?)\*/).map((text, i) => ({ text, hand: i % 2 === 1 })).filter((p) => p.text)
+}
+
 export function splitHand(title: string): [string, string, string] {
   const m = /^(.*?)\*(.+?)\*(.*)$/.exec(title)
   return m ? [m[1], m[2], m[3]] : [title, '', '']
 }
 
-export type TourArt = 'mark' | 'cards' | 'event' | 'card' | 'brief'
+export type TourArt = 'mark' | 'cards' | 'leads' | 'card' | 'brief'
 /** The welcome tour. The words between asterisks are hand-written (Caveat) in the brand colour. */
 export const TOUR: { art: TourArt; title: (v: TourVariant) => string; text: string }[] = [
   { art: 'mark', title: () => 'Meet *Pulse*', text: 'Business cards become contacts you can call or WhatsApp, in seconds. The pulse of your network.' },
   { art: 'cards', title: () => 'Several cards, *one photo*', text: 'Lay a stack of cards flat and take one picture. Everyone on them becomes a contact.' },
-  { art: 'event', title: () => 'Built for *expos* and exhibitions', text: 'Create an event and every card you scan is filed under it. Duplicates are flagged, and you export each event when it ends.' },
+  { art: 'leads', title: () => '*Leads* walk in. *Brochures* walk out.', text: 'At your stall, visitors scan your QR, leave their details and get your brochure. Every card you scan is filed under the expo.' },
   { art: 'card', title: () => 'Your card, *one scan away*', text: 'Make your digital card and share it on WhatsApp. At your stall, visitors scan its QR to leave their details.' },
   { art: 'brief', title: () => 'Never go into a call *cold*', text: 'Pulse Brief reads up on the person and their company, and gives you conversation starters before you call or WhatsApp.' },
 ]

@@ -121,3 +121,16 @@
   .wl-draw, .tip-curl .line { stroke-dashoffset: 0 }
   .tip-curl .head { opacity: 1 }
 }
+
+/* the leads scene: the stall's phone behind, the visitor's brochure in front */
+.wl-toast { display: flex; align-items: center; gap: 10px; margin-top: 14px; padding: 10px; border-radius: 12px; background: #15142A; color: #fff; font-size: 13px }
+.wl-toast small { display: block; color: rgba(255,255,255,.7); font-size: 11px }
+.wl-toast .wl-av { width: 34px; height: 34px; font-size: 12px }
+.wl-visitor { position: absolute; left: 30px; right: -36px; top: 92px; padding: 14px; border-radius: 16px; background: #fff; color: #15142A; transform: translateZ(50px);
+  box-shadow: 0 26px 36px -14px rgba(8,6,40,.7); animation: wl-lift 440ms var(--ease) 300ms both }
+.wl-visitor > b { display: block; margin-bottom: 10px; font-size: 14px }
+.wl-file { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 10px; background: #F4F4FA; font-size: 12px; font-weight: 650; animation: wl-lift 360ms var(--ease) 560ms both }
+.wl-file + .wl-file { margin-top: 6px; animation-delay: 700ms }
+.wl-file small { display: block; color: #62617A; font-weight: 500; font-size: 11px }
+.wl-pdf { flex: none; width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; background: #C62F22; color: #fff; font-size: 10px; font-weight: 800 }
+.wl-file.link .wl-pdf { background: #3B2FC9; font-size: 14px }
