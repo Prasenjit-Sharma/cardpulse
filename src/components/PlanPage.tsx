@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ALLOWANCE, EXTRA_BRIEFS, PACKS, PASS, PLANS, TRIAL_BRIEFS, rupees, type Tier } from '../../shared/plans'
+import { ALLOWANCE, DAILY, EXTRA_BRIEFS, isUnlimited, PACKS, PASS, PLANS, TRIAL_BRIEFS, rupees, type PaidTier, type Tier } from '../../shared/plans'
 import type { Balance } from '../lib/balance'
 import { signInWithGoogle, useSession } from '../lib/auth'
 import { refreshBalance, useBalanceError } from '../lib/useBalance'
@@ -7,15 +7,18 @@ import Icon from './Icon'
 import Sheet from './Sheet'
 import './plan.css'
 
-const TIER_NAME: Record<Tier, string> = { free: 'Free', plus: 'Plus', pro: 'Pro' }
+const TIER_NAME: Record<Tier, string> = { free: 'Free', starter: 'Starter', plus: 'Plus', pro: 'Pro', unlimited: 'Unlimited' }
 const day = (iso: string) => new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
 const yearSaving = (p: { monthly: number; yearly: number }) => p.monthly * 12 - p.yearly
 const BEST_SAVING = Math.max(...PLANS.map(yearSaving))
 /** What each plan gives, in the product's own words; every line is true today. */
-const GIVES: Record<'plus' | 'pro', string[]> = {
-  plus: [`${ALLOWANCE.plus.cards} cards read every month`, 'Export, digital card and QR exchange', 'Add card packs any time'],
+const GIVES: Record<PaidTier, string[]> = {
+  starter: [`${ALLOWANCE.starter.cards} cards read every month`, `${ALLOWANCE.starter.briefs} Pulse Briefs a month`, 'Lead capture and brochures at your stall', 'Export, digital card and QR exchange'],
+  plus: [`${ALLOWANCE.plus.cards} cards read every month`, `${ALLOWANCE.plus.briefs} Pulse Briefs a month`, 'Everything in Starter'],
   pro: [`${ALLOWANCE.pro.cards} cards read every month`, `${ALLOWANCE.pro.briefs} Pulse Briefs a month: who they are and what their company does, with sources`, 'Everything in Plus'],
+  unlimited: [`Unlimited cards (fair use: ${DAILY.unlimitedReads} a day)`, `${ALLOWANCE.unlimited.briefs} Pulse Briefs a month`, 'Everything in Pro'],
 }
+const TAG: Partial<Record<PaidTier, string>> = { unlimited: 'Best for exhibitors', pro: 'Most Briefs' }
 
 type Item = { name: string; gives: string; price: string }
 
@@ -70,12 +73,14 @@ function Holding({ balance, signedIn }: { balance: Balance | null; signedIn: boo
       </div>
       <h2>{TIER_NAME[b.tier]}</h2>
       <div className="pl-meters">
-        <Meter label="Cards" left={monthLeft} of={b.cards.month.allowance} word="left this month" />
-        {b.tier === 'pro'
+        {isUnlimited(b.tier)
+          ? <div className="pl-meter pl-meter-off"><div className="pl-meter-top"><span>Cards</span><b>Unlimited</b></div><small className="pl-meter-word">fair use {DAILY.unlimitedReads} a day</small></div>
+          : <Meter label="Cards" left={monthLeft} of={b.cards.month.allowance} word="left this month" />}
+        {b.tier !== 'free'
           ? <Meter label="Pulse Briefs" left={briefMonthLeft} of={b.briefs.month.allowance} word="left this month" />
           : b.briefs.trial > 0
             ? <Meter label="Pulse Briefs" left={b.briefs.trial} of={TRIAL_BRIEFS} word="trial briefs" />
-            : <div className="pl-meter pl-meter-off"><div className="pl-meter-top"><span>Pulse Briefs</span><b>Pro</b></div><small className="pl-meter-word">Part of Pro</small></div>}
+            : <div className="pl-meter pl-meter-off"><div className="pl-meter-top"><span>Pulse Briefs</span><b>Any plan</b></div><small className="pl-meter-word">With any plan</small></div>}
       </div>
       {(b.cards.pack > 0 || b.cards.pass || b.briefs.extra > 0) && (
         <ul className="pl-extras">
@@ -125,7 +130,7 @@ export default function PlanPage({ balance, signedIn, onBack }: { balance: Balan
             <article key={p.tier} className={`pl-plan pl-${p.tier}`} aria-label={`${p.name} plan`}>
               <div className="pl-plan-head">
                 <h4>{p.name}</h4>
-                {p.tier === 'pro' && <span className="pl-tag">Includes Pulse Brief</span>}
+                {TAG[p.tier] && <span className="pl-tag">{TAG[p.tier]}</span>}
                 {current && <span className="pl-tag pl-tag-current">Your plan</span>}
               </div>
               <div className="pl-price" key={`${p.tier}-${yearly}`}>
@@ -163,25 +168,25 @@ export default function PlanPage({ balance, signedIn, onBack }: { balance: Balan
         })}
       </div>
 
-      {tier === 'pro' && (
-        <button className="pl-wide" onClick={() => setItem({ name: `${EXTRA_BRIEFS.briefs} extra briefs`, gives: `${EXTRA_BRIEFS.briefs} Pulse Briefs that never expire, used after the month's ${ALLOWANCE.pro.briefs}`, price: rupees(EXTRA_BRIEFS.price) })}>
+      {tier && tier !== 'free' && (
+        <button className="pl-wide" onClick={() => setItem({ name: `${EXTRA_BRIEFS.briefs} extra briefs`, gives: `${EXTRA_BRIEFS.briefs} Pulse Briefs that never expire, used after the month's ${ALLOWANCE[tier].briefs}`, price: rupees(EXTRA_BRIEFS.price) })}>
           <span className="pl-wide-icon"><Icon name="spark" size={20} /></span>
-          <span className="pl-wide-text"><strong>{EXTRA_BRIEFS.briefs} extra Pulse Briefs</strong><small>For a busy month, after your {ALLOWANCE.pro.briefs}. Never expire</small></span>
+          <span className="pl-wide-text"><strong>{EXTRA_BRIEFS.briefs} extra Pulse Briefs</strong><small>For a busy month, after your {ALLOWANCE[tier].briefs}. Never expire</small></span>
           <b className="num">{rupees(EXTRA_BRIEFS.price)}</b>
         </button>
       )}
 
       <h3 className="pl-section">At an exhibition</h3>
-      <button className="pl-pass" onClick={() => setItem({ name: 'Exhibition pass', gives: `Up to ${PASS.cards.toLocaleString('en-IN')} cards over ${PASS.days} days, from the day it starts`, price: rupees(PASS.price) })}>
+      <button className="pl-pass" onClick={() => setItem({ name: 'Exhibition pass', gives: `Up to ${PASS.cards.toLocaleString('en-IN')} cards over ${PASS.days} days, from the day it starts, with lead capture and brochures`, price: rupees(PASS.price) })}>
         <span className="pl-pass-stub" aria-hidden="true"><Icon name="booth" size={22} /><span>{PASS.days}<small>days</small></span></span>
         <span className="pl-pass-body">
           <strong>Exhibition pass</strong>
-          <span>Up to <b className="num">{PASS.cards.toLocaleString('en-IN')}</b> cards over {PASS.days} days. One account, every phone at the stall.</span>
+          <span>Up to <b className="num">{PASS.cards.toLocaleString('en-IN')}</b> cards over {PASS.days} days, with lead capture and brochures. One account, every phone at the stall.</span>
           <span className="pl-pass-price num">{rupees(PASS.price)}<small> once</small></span>
         </span>
       </button>
 
-      <p className="pl-foot">Each contact read uses one card; a card that could not be read uses none. Export, your digital card and QR exchange are always free.</p>
+      <p className="pl-foot">Each contact read uses one card; a card that could not be read uses none. Lead capture and brochures come with any plan or the Exhibition pass. Export, your digital card and QR exchange are always free.</p>
 
       <Sheet open={!!item} onClose={() => setItem(null)} title={item?.name}>
         <div className="consent">
