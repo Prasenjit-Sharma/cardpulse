@@ -8,12 +8,12 @@ import { decode } from '../lib/image'
 import { growQuad, quadSize, warpQuad, type Pt, type Quad } from '../lib/warp'
 import { useObjectUrl } from '../lib/useObjectUrl'
 import Icon from './Icon'
+import { AUTO_KEY, autoDetectOn } from '../lib/autodetect'
 import ModeRail, { PHOTO_MODES, type PhotoMode } from './ModeRail'
 import { confirmAsk } from './Dialog'
 import { showEvent } from '../lib/eventname'
 
 const MODE_KEY = 'cardpulse.captureMode'
-const AUTO_KEY = 'cardpulse.autoDetect'
 type Mode = PhotoMode
 const MAX_CARDS = 6         // photos held in the tray before they must be read
 const HOLD_MS = 300         // how long the card must hold still before Auto Detect captures
@@ -106,7 +106,7 @@ export default function Camera({ onCard, onSubmit, onClose, onGallery, onQr, eve
   const [mode, setMode] = useState<Mode>(() => {
     try { const m = localStorage.getItem(MODE_KEY) as Mode; return PHOTO_MODES.includes(m) ? m : 'single' } catch { return 'single' }
   })
-  const [auto, setAuto] = useState(() => { try { return localStorage.getItem(AUTO_KEY) !== '0' } catch { return true } })
+  const [auto, setAuto] = useState(() => { try { return autoDetectOn(localStorage.getItem(AUTO_KEY)) } catch { return false } })
   const [torchOk, setTorchOk] = useState(false)
   const [torch, setTorch] = useState(false)
   const [det, setDet] = useState<VideoDet | null>(null)
