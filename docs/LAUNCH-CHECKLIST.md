@@ -10,7 +10,9 @@ Prices, limits and sources checked on 2026-10-09 are under "Research notes" at t
       dashboard; photos and brochures move to R2; a daily ping keeps the project awake and a nightly job backs it up; Pro
       ($25 a month) only when revenue covers it. All-Cloudflare was weighed and set aside: about the same speed for users,
       cheaper at scale, but sign-in and every access check would be ours to build and secure. See "Backend choice" below.
-- [ ] **Final Android app ID.** Today `in.cardpulse.app`; it can never change once published.
+- [x] **Final Android app ID: `in.pulsecardscanner.app`** (decided 2026-10-10; `.dev` and `.staging` suffixes for the
+      other builds). Applied in B6, together with the sign-in return link (`in.pulsecardscanner.app://auth/callback` in the
+      manifest and `src/lib/platform.ts`) and Supabase's allowed redirect URLs, so sign-in breaks only once.
 - [ ] **Payments:** RevenueCat (free under $2,500 monthly revenue, then 1%) or Play Billing built directly (free, about a week more).
 - [ ] **Dev database:** local Supabase (CLI with Docker on the Mac) or a cloud project (the free plan allows two: staging and production).
 
@@ -55,7 +57,7 @@ Seen in the field: reads and Pulse Briefs fail on weak signal, which never happe
 
 ## D. App release
 
-- [ ] D1. Final app id applied.
+- [ ] D1. Final app id `in.pulsecardscanner.app` checked in the release build (Java package, namespace, return link).
 - [ ] D2. Native Google sign-in (Credential Manager).
 - [ ] D3. Release signing key, Play App Signing, version numbers, release bundle (AAB).
 - [ ] D4. Play Billing (RevenueCat or direct), with a webhook to the Worker that grants plans, passes and packs.
