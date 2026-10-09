@@ -13,7 +13,13 @@ Prices, limits and sources checked on 2026-10-09 are under "Research notes" at t
 - [x] **Final Android app ID: `in.pulsecardscanner.app`** (decided 2026-10-10; `.dev` and `.staging` suffixes for the
       other builds). Applied in B6, together with the sign-in return link (`in.pulsecardscanner.app://auth/callback` in the
       manifest and `src/lib/platform.ts`) and Supabase's allowed redirect URLs, so sign-in breaks only once.
-- [ ] **Payments:** RevenueCat (free under $2,500 monthly revenue, then 1%) or Play Billing built directly (free, about a week more).
+- [x] **Payments: RevenueCat** (decided 2026-10-10) over Google Play Billing (Apple in-app purchase later). Free under
+      $2,500 monthly tracked revenue, then 1%. It checks purchases, handles renewals, failed UPI AutoPay mandates, grace
+      periods, refunds and upgrades, and calls a Worker webhook that runs the existing grant functions. Customers pay with
+      whatever Play offers (UPI and UPI AutoPay, cards, net banking). Razorpay inside the app was ruled out on 2026-10-05:
+      Play requires its own billing for digital goods, and India's alternative billing still costs 11%. Later idea: sell
+      on the website through Razorpay (for example passes bought by a company for its stall staff); the app may honour
+      those purchases but must not point users to them.
 - [x] **Dev database: two free cloud projects** (decided 2026-10-10): `pulse-test`, shared by the dev and staging builds, and
       `pulse-prod` for the store app only (closed-test testers use production builds, so their accounts carry over). Local
       Supabase on the Mac was set aside: the phone could reach it only on home Wi-Fi, so no field or weak-signal testing.
@@ -70,7 +76,8 @@ Seen in the field: reads and Pulse Briefs fail on weak signal, which never happe
 - [ ] D1. Final app id `in.pulsecardscanner.app` checked in the release build (Java package, namespace, return link).
 - [ ] D2. Native Google sign-in (Credential Manager).
 - [ ] D3. Release signing key, Play App Signing, version numbers, release bundle (AAB).
-- [ ] D4. Play Billing (RevenueCat or direct), with a webhook to the Worker that grants plans, passes and packs.
+- [ ] D4. RevenueCat over Play Billing: products from `shared/plans.ts` in Play Console, the RevenueCat Capacitor plugin,
+      and a webhook to the Worker that grants plans, passes and packs (needs a Supabase server key for the Worker).
 
 ## E. Website (Cloudflare Pages, free)
 
