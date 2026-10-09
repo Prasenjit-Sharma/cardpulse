@@ -301,8 +301,6 @@ await db.exec(`insert into auth.users values ('${L}')`)
 const publish = (uid, local, slug, at) => as('authenticated', uid, `insert into public.cards (owner_id, local_card_id, slug, name, created_at) values ('${uid}', '${local}', '${slug}', 'L', '${at}')`)
 await publish(L, 'l1', 'SLUGL001', '2026-01-01')
 await assert.rejects(publish(L, 'l2', 'SLUGL002', '2026-01-02'), /card_limit/, 'Free keeps one card')
-await sudo(`select public.grant_pass('${L}')`)
-await assert.rejects(publish(L, 'l2', 'SLUGL002', '2026-01-02'), /card_limit/, 'the Exhibition pass does not add cards')
 await sudo(`select public.grant_plan('${L}', 'starter', 1)`)
 await publish(L, 'l2', 'SLUGL002', '2026-01-02')
 await assert.rejects(publish(L, 'l3', 'SLUGL003', '2026-01-03'), /card_limit/, 'Starter keeps two')
@@ -322,5 +320,22 @@ await as('authenticated', L, `update public.cards set name = 'Edited' where loca
 assert.equal((await db.query(`select name from public.cards where local_card_id = 'l5'`)).rows[0].name, 'Edited')
 await assert.rejects(as('anon', null, 'select public._card_in_plan(gen_random_uuid())'), /permission denied/)
 console.log('ok 0008 digital cards by plan, enforced at publish, public page and leads')
+
+// ── 0009 a running Exhibition pass keeps 5 cards whatever the plan; when it ends the plan's number returns ──
+await db.exec(readFileSync(ROOT + '0009_pass_my_cards.sql', 'utf8'))
+await db.exec(readFileSync(ROOT + '0009_pass_my_cards.sql', 'utf8'))   // re-runnable
+const M = '88888888-8888-8888-8888-888888888889'
+await db.exec(`insert into auth.users values ('${M}')`)
+await publish(M, 'm1', 'SLUGM001', '2026-02-01')
+await assert.rejects(publish(M, 'm2', 'SLUGM002', '2026-02-02'), /card_limit/, 'Free keeps one')
+await sudo(`select public.grant_pass('${M}')`)
+for (let i = 2; i <= 5; i++) await publish(M, `m${i}`, `SLUGM00${i}`, `2026-02-0${i}`)
+await assert.rejects(publish(M, 'm6', 'SLUGM006', '2026-02-06'), /card_limit/, 'the pass keeps five')
+assert.equal((await as('anon', null, `select * from public.get_public_card('SLUGM005')`)).rows.length, 1, 'all five open while the pass runs')
+await db.exec(`update public.passes set ends_at = now() - interval '1 minute' where owner_id = '${M}'`)
+assert.equal((await as('anon', null, `select * from public.get_public_card('SLUGM001')`)).rows.length, 1)
+assert.equal((await as('anon', null, `select * from public.get_public_card('SLUGM002')`)).rows.length, 0, 'the pass over: back to the plan')
+await assert.rejects(publish(M, 'm6', 'SLUGM006', '2026-02-06'), /card_limit/)
+console.log('ok 0009 the Exhibition pass keeps five digital cards while it runs')
 
 console.log('ALL OK')

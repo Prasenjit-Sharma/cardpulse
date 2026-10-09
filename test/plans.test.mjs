@@ -2,7 +2,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { ALLOWANCE, MY_CARDS, TRIAL_BRIEFS, PASS, PACKS, PLANS, EXTRA_BRIEFS, DAILY, isUnlimited, rupees } from '../shared/plans.ts'
+import { ALLOWANCE, MY_CARDS, PASS_MY_CARDS, TRIAL_BRIEFS, PASS, PACKS, PLANS, EXTRA_BRIEFS, DAILY, isUnlimited, rupees } from '../shared/plans.ts'
 
 test('prices and allowances agreed on 9 Oct', () => {
   assert.deepEqual(ALLOWANCE, {
@@ -28,6 +28,9 @@ test('digital cards by plan: 1 free, 2 up to ₹100, 3 up to ₹200, 5 above', a
   const sql = readFileSync(new URL('../supabase/migrations/0008_my_cards_limit.sql', import.meta.url), 'utf8')
   const m = sql.match(/case p_tier when 'unlimited' then (\d+) when 'pro' then (\d+) when 'plus' then (\d+) when 'starter' then (\d+) else (\d+) end/)
   assert.deepEqual(m.slice(1).map(Number), ['unlimited', 'pro', 'plus', 'starter', 'free'].map((t) => MY_CARDS[t]), 'migration 0008 matches')
+  assert.equal(PASS_MY_CARDS, 5)
+  const pass = readFileSync(new URL('../supabase/migrations/0009_pass_my_cards.sql', import.meta.url), 'utf8')
+  assert.match(pass, new RegExp(`_active_pass\\(v_uid\\)\\)\\.id is not null then ${PASS_MY_CARDS} else 0`), 'migration 0009 matches')
 })
 
 test('migration 0007 uses the same numbers as shared/plans.ts', () => {

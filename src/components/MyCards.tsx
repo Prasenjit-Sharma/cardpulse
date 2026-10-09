@@ -14,12 +14,16 @@ const TIER_NAME: Record<Tier, string> = { free: 'Free', starter: 'Starter', plus
  * The user's own digital cards, shown as a holding: the card, then its figures (views, leads, and the share of views
  * that became leads), then one share bar. Cards swipe; a long press opens stall mode.
  */
-export default function MyCards({ cards, locked, tier, stats, onAdd, onEdit, onShare, onStall, onPlans }: {
+export default function MyCards({ cards, locked, limit, pass, tier, stats, onAdd, onEdit, onShare, onStall, onPlans }: {
   /** The cards the plan keeps; only these are shown and shared. */
   cards: MyCard[]
   /** Cards over the plan's limit (after a move to a smaller plan, or a restore): kept, editable, never shared. */
   locked: MyCard[]
-  /** The account's plan; signed out counts as Free. It sets how many cards can be kept (MY_CARDS). */
+  /** How many cards the account keeps: the plan's number (MY_CARDS), or the pass's while one runs. */
+  limit: number
+  /** The limit comes from a running Exhibition pass. */
+  pass: boolean
+  /** The account's plan; signed out counts as Free. */
   tier: Tier
   /** Counts for cards that have a public link, by card id. */
   stats?: Map<string, CardStats>
@@ -32,7 +36,7 @@ export default function MyCards({ cards, locked, tier, stats, onAdd, onEdit, onS
   const [index, setIndex] = useState(0)
   const press = useRef<number>(0)
   const track = useRef<HTMLDivElement>(null)
-  const limit = MY_CARDS[tier]
+  const holder = pass ? 'Your pass' : TIER_NAME[tier]       // who sets the limit, for the rows below
   const held = cards.length + locked.length
   const canAdd = held < limit
   // the cheapest plan that holds more cards than this one, for the row under the list
@@ -135,7 +139,7 @@ export default function MyCards({ cards, locked, tier, stats, onAdd, onEdit, onS
                     <span aria-hidden="true" className="mycard-mini-wrap"><CardCanvas card={c} className="mycard-mini" /><span className="mycard-lock"><Icon name="lock" size={14} /></span></span>
                     <span className="grow">
                       <strong>{c.label || c.name || 'Untitled card'}</strong>
-                      <span className="muted">Locked. {TIER_NAME[tier]} keeps {limit} {limit === 1 ? 'card' : 'cards'}</span>
+                      <span className="muted">Locked. {holder} keeps {limit} {limit === 1 ? 'card' : 'cards'}</span>
                     </span>
                   </button>
                   <button className="icon-btn ghost" onClick={() => onEdit(c.id)} aria-label={`Edit or delete ${c.label || c.name || 'this card'}`}><Icon name="edit" size={18} /></button>
@@ -144,7 +148,7 @@ export default function MyCards({ cards, locked, tier, stats, onAdd, onEdit, onS
               {canAdd ? (
                 <button className="index-row" onClick={onAdd}>
                   <span className="tool-well"><Icon name="plus" size={20} /></span>
-                  <span className="grow"><strong>Add a card</strong><span className="muted">Another business, brand or language. {limit - held} more on {TIER_NAME[tier]}</span></span>
+                  <span className="grow"><strong>Add a card</strong><span className="muted">Another business, brand or language. {limit - held} more on {pass ? 'your pass' : TIER_NAME[tier]}</span></span>
                   <Icon name="chevron" size={18} />
                 </button>
               ) : next ? (

@@ -17,7 +17,7 @@ import { findDuplicates } from './lib/dupes'
 import { backupDue, backupFileName, backupNudgeUntil, buildBackup, lastBackupAt, markBackedUp, mergeEvents, parseBackup, planRestore, saveBackupFile, snoozeBackupNudge } from './lib/backup'
 import { classifyFailure } from './lib/errors'
 import { MAX_ATTEMPTS, nextRetry } from './lib/retry'
-import { cardsFigure, cardsLine, forgetBalance, isLow, scanGate, getBalance, parseBalance, setBalance, shouldResume } from './lib/balance'
+import { cardsFigure, cardsLine, forgetBalance, myCardLimit, isLow, scanGate, getBalance, parseBalance, setBalance, shouldResume } from './lib/balance'
 import { ALLOWANCE, MY_CARDS } from '../shared/plans'
 import PlanPage from './components/PlanPage'
 import { useBalance } from './lib/useBalance'
@@ -356,8 +356,8 @@ export default function App() {
   const userId = session?.user.id
   userIdRef.current = userId
   const balance = useBalance(userId)
-  // the plan's digital cards: any over the limit stay on the phone, locked (signed out counts as Free)
-  const cardLimit = MY_CARDS[balance?.tier ?? 'free']
+  // the plan's digital cards (or the pass's, while one runs): any over the limit stay on the phone, locked
+  const cardLimit = myCardLimit(balance)
   const { active: liveCards, locked: lockedCards } = splitByLimit(myCards, cardLimit)
   // Signing out forgets the balance; signing in, or cards arriving, sends parked cards back to the reader.
   const lastUser = useRef(userId)
@@ -600,7 +600,7 @@ export default function App() {
             onAttention={() => openContacts('attention')} onInsights={() => goto('insights', 'home')} onSetup={() => goto('settings', 'home')} onSettings={() => goto('settings', 'home')}
             onViewEvent={(id) => { setContactsFilter(undefined); setContactsCompany(''); setActiveEvent(id); goto('contacts') }} onEvents={() => gotoTab('exhibition')} onScan={scan} onMyCard={() => gotoTab('mycard')} />
         ) : tab === 'mycard' ? (
-          <MyCards cards={liveCards} locked={lockedCards} tier={balance?.tier ?? 'free'} stats={cardStats} onAdd={() => myCards.length < cardLimit && setEditingCard('new')} onEdit={setEditingCard} onShare={setSharingCard} onStall={setStallCard} onPlans={openPlans} />
+          <MyCards cards={liveCards} locked={lockedCards} limit={cardLimit} pass={!!balance?.cards.pass && cardLimit > MY_CARDS[balance.tier]} tier={balance?.tier ?? 'free'} stats={cardStats} onAdd={() => myCards.length < cardLimit && setEditingCard('new')} onEdit={setEditingCard} onShare={setSharingCard} onStall={setStallCard} onPlans={openPlans} />
         ) : tab === 'companies' ? (
           <Companies cards={cards} onBack={() => setTab('home')} onOpenCompany={(name) => openContacts(undefined, name)} />
         ) : tab === 'contacts' ? (

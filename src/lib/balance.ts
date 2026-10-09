@@ -1,7 +1,7 @@
 // What the account has left, as the server last said (migration 0005's balance). Kept in memory and localStorage so
 // Home and Pulse Brief can show it offline; every read and brief answer brings a newer one. Pure apart from the small
 // store at the bottom; the fetching hook is in useBalance.ts.
-import { isUnlimited, LOW_CARDS, TRIAL_BRIEFS, type Tier } from '../../shared/plans.ts'
+import { isUnlimited, LOW_CARDS, MY_CARDS, PASS_MY_CARDS, TRIAL_BRIEFS, type Tier } from '../../shared/plans.ts'
 
 export interface Balance {
   tier: Tier
@@ -25,6 +25,10 @@ export function parseBalance(x: unknown): Balance | null {
   // a balance cached before 0007 has no canCollect: off until the server says otherwise
   return { ...(b as Balance), canCollect: b.canCollect === true }
 }
+
+/** How many digital cards the account keeps: the plan's number, or the pass's while one runs. Signed out counts as Free. */
+export const myCardLimit = (b: Balance | null | undefined, now = Date.now()): number =>
+  Math.max(MY_CARDS[b?.tier ?? 'free'], b?.cards.pass && Date.parse(b.cards.pass.endsAt) > now ? PASS_MY_CARDS : 0)
 
 export const cardsLine = (b: Balance) => (isUnlimited(b.tier) ? 'Unlimited cards' : b.cards.left === 0 ? 'No cards left' : `${b.cards.left} ${b.cards.left === 1 ? 'card' : 'cards'} left`)
 /** The figure Home shows: the count, or "Unlimited" (Unlimited's allowance is a large number, never shown). */
