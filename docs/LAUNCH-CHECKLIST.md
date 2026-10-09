@@ -14,7 +14,10 @@ Prices, limits and sources checked on 2026-10-09 are under "Research notes" at t
       other builds). Applied in B6, together with the sign-in return link (`in.pulsecardscanner.app://auth/callback` in the
       manifest and `src/lib/platform.ts`) and Supabase's allowed redirect URLs, so sign-in breaks only once.
 - [ ] **Payments:** RevenueCat (free under $2,500 monthly revenue, then 1%) or Play Billing built directly (free, about a week more).
-- [ ] **Dev database:** local Supabase (CLI with Docker on the Mac) or a cloud project (the free plan allows two: staging and production).
+- [x] **Dev database: two free cloud projects** (decided 2026-10-10): `pulse-test`, shared by the dev and staging builds, and
+      `pulse-prod` for the store app only (closed-test testers use production builds, so their accounts carry over). Local
+      Supabase on the Mac was set aside: the phone could reach it only on home Wi-Fi, so no field or weak-signal testing.
+      Database changes keep being tested with `npm run test:db` (PGlite, no Docker).
 
 ## A. Low-network fixes (first, on the current setup)
 
@@ -50,7 +53,7 @@ Seen in the field: reads and Pulse Briefs fail on weak signal, which never happe
 
 - [ ] C1. GitHub: new account, one repo, environments development / staging / production, approval before production.
 - [ ] C2. Cloudflare: one account (Workers, KV, R2, Pages, Access).
-- [ ] C3. Supabase: staging and production projects in **Mumbai (ap-south-1)**.
+- [ ] C3. Supabase: `pulse-test` and `pulse-prod` projects in **Mumbai (ap-south-1)**.
 - [ ] C4. Google Cloud: a project per environment, each with its own Gemini key (production on billing: the paid tier is
       what stops Google using the photos) and OAuth client.
 - [ ] C5. Domain from the cheapest registrar (compare the 3-year total, not the first year), nameservers pointed to Cloudflare.
