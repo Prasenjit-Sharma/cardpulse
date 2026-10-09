@@ -1,7 +1,7 @@
 // Run: node --test test/onboarding.test.mjs
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { TOUR_KEY, TIPS_KEY, TOUR, TIP_TEXT, lastAction, tourVariant, markTourSeen, tipDue, markTipSeen, tipForScreen, swipeStep, coachLayout, splitHand, resetTips, handParts } from '../src/lib/onboarding.ts'
+import { TOUR_KEY, TIPS_KEY, TOUR, TIP_TEXT, lastAction, tourVariant, markTourSeen, tipDue, markTipSeen, tipForScreen, swipeStep, coachLayout, splitHand, resetTips, handParts, tipsForScreen } from '../src/lib/onboarding.ts'
 
 const mem = (init = {}) => { const m = new Map(Object.entries(init)); return { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => { m.set(k, String(v)) }, m } }
 const none = { cards: 0, photoCards: 0, events: 0, myCards: 0 }
@@ -59,6 +59,12 @@ test('which tip a screen may show', () => {
   assert.equal(tipForScreen({ tour: false, overlay: false, page: 'home' }), null)
   assert.equal(tipForScreen({ tour: false, overlay: false, page: 'detail' }), null)
 })
+test('My Card with a card teaches what its captions used to say, in order', () => {
+  assert.deepEqual(tipsForScreen({ tour: false, overlay: false, page: 'mycard', held: true }), ['mycard-hold', 'mycard-figures'])
+  assert.deepEqual(tipsForScreen({ tour: false, overlay: false, page: 'mycard', held: false }), ['mycard'])
+  assert.deepEqual(tipsForScreen({ tour: false, overlay: true, page: 'mycard', held: true }), [])
+  for (const id of ['mycard-hold', 'mycard-figures']) assert.ok(TIP_TEXT[id].line && TIP_TEXT[id].sub, id)
+})
 test('a swipe is 48px, or a quick 24px fling; left moves on', () => {
   assert.equal(swipeStep(-60, 300), 1)
   assert.equal(swipeStep(60, 300), -1)
@@ -113,6 +119,6 @@ test('a title without a hand-written phrase is all plain', () => {
 })
 test('each tip has a bold line and a supporting line', () => {
   assert.deepEqual(TIP_TEXT.events, { line: 'Create an event first', sub: 'Every card you scan is filed under it, ready to export.' })
-  assert.deepEqual(Object.keys(TIP_TEXT).sort(), ['contact', 'events', 'mycard', 'scan-modes'])
+  assert.deepEqual(Object.keys(TIP_TEXT).sort(), ['contact', 'events', 'mycard', 'mycard-figures', 'mycard-hold', 'scan-modes'])
   for (const t of Object.values(TIP_TEXT)) assert.ok(t.line && t.sub)
 })

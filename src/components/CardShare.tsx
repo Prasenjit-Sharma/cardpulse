@@ -8,8 +8,8 @@ import type { MyCard } from '../lib/mycards'
 import Sheet, { SheetItem } from './Sheet'
 import { saveBlob, shareNav } from '../lib/platform'
 
-/** Four ways to give someone the card: show the QR, send the contact file, send the picture, copy the text. */
-export default function CardShare({ card, onClose, onStall }: { card: MyCard; onClose: () => void; onStall: () => void }) {
+/** Ways to send the card to someone not in front of you: the contact file, the picture, the text. The QR has its own key. */
+export default function CardShare({ card, onClose }: { card: MyCard; onClose: () => void }) {
   const [status, setStatus] = useState('')
   const [bad, setBad] = useState(false)
   const say = (text: string, isBad = false) => { setStatus(text); setBad(isBad) }
@@ -34,7 +34,6 @@ export default function CardShare({ card, onClose, onStall }: { card: MyCard; on
 
   return (
     <Sheet open onClose={onClose} title={card.name || 'Share card'}>
-      <SheetItem icon="frame" label="Show QR full screen" hint="For a stall or a meeting" onClick={() => { onClose(); onStall() }} />
       <SheetItem icon="file" label="Send contact file" hint="Opens in Contacts, WhatsApp, email" onClick={() => void sendFile()} />
       <SheetItem icon="image" label="Send as picture" hint="The card as an image" onClick={() => void sendImage()} />
       <SheetItem icon="note" label="Copy as text" onClick={() => void copy()} />

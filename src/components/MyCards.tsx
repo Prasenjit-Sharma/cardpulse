@@ -6,15 +6,17 @@ import CardCanvas from './CardCanvas'
 import CardStack from './CardStack'
 import Icon from './Icon'
 import { readShareLog, tallyShares } from '../lib/sharelog'
+import { showEvent } from '../lib/eventname'
 
 const LONG_PRESS_MS = 600
 const TIER_NAME: Record<Tier, string> = { free: 'Free', starter: 'Starter', plus: 'Plus', pro: 'Pro', unlimited: 'Unlimited' }
 
 /**
- * The user's own digital cards, shown as a holding: the card, then its figures (views, leads, and the share of views
- * that became leads), then one share bar. Cards swipe; a long press opens stall mode.
+ * The user's own digital cards, shown as a holding: the card, then its figures, then three distinct ways to give it:
+ * Share card sends it (file, picture, text), the QR key or a long press shows the QR at once, and Exhibition mode sets
+ * up a stall (lead capture, event, caption). Cards swipe.
  */
-export default function MyCards({ cards, locked, limit, pass, tier, stats, onAdd, onEdit, onShare, onStall, onPlans }: {
+export default function MyCards({ cards, locked, limit, pass, tier, stats, signedIn, entitled, liveEvent, onAdd, onEdit, onShare, onQr, onExpo, onSignIn, onPlans }: {
   /** The cards the plan keeps; only these are shown and shared. */
   cards: MyCard[]
   /** Cards over the plan's limit (after a move to a smaller plan, or a restore): kept, editable, never shared. */
@@ -27,10 +29,19 @@ export default function MyCards({ cards, locked, limit, pass, tier, stats, onAdd
   tier: Tier
   /** Counts for cards that have a public link, by card id. */
   stats?: Map<string, CardStats>
+  signedIn: boolean
+  /** Lead capture is on for this account (a plan or a running pass). */
+  entitled: boolean
+  /** The event live today, if any: Exhibition mode files leads under it. */
+  liveEvent?: string
   onAdd: () => void
   onEdit: (id: string) => void
   onShare: (id: string) => void
-  onStall: (id: string) => void
+  /** The QR full screen, straight away. */
+  onQr: (id: string) => void
+  /** Exhibition mode's setup. */
+  onExpo: (id: string) => void
+  onSignIn: () => void
   onPlans: () => void
 }) {
   const [index, setIndex] = useState(0)
@@ -44,7 +55,7 @@ export default function MyCards({ cards, locked, limit, pass, tier, stats, onAdd
   const onAddSlide = canAdd && index >= cards.length
   const current = onAddSlide ? undefined : cards[Math.min(index, cards.length - 1)]       // on the "Add a card" slide there is no card to edit or share
 
-  const startPress = (id: string) => { clearTimeout(press.current); press.current = window.setTimeout(() => onStall(id), LONG_PRESS_MS) }
+  const startPress = (id: string) => { clearTimeout(press.current); press.current = window.setTimeout(() => onQr(id), LONG_PRESS_MS) }
   const endPress = () => clearTimeout(press.current)
   const showCard = (i: number) => {
     const el = track.current, slide = el?.children[i] as HTMLElement | undefined
@@ -53,7 +64,7 @@ export default function MyCards({ cards, locked, limit, pass, tier, stats, onAdd
     el?.scrollIntoView({ block: 'nearest', behavior })
   }
 
-  const stat = current ? stats?.get(current.id) : undefined
+  const stat = current ? stats?.get(current.id) : undefined       // none until the card has a public link: counts are 0
   // figures this phone records itself, so the holding is never empty when signed out; views and leads come from the server
   const log = readShareLog()
   const tally = current ? tallyShares(log, current.id) : { shared: 0, qr: 0, exchanged: 0 }
@@ -80,7 +91,7 @@ export default function MyCards({ cards, locked, limit, pass, tier, stats, onAdd
             <div ref={track} className="mycards-track" role="region" aria-label="Your cards" tabIndex={0}
               onScroll={(e) => { const el = e.currentTarget; const slide = el.firstElementChild as HTMLElement | null; const pitch = slide ? slide.offsetWidth + 16 : el.clientWidth; setIndex(Math.round(el.scrollLeft / pitch)) }}>
               {cards.map((c, i) => (
-                <div key={c.id} className="mycards-item" role="group" aria-roledescription="slide" aria-label={`Card ${i + 1} of ${cards.length}${c.label ? `, ${c.label}` : ''}`}
+                <div key={c.id} className="mycards-item" data-tip={i === 0 ? 'mycard-hold' : undefined} role="group" aria-roledescription="slide" aria-label={`Card ${i + 1} of ${cards.length}${c.label ? `, ${c.label}` : ''}`}
                   onPointerDown={() => startPress(c.id)} onPointerUp={endPress} onPointerLeave={endPress} onPointerCancel={endPress} onContextMenu={(e) => e.preventDefault()}>
                   <CardCanvas card={c} />
                 </div>
@@ -95,25 +106,30 @@ export default function MyCards({ cards, locked, limit, pass, tier, stats, onAdd
               <div className="dots-row mycards-dots" aria-hidden="true">{Array.from({ length: cards.length + (canAdd ? 1 : 0) }, (_, i) => <i key={i} className={i === index ? 'on' : ''} />)}</div>
             )}
             {current && (
-              <div className="figgrid" style={{ ['--cols' as string]: 4 }} role="group" aria-label="This card's figures">
+              <div className="figgrid" style={{ ['--cols' as string]: 4 }} role="group" aria-label="This card's figures" data-tip="mycard-figures">
                 <div><span>Shared</span><b className="num">{tally.shared + tally.exchanged}</b></div>
                 <div><span>QR shown</span><b className="num">{tally.qr}</b></div>
-                <div><span>Views</span><b className="num">{stat ? stat.views : '–'}</b></div>
-                <div><span>Leads</span><b className={`num${stat?.leads ? ' up' : ''}`}>{stat ? stat.leads : '–'}</b></div>
+                {signedIn ? (
+                  <>
+                    <div><span>Views</span><b className="num">{stat?.views ?? 0}</b></div>
+                    <div><span>Leads</span><b className={`num${stat?.leads ? ' up' : ''}`}>{stat?.leads ?? 0}</b></div>
+                  </>
+                ) : (
+                  // signed out the server cannot count: say so in the cells themselves, and let them sign in
+                  <button className="fig-span" onClick={onSignIn} aria-label="Sign in to count views and leads">
+                    <span>Views · Leads</span><b className="fig-word">Sign in<Icon name="chevron" size={14} /></b>
+                  </button>
+                )}
               </div>
             )}
           </section>
           {current && (
             <>
-              {!stat && <p className="holding-note">Views and leads count when you are signed in.</p>}
               <div className="mycards-actions">
                 <button className="cta" onClick={() => onShare(current.id)}><Icon name="share" size={19} /> Share card</button>
-                <button className="trade sq" onClick={() => onStall(current.id)} aria-label="Show QR full screen" title="Show QR"><Icon name="qr" size={20} /></button>
+                <button className="trade sq" onClick={() => onQr(current.id)} aria-label="Show QR full screen" title="Show QR"><Icon name="qr" size={20} /></button>
               </div>
-              <button className="index-row stall-row" onClick={() => onStall(current.id)}>
-                <span className="grow"><strong>At a stall</strong><span className="muted">Show your QR full screen. Or press and hold the card.</span></span>
-                <Icon name="chevron" size={18} />
-              </button>
+              <Expo entitled={entitled} liveEvent={liveEvent} onStart={() => onExpo(current.id)} />
             </>
           )}
 
@@ -187,6 +203,33 @@ function CardFacts({ card, onEdit }: { card: MyCard; onEdit: () => void }) {
       <dl className="field-table mycard-facts">
         {shown.map(([k, v], i) => <div key={i}><dt>{k}</dt><dd>{v}</dd></div>)}
       </dl>
+    </section>
+  )
+}
+
+/**
+ * Exhibition mode, the stall setup, as its own block: what it does in three steps, the live event it files under, and one
+ * ink key (the screen's accent stays on Share card). Without a plan or pass it still opens, on Just share, with lead
+ * capture shown locked there.
+ */
+function Expo({ entitled, liveEvent, onStart }: { entitled: boolean; liveEvent?: string; onStart: () => void }) {
+  const line = !entitled ? 'Show your QR big at the stall. Lead capture comes with any plan or the Exhibition pass.'
+    : liveEvent ? `Leads file under ${showEvent(liveEvent)}, live today.` : 'Visitors leave their details from their own phone.'
+  return (
+    <section className="expo" aria-labelledby="expo-title">
+      <div className="expo-head">
+        <span className="tool-well"><Icon name="booth" size={22} /></span>
+        <span className="grow">
+          <strong id="expo-title">Exhibition mode{liveEvent && <em className="live-tag">Live</em>}{!entitled && <em className="expo-lock"><Icon name="lock" size={11} />Plan or pass</em>}</strong>
+          <span className="expo-line">{line}</span>
+        </span>
+      </div>
+      <ol className="expo-steps" aria-label="How it works">
+        <li><Icon name="qr" size={18} /><span>They scan</span></li>
+        <li className={entitled ? '' : 'off'}><Icon name="useradd" size={18} /><span>Leave details</span></li>
+        <li className={entitled ? '' : 'off'}><Icon name="file" size={18} /><span>Get your brochure</span></li>
+      </ol>
+      <button className="expo-go" onClick={onStart}>Start exhibition mode<Icon name="chevron" size={18} /></button>
     </section>
   )
 }

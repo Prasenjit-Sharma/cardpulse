@@ -5,7 +5,7 @@
  */
 export const TOUR_KEY = 'cardpulse.tour'
 export const TIPS_KEY = 'cardpulse.tips'
-export type TipId = 'scan-modes' | 'events' | 'contact' | 'mycard'
+export type TipId = 'scan-modes' | 'events' | 'contact' | 'mycard' | 'mycard-hold' | 'mycard-figures'
 export type TourVariant = 'new' | 'existing' | 'replay'
 export type Store = Pick<Storage, 'getItem' | 'setItem'>
 /** What this phone already has: features already used get no tip. */
@@ -52,12 +52,19 @@ export function markTipSeen(s: Store, id: TipId): void {
 }
 
 /** The page on screen: the camera, a contact (read), another full-page view (a scan result, an editor), or a tab. */
-export interface Screen { tour: boolean; overlay: boolean; page: string }
-/** The one tip this screen may show. Never over the tour or over a sheet, dialog or full-screen layer. */
-export function tipForScreen({ tour, overlay, page }: Screen): TipId | null {
-  if (tour || overlay) return null
-  return page === 'camera' ? 'scan-modes' : page === 'contact' ? 'contact' : page === 'exhibition' ? 'events' : page === 'mycard' ? 'mycard' : null
+export interface Screen { tour: boolean; overlay: boolean; page: string; /** My Card holds a card (else it shows Make my card). */ held?: boolean }
+/**
+ * The tips this screen may show, in order; the caller shows the first one still due, one per visit. Never over the tour or
+ * over a sheet, dialog or full-screen layer. Tips carry what used to be standing captions (press and hold the card; views
+ * and leads need a sign-in), so the screen keeps the space once they are learned.
+ */
+export function tipsForScreen({ tour, overlay, page, held }: Screen): TipId[] {
+  if (tour || overlay) return []
+  if (page === 'mycard') return held ? ['mycard-hold', 'mycard-figures'] : ['mycard']
+  return page === 'camera' ? ['scan-modes'] : page === 'contact' ? ['contact'] : page === 'exhibition' ? ['events'] : []
 }
+/** The first tip of a screen, whether due or not. */
+export const tipForScreen = (s: Screen): TipId | null => tipsForScreen(s)[0] ?? null
 
 /** A horizontal drag of 48px, or a quick 24px fling, moves one screen: left (negative) forward. */
 export function swipeStep(dx: number, ms: number): -1 | 0 | 1 {
@@ -106,4 +113,6 @@ export const TIP_TEXT: Record<TipId, { line: string; sub: string }> = {
   events: { line: 'Create an event first', sub: 'Every card you scan is filed under it, ready to export.' },
   contact: { line: 'Call or WhatsApp anyone in one tap', sub: 'Pulse Brief researches them before you call.' },
   mycard: { line: 'Make your digital card', sub: 'At your stall, visitors scan its QR to leave their details.' },
+  'mycard-hold': { line: 'Press and hold your card', sub: 'Its QR opens full screen, ready to scan. No signal needed.' },
+  'mycard-figures': { line: 'Your card at work', sub: 'Shares and QR shows count on this phone. Views and leads count while you are signed in.' },
 }
