@@ -41,14 +41,19 @@ export default function Sheet({ open, onClose, title, children }: { open: boolea
   )
 }
 
-export function SheetItem({ icon, label, hint, onClick, danger, disabled, checked }: {
+export function SheetItem({ icon, label, hint, onClick, danger, disabled, checked, multi, figure }: {
   icon?: Parameters<typeof Icon>[0]['name']; label: string; hint?: string; onClick: () => void; danger?: boolean; disabled?: boolean; checked?: boolean
+  /** Several rows can be checked at once (a checkbox, not a radio). */
+  multi?: boolean
+  /** A count at the right edge, tabular. */
+  figure?: number
 }) {
   return (
-    <button className={`sheet-item${danger ? ' danger' : ''}${checked ? ' checked' : ''}`} onClick={onClick} disabled={disabled} role={checked === undefined ? undefined : 'menuitemradio'} aria-checked={checked}>
+    <button className={`sheet-item${danger ? ' danger' : ''}${checked ? ' checked' : ''}`} onClick={onClick} disabled={disabled} role={checked === undefined ? undefined : multi ? 'menuitemcheckbox' : 'menuitemradio'} aria-checked={checked}>
       {icon && <Icon name={icon} size={20} />}
       <span className="grow"><span className="lbl">{label}</span>{hint && <small>{hint}</small>}</span>
-      {checked && <Icon name="check" size={18} />}
+      {figure !== undefined && <span className="sheet-fig num">{figure}</span>}
+      {multi ? <span className={`check-dot${checked ? ' on' : ''}`} aria-hidden="true">{checked && <Icon name="check" size={14} />}</span> : checked && <Icon name="check" size={18} />}
     </button>
   )
 }

@@ -268,6 +268,7 @@ input[inputmode='tel'], .num input { font-variant-numeric: tabular-nums }
   border-radius: 6px; font-size: var(--t-s); font-weight: 600; color: var(--ink); max-width: 100%;
 }
 .pick svg:last-child, .event-pick svg:last-child { color: var(--ink-3); transform: rotate(90deg) }
+.pick.on { background: var(--ink); color: var(--board); box-shadow: none } .pick.on svg { color: inherit !important }
 .pick .pick-label, .event-pick .pick-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 46vw }
 .event-pick { align-self: center; color: var(--ink-2) }
 .pick.flat { background: none; box-shadow: none; padding: 0; min-height: 30px; width: 100%; justify-content: space-between; font-size: var(--t-l); border-radius: 0 }
@@ -550,12 +551,6 @@ small.up { color: var(--green); font-weight: 600 }
 .chips.scroll { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-right: -16px; padding-right: 16px } .chips.scroll::-webkit-scrollbar { display: none }
 .chip { flex: none; width: auto; min-height: 34px; padding: 0 12px; border-radius: 6px; font-size: var(--t-s); white-space: nowrap; font-weight: 600; color: var(--ink-2); background: var(--sleeve); box-shadow: inset 0 0 0 1px var(--board-edge) }
 .chip.on { background: var(--ink); color: var(--board); box-shadow: none }
-.chip-count { margin-left: 6px; font-size: 11px; font-weight: 600; color: var(--ink-3) }
-.chip.on .chip-count { color: inherit; opacity: .72 }
-/* tags as a rail of their own under the filters: several can be on at once, and the leading key clears them */
-.filters.tag-rail { margin-top: 4px }
-button.filter-ico { min-height: 34px; padding: 0 }
-.tag-rail-empty { display: flex; align-items: center; gap: 6px; margin: 6px 0 2px; font-size: var(--t-xs); color: var(--ink-3) }
 .selbar {
   position: fixed; left: 0; right: 0; bottom: calc(var(--rail-h) + var(--inset-bottom)); max-width: 560px; margin: auto; z-index: 6;
   display: flex; align-items: center; gap: 8px; padding: 8px 12px 8px 16px; background: var(--ink); color: var(--board); border-radius: 0
@@ -847,6 +842,10 @@ nav button.scan-key:active:not(:disabled) .ind { transform: scale(.94) }
 .sheet-item:active:not(:disabled) { background: var(--board-2); transform: none }
 .sheet-item .grow { display: flex; flex-direction: column; text-align: left }
 .sheet-item .lbl { font-weight: 500 } .sheet-item small { color: var(--ink-3); font-weight: 400 }
+.sheet-fig { flex: none; min-width: 24px; text-align: right; font-size: var(--t-s); font-weight: 650; color: var(--ink-3) }
+.sheet-item.checked .check-dot svg { color: var(--brand-ink) }
+.sheet-empty, .sheet-note { margin: 4px 14px 8px; font-size: var(--t-xs); line-height: 1.45; color: var(--ink-3) }
+.sheet-foot { display: flex; gap: 8px; padding: 8px 14px 4px } .sheet-foot .grow { flex: 1 }
 .sheet-item.checked { color: var(--brand) } .sheet-item.checked .lbl { font-weight: 600 } .sheet-item.checked svg { color: var(--brand) }
 
 /* ---------- the log sheet ---------- */

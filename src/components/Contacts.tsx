@@ -10,6 +10,7 @@ import CardThumb from './CardThumb'
 import EmptyState from './EmptyState'
 import Icon from './Icon'
 import Picker from './Picker'
+import Sheet, { SheetItem } from './Sheet'
 import WatchRow from './WatchRow'
 import { confirmAsk } from './Dialog'
 import { eventState, featuredEvents, showEvent } from '../lib/eventname'
@@ -123,27 +124,10 @@ export default function Contacts({ onScan, cards: allCards, events, activeEvent,
         <span className={`filter-ico${flt !== 'all' || tags.length || company || activeEvent ? ' on' : ''}`}><Icon name="filter" size={16} /></span>
         <Picker title="Show" value={flt} onChange={(v) => setFlt(v as Flt)}
           options={[{ value: 'all', label: 'Show all' }, { value: 'priority', label: 'Starred' }, { value: 'attention', label: 'Needs attention' }, { value: 'followup', label: 'Follow-ups' }]} />
+        {allCards.length > 0 && <TagPicker tags={allTags} count={tagCount} chosen={tags} onToggle={toggleTag} onClear={() => setTags([])} />}
         <Picker title="Sort by" value={sort} onChange={(v) => setSort(v as Sort)}
           options={[{ value: 'recent', label: 'Recent' }, { value: 'name', label: 'Name' }, { value: 'company', label: 'Company' }]} />
       </div>
-
-      {allCards.length > 0 && (allTags.length > 0 ? (
-        <div className="filters tag-rail" role="group" aria-label="Filter by tag">
-          {tags.length
-            ? <button className="filter-ico on" onClick={() => setTags([])} aria-label="Clear tags" title="Clear tags"><Icon name="x" size={16} /></button>
-            : <span className="filter-ico" aria-hidden="true"><Icon name="tag" size={16} /></span>}
-          {allTags.map((t) => {
-            const on = tags.includes(t)
-            return (
-              <button key={t} className={`chip${on ? ' on' : ''}`} aria-pressed={on} onClick={() => toggleTag(t)}>
-                {t}<span className="num chip-count">{tagCount.get(t)}</span>
-              </button>
-            )
-          })}
-        </div>
-      ) : (
-        <p className="tag-rail-empty"><Icon name="tag" size={14} /> Tag a contact and filter by it here</p>
-      ))}
 
       {company && (
         <div className="filters">
@@ -214,5 +198,30 @@ export default function Contacts({ onScan, cards: allCards, events, activeEvent,
         </div>
       )}
     </div>
+  )
+}
+
+/** Tags as one dropdown in the filters row: every tag in view with its count, several at once (a contact must carry all). */
+function TagPicker({ tags, count, chosen, onToggle, onClear }: {
+  tags: string[]; count: Map<string, number>; chosen: string[]; onToggle: (t: string) => void; onClear: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const label = chosen.length === 0 ? 'Tags' : chosen.length === 1 ? chosen[0]! : `${chosen.length} tags`
+  return (
+    <>
+      <button type="button" className={`pick${chosen.length ? ' on' : ''}`} onClick={() => setOpen(true)} aria-haspopup="dialog" aria-label={`Tags: ${chosen.length ? chosen.join(', ') : 'any'}`}>
+        <Icon name="tag" size={15} /><span className="pick-label">{label}</span><Icon name="chevron" size={14} />
+      </button>
+      <Sheet open={open} onClose={() => setOpen(false)} title="Filter by tag">
+        {tags.length === 0
+          ? <p className="sheet-empty">No tags yet. Open a contact and add one, like Customer or Hot lead, then filter by it here.</p>
+          : <div role="menu" aria-label="Tags">{tags.map((t) => <SheetItem key={t} label={t} multi checked={chosen.includes(t)} figure={count.get(t)} onClick={() => onToggle(t)} />)}</div>}
+        {tags.length > 1 && <p className="sheet-note">Pick several to see contacts that carry all of them.</p>}
+        <div className="sheet-foot">
+          <button className="tonal-key" onClick={onClear} disabled={!chosen.length}>Clear</button>
+          <button className="tonal-key grow" onClick={() => setOpen(false)}>Done</button>
+        </div>
+      </Sheet>
+    </>
   )
 }
