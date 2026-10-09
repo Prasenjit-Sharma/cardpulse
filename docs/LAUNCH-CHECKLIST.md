@@ -6,10 +6,13 @@ Prices, limits and sources checked on 2026-10-09 are under "Research notes" at t
 
 ## Open decisions
 
-- [ ] **Backend:** all-Cloudflare (Worker + D1 + R2 + own sign-in) or Supabase free + R2. See "Backend choice" below.
+- [x] **Backend: Supabase free + Cloudflare R2** (decided 2026-10-10). Supabase keeps sign-in, row-level security and its
+      dashboard; photos and brochures move to R2; a daily ping keeps the project awake and a nightly job backs it up; Pro
+      ($25 a month) only when revenue covers it. All-Cloudflare was weighed and set aside: about the same speed for users,
+      cheaper at scale, but sign-in and every access check would be ours to build and secure. See "Backend choice" below.
 - [ ] **Final Android app ID.** Today `in.cardpulse.app`; it can never change once published.
 - [ ] **Payments:** RevenueCat (free under $2,500 monthly revenue, then 1%) or Play Billing built directly (free, about a week more).
-- [ ] **Dev database:** local (Supabase CLI or `wrangler dev` with local D1) or a cloud project.
+- [ ] **Dev database:** local Supabase (CLI with Docker on the Mac) or a cloud project (the free plan allows two: staging and production).
 
 ## A. Low-network fixes (first, on the current setup)
 
@@ -32,20 +35,20 @@ Seen in the field: reads and Pulse Briefs fail on weak signal, which never happe
 - [ ] B2. Switch models if accuracy holds: reading on `gemini-2.5-flash-lite` (about ₹0.025 a card, against ₹0.11 today),
       Briefs on `gemini-2.5-flash` (1,500 free searches a day). Add a fallback model on overload (same key).
 - [ ] B3. Photos and brochures on Cloudflare R2 (10 GB free, no download fees) instead of Supabase storage (1 GB free).
-- [ ] B4. Backend per the decision above: one clean starting migration (or the D1 schema), daily brakes merged into one
+- [ ] B4. One clean starting Supabase migration (0001 to 0010 folded together), the two daily brakes merged into one
       table, dead functions dropped.
 - [ ] B5. Remove unused code: own-Gemini-key mode (Settings, `listModels`, direct Gemini call), `promptAsk`, the `submit_lead`
       fallback, the signed-out per-IP path in the Worker, the stale `server/README.md`.
 - [ ] B6. Dev, staging and production settings for the web build, the Worker (Wrangler environments) and the Android app
       (`.dev` and `.staging` app id suffixes, so all three install side by side).
-- [ ] B7. Free safety nets: a nightly database backup (GitHub Actions, or D1 Time Travel) and, on Supabase free, a daily ping
-      so a quiet week does not pause the project.
+- [ ] B7. Free safety nets: a nightly database backup (GitHub Actions) and a daily ping so a quiet week does not pause the
+      Supabase project.
 
 ## C. Accounts (the user, with guidance)
 
 - [ ] C1. GitHub: new account, one repo, environments development / staging / production, approval before production.
-- [ ] C2. Cloudflare: one account (Workers, KV, R2, Pages, Access; D1 if chosen).
-- [ ] C3. Supabase (if kept): staging and production projects in **Mumbai (ap-south-1)**.
+- [ ] C2. Cloudflare: one account (Workers, KV, R2, Pages, Access).
+- [ ] C3. Supabase: staging and production projects in **Mumbai (ap-south-1)**.
 - [ ] C4. Google Cloud: a project per environment, each with its own Gemini key (production on billing: the paid tier is
       what stops Google using the photos) and OAuth client.
 - [ ] C5. Domain from the cheapest registrar (compare the 3-year total, not the first year), nameservers pointed to Cloudflare.
@@ -72,10 +75,10 @@ Seen in the field: reads and Pulse Briefs fail on weak signal, which never happe
 
 ## G. After launch
 
-- [ ] G1. Paid plans only when revenue covers them (Supabase Pro $25 a month, or Workers Paid $5 a month).
+- [ ] G1. Paid plans only when revenue covers them (Supabase Pro $25 a month; Workers Paid $5 a month if traffic needs it).
 - [ ] G2. iPhone app (needs Sign in with Apple or an equal privacy option next to Google, per App Store guideline 4.8).
 
-## Backend choice (to decide)
+## Backend choice (decided 2026-10-10: Supabase free + R2)
 
 | | Supabase free + R2 | All-Cloudflare (D1 + R2 + own sign-in) |
 |---|---|---|
