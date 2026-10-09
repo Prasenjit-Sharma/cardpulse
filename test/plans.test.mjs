@@ -2,7 +2,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { ALLOWANCE, TRIAL_BRIEFS, PASS, PACKS, PLANS, EXTRA_BRIEFS, DAILY, isUnlimited, rupees } from '../shared/plans.ts'
+import { ALLOWANCE, MY_CARDS, TRIAL_BRIEFS, PASS, PACKS, PLANS, EXTRA_BRIEFS, DAILY, isUnlimited, rupees } from '../shared/plans.ts'
 
 test('prices and allowances agreed on 9 Oct', () => {
   assert.deepEqual(ALLOWANCE, {
@@ -18,6 +18,16 @@ test('prices and allowances agreed on 9 Oct', () => {
   assert.deepEqual(DAILY, { reads: 300, briefs: 10, unlimitedReads: 200 })
   assert.equal(isUnlimited('unlimited'), true); assert.equal(isUnlimited('pro'), false)
   assert.equal(rupees(6999), '₹6,999')
+})
+
+test('digital cards by plan: 1 free, 2 up to ₹100, 3 up to ₹200, 5 above', async () => {
+  assert.deepEqual(MY_CARDS, { free: 1, starter: 2, plus: 3, pro: 5, unlimited: 5 })
+  for (const p of PLANS) assert.equal(MY_CARDS[p.tier], p.monthly <= 100 ? 2 : p.monthly <= 200 ? 3 : 5, p.tier)
+  const { MAX_CARDS } = await import('../src/lib/mycards.ts')
+  assert.equal(Math.max(...Object.values(MY_CARDS)), MAX_CARDS)
+  const sql = readFileSync(new URL('../supabase/migrations/0008_my_cards_limit.sql', import.meta.url), 'utf8')
+  const m = sql.match(/case p_tier when 'unlimited' then (\d+) when 'pro' then (\d+) when 'plus' then (\d+) when 'starter' then (\d+) else (\d+) end/)
+  assert.deepEqual(m.slice(1).map(Number), ['unlimited', 'pro', 'plus', 'starter', 'free'].map((t) => MY_CARDS[t]), 'migration 0008 matches')
 })
 
 test('migration 0007 uses the same numbers as shared/plans.ts', () => {

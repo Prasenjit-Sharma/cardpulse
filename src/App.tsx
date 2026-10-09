@@ -18,7 +18,7 @@ import { backupDue, backupFileName, backupNudgeUntil, buildBackup, lastBackupAt,
 import { classifyFailure } from './lib/errors'
 import { MAX_ATTEMPTS, nextRetry } from './lib/retry'
 import { cardsFigure, cardsLine, forgetBalance, isLow, scanGate, getBalance, parseBalance, setBalance, shouldResume } from './lib/balance'
-import { ALLOWANCE } from '../shared/plans'
+import { ALLOWANCE, MY_CARDS } from '../shared/plans'
 import PlanPage from './components/PlanPage'
 import { useBalance } from './lib/useBalance'
 import { claim, readable } from './lib/queue'
@@ -39,7 +39,7 @@ import { markTipSeen, markTourSeen, resetTips, storage, tipDue, tipForScreen, to
 import Welcome from './components/Welcome'
 import LeadLock from './components/LeadLock'
 import Tip from './components/Tip'
-import { deleteMyCard, emptyCard, listMyCards, MAX_CARDS, planCardRestore, putMyCard, type MyCard } from './lib/mycards'
+import { deleteMyCard, emptyCard, listMyCards, planCardRestore, putMyCard, splitByLimit, type MyCard } from './lib/mycards'
 import Companies from './components/Companies'
 import Home from './components/Home'
 import Contacts, { type Flt } from './components/Contacts'
@@ -356,6 +356,9 @@ export default function App() {
   const userId = session?.user.id
   userIdRef.current = userId
   const balance = useBalance(userId)
+  // the plan's digital cards: any over the limit stay on the phone, locked (signed out counts as Free)
+  const cardLimit = MY_CARDS[balance?.tier ?? 'free']
+  const { active: liveCards, locked: lockedCards } = splitByLimit(myCards, cardLimit)
   // Signing out forgets the balance; signing in, or cards arriving, sends parked cards back to the reader.
   const lastUser = useRef(userId)
   useEffect(() => { if (lastUser.current && !userId) forgetBalance(); lastUser.current = userId }, [userId])
@@ -553,7 +556,11 @@ export default function App() {
         <div className="view" key={openCard ? `o-${open?.id}-${open?.review ? 'r' : 'd'}` : tab}>
         {editorCard ? (
           <CardEditor key={editorCard.id} card={editorCard} isNew={editingCard === 'new'}
-            onSave={async (c) => { await putMyCard(c); await refreshMyCards(); setEditingCard(null); setTab('mycard') }}
+            onSave={async (c) => {
+              // a new card past the plan's limit is never stored (a second tab or phone may have filled the last slot)
+              if (editingCard === 'new' && myCards.length >= cardLimit) { setEditingCard(null); setTab('mycard'); setBanner(`Your plan keeps ${cardLimit} ${cardLimit === 1 ? 'card' : 'cards'}. See plans for more.`); return }
+              await putMyCard(c); await refreshMyCards(); setEditingCard(null); setTab('mycard')
+            }}
             onDelete={async (id) => {
               await deleteMyCard(id); queueUnpublish(id); await refreshMyCards(); setEditingCard(null)
               if (userId && navigator.onLine) void pullLeads().finally(() => flushUnpublish(userId))
@@ -576,8 +583,8 @@ export default function App() {
             onRetry={() => enqueue([openCard.id])}
             onDelete={async () => { await deleteCard(openCard.id); setOpen(null); await refresh() }}
             onMoveEvent={(eventId) => void moveToEvent([openCard.id], eventId)}
-            myCards={myCards}
-            onMakeCard={() => setEditingCard('new')}
+            myCards={liveCards}
+            onMakeCard={() => myCards.length < cardLimit && setEditingCard('new')}
             onBrief={async (idx, name, b) => {
               // the contact page closed while the brief was being made: save it to the latest copy, if that person is still there
               const fresh = await getCard(openCard.id)
@@ -593,7 +600,7 @@ export default function App() {
             onAttention={() => openContacts('attention')} onInsights={() => goto('insights', 'home')} onSetup={() => goto('settings', 'home')} onSettings={() => goto('settings', 'home')}
             onViewEvent={(id) => { setContactsFilter(undefined); setContactsCompany(''); setActiveEvent(id); goto('contacts') }} onEvents={() => gotoTab('exhibition')} onScan={scan} onMyCard={() => gotoTab('mycard')} />
         ) : tab === 'mycard' ? (
-          <MyCards cards={myCards} stats={cardStats} onAdd={() => myCards.length < MAX_CARDS && setEditingCard('new')} onEdit={setEditingCard} onShare={setSharingCard} onStall={setStallCard} />
+          <MyCards cards={liveCards} locked={lockedCards} tier={balance?.tier ?? 'free'} stats={cardStats} onAdd={() => myCards.length < cardLimit && setEditingCard('new')} onEdit={setEditingCard} onShare={setSharingCard} onStall={setStallCard} onPlans={openPlans} />
         ) : tab === 'companies' ? (
           <Companies cards={cards} onBack={() => setTab('home')} onOpenCompany={(name) => openContacts(undefined, name)} />
         ) : tab === 'contacts' ? (
@@ -634,11 +641,11 @@ export default function App() {
         )}
         </div>
       </main>
-      {sharingCard && myCards.find((c) => c.id === sharingCard) && (
-        <CardShare card={myCards.find((c) => c.id === sharingCard)!} onClose={() => setSharingCard(null)} onStall={() => setStallCard(sharingCard)} />
+      {sharingCard && liveCards.find((c) => c.id === sharingCard) && (
+        <CardShare card={liveCards.find((c) => c.id === sharingCard)!} onClose={() => setSharingCard(null)} onStall={() => setStallCard(sharingCard)} />
       )}
-      {stallCard && myCards.find((c) => c.id === stallCard) && (
-        <StallMode card={myCards.find((c) => c.id === stallCard)!} events={events} initialEventId={activeEvent || undefined} onClose={() => setStallCard(null)} onPack={setPackEvent} entitled={!!balance?.canCollect} onLocked={() => { setStallCard(null); setLeadLock(true) }} />
+      {stallCard && liveCards.find((c) => c.id === stallCard) && (
+        <StallMode card={liveCards.find((c) => c.id === stallCard)!} events={events} initialEventId={activeEvent || undefined} onClose={() => setStallCard(null)} onPack={setPackEvent} entitled={!!balance?.canCollect} onLocked={() => { setStallCard(null); setLeadLock(true) }} />
       )}
       {packEvent && (
         <PackPage eventId={packEvent} eventName={showEvent(events.find((e) => e.id === packEvent)?.name ?? '')} userId={userId} online={online} onClose={() => setPackEvent(null)} />
@@ -673,8 +680,8 @@ export default function App() {
           onPhotoMode={(m) => { try { localStorage.setItem('cardpulse.captureMode', m) } catch { /* ignore */ } setQrOpen(false); setQrText(''); setCamOpen(true) }} />
       )}
       {qrOpen && qrText && (
-        <QrResult raw={qrText} myCard={myCards[0]} onAgain={() => setQrText('')} onClose={() => { setQrText(''); setQrOpen(false) }}
-          onShowMyQr={() => { setQrText(''); setQrOpen(false); if (myCards[0]) setStallCard(myCards[0].id) }}
+        <QrResult raw={qrText} myCard={liveCards[0]} onAgain={() => setQrText('')} onClose={() => { setQrText(''); setQrOpen(false) }}
+          onShowMyQr={() => { setQrText(''); setQrOpen(false); if (liveCards[0]) setStallCard(liveCards[0].id) }}
           onSave={async (contact) => {
             await putCard({ id: crypto.randomUUID(), createdAt: Date.now(), status: 'done', reviewed: true, source: 'qr', extracted: [contact], corrected: [structuredClone(contact)], eventId: activeEventRef.current || undefined })
             await refresh()

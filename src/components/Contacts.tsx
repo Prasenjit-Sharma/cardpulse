@@ -43,7 +43,7 @@ export default function Contacts({ onScan, cards: allCards, events, activeEvent,
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState<Sort>('recent')
   const [flt, setFlt] = useState<Flt>(initialFilter ?? 'all')
-  const [tag, setTag] = useState('')
+  const [tags, setTags] = useState<string[]>([])
   const [company, setCompany] = useState(initialCompany ?? '')
   const [sel, setSel] = useState<Set<string> | null>(null)
   const [openKey, setOpenKey] = useState('')
@@ -57,13 +57,18 @@ export default function Contacts({ onScan, cards: allCards, events, activeEvent,
   const failed = inEvent.filter((c) => c.status === 'error')
   const reading = inEvent.filter((c) => c.status === 'pending' || c.status === 'running')
   const tokens = searchTokens(query)
-  const allTags = [...new Set(inEvent.flatMap((c) => (c.corrected ?? []).flatMap((p) => p.tags ?? [])))].sort()
+  // every tag on a read contact here, with how many carry it; most used first, and a chosen tag stays even at zero
+  const tagCount = new Map<string, number>()
+  for (const c of inEvent) if (c.status === 'done') for (const p of c.corrected ?? []) for (const t of new Set(p.tags ?? [])) tagCount.set(t, (tagCount.get(t) ?? 0) + 1)
+  for (const t of tags) if (!tagCount.has(t)) tagCount.set(t, 0)
+  const allTags = [...tagCount.keys()].sort((a, b) => tagCount.get(b)! - tagCount.get(a)! || a.localeCompare(b))
+  const toggleTag = (t: string) => setTags((xs) => (xs.includes(t) ? xs.filter((x) => x !== t) : [...xs, t]))
 
   let rows: Row[] = inEvent
     .filter((c) => c.status === 'done')
     .flatMap((c) => (c.corrected ?? []).map((p, i) => ({ card: c, p, i, key: `${c.id}:${i}` })))
     .filter((r) => matchesQuery(r.p, tokens, eventName(r.card.eventId)))
-    .filter((r) => hasAllTags(r.p, tag ? [tag] : []))
+    .filter((r) => hasAllTags(r.p, tags))
     .filter((r) => !company || companyKey(r.p.company) === companyKey(company))
     .filter((r) => flt === 'all' || (flt === 'priority' ? !!r.p.priority : flt === 'attention' ? needsAttention(r.card, dupes.has(r.card.id)) : !!currentFollowUp(r.p)))
   if (sort === 'name') rows = [...rows].sort((a, b) => a.p.name.localeCompare(b.p.name))
@@ -115,16 +120,30 @@ export default function Contacts({ onScan, cards: allCards, events, activeEvent,
       </div>
 
       <div className="filters">
-        <span className={`filter-ico${flt !== 'all' || tag || company || activeEvent ? ' on' : ''}`}><Icon name="filter" size={16} /></span>
-        {allTags.length > 0 && (
-          <Picker title="Tag" label={tag || 'Tags'} value={tag} onChange={setTag}
-            options={[{ value: '', label: 'All tags' }, ...allTags.map((t) => ({ value: t, label: t }))]} />
-        )}
+        <span className={`filter-ico${flt !== 'all' || tags.length || company || activeEvent ? ' on' : ''}`}><Icon name="filter" size={16} /></span>
         <Picker title="Show" value={flt} onChange={(v) => setFlt(v as Flt)}
           options={[{ value: 'all', label: 'Show all' }, { value: 'priority', label: 'Starred' }, { value: 'attention', label: 'Needs attention' }, { value: 'followup', label: 'Follow-ups' }]} />
         <Picker title="Sort by" value={sort} onChange={(v) => setSort(v as Sort)}
           options={[{ value: 'recent', label: 'Recent' }, { value: 'name', label: 'Name' }, { value: 'company', label: 'Company' }]} />
       </div>
+
+      {allCards.length > 0 && (allTags.length > 0 ? (
+        <div className="filters tag-rail" role="group" aria-label="Filter by tag">
+          {tags.length
+            ? <button className="filter-ico on" onClick={() => setTags([])} aria-label="Clear tags" title="Clear tags"><Icon name="x" size={16} /></button>
+            : <span className="filter-ico" aria-hidden="true"><Icon name="tag" size={16} /></span>}
+          {allTags.map((t) => {
+            const on = tags.includes(t)
+            return (
+              <button key={t} className={`chip${on ? ' on' : ''}`} aria-pressed={on} onClick={() => toggleTag(t)}>
+                {t}<span className="num chip-count">{tagCount.get(t)}</span>
+              </button>
+            )
+          })}
+        </div>
+      ) : (
+        <p className="tag-rail-empty"><Icon name="tag" size={14} /> Tag a contact and filter by it here</p>
+      ))}
 
       {company && (
         <div className="filters">

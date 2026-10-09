@@ -79,7 +79,8 @@ Constraints:
   real customers.
 - **Plans (v2, 2026-10-09, `shared/plans.ts`):** Free, Starter, Plus, Pro and Unlimited, with Pulse Brief on every paid
   plan. Lead capture with brochures at a stall is the paid highlight: any plan or the Exhibition pass. Nothing can be
-  bought until Play Billing.
+  bought until Play Billing. Digital cards by plan (`MY_CARDS`): Free 1, Starter 2, Plus 3, Pro and Unlimited 5; the
+  Exhibition pass does not add any. Enforced in the app and on the server (migration 0008).
 - **No payments, no team features, no CRM integrations** yet.
 - **Undecided:** pricing, whether the wrapper is Capacitor or a React Native rewrite. DPDP groundwork (consent,
   deletion, retention, privacy page) is built but has not had a legal review.

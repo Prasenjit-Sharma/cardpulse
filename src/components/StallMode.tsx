@@ -62,7 +62,7 @@ export default function StallMode({ card, events, initialEventId, onClose, onPac
     setPublishing(true); setPublishError('')
     void publishCard(card, session!.user.id)
       .then((r) => setSlug(r.slug))
-      .catch(() => setPublishError('Could not set this up. Try again.'))
+      .catch((e: unknown) => setPublishError(String((e as { message?: string })?.message).includes('card_limit') ? 'Your plan has no room to put this card online. Delete a card or see plans.' : 'Could not set this up. Try again.'))
       .finally(() => setPublishing(false))
   }, [mode, canCollect, slug, publishing, online, card, session])
 

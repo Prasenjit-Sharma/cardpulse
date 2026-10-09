@@ -18,6 +18,7 @@ test('the payload carries the card fields but never the photo, and is sanitized 
   const p = buildCardPayload({ ...emptyCard(), id: 'local-1', name: '  Asha  ', photo: new Blob(['x']), phones: [' 1 ', ''] })
   assert.equal(p.local_card_id, 'local-1'); assert.equal(p.name, 'Asha'); assert.deepEqual(p.phones, ['1'])
   assert.equal('photo' in p, false)
+  assert.equal(buildCardPayload({ ...emptyCard('graphite', Date.UTC(2026, 0, 2)), id: 'x' }).created_at, '2026-01-02T00:00:00.000Z')
 })
 test('a 23505 violation is classified by which unique constraint actually fired, not assumed to always be the slug', () => {
   assert.equal(conflictKind({ code: '23505', message: 'duplicate key value violates unique constraint "cards_slug_key"' }), 'slug')

@@ -16,6 +16,8 @@ export interface CardPayload {
   local_card_id: string; name: string; title: string; company: string
   phones: string[]; emails: string[]; website: string; address: string; social: string[]
   template: string; accent: string; font: string
+  /** When the card was made on the phone: the server keeps a plan's oldest cards live, in the same order as the app. */
+  created_at: string
 }
 
 /** What gets written to the `cards` row. The photo is never in here — it goes to Storage separately. */
@@ -24,7 +26,7 @@ export function buildCardPayload(card: MyCard): CardPayload {
   return {
     local_card_id: c.id, name: c.name, title: c.title, company: c.company,
     phones: c.phones, emails: c.emails, website: c.website, address: c.address, social: c.social,
-    template: c.template, accent: c.accent, font: c.font,
+    template: c.template, accent: c.accent, font: c.font, created_at: new Date(c.createdAt).toISOString(),
   }
 }
 

@@ -550,6 +550,12 @@ small.up { color: var(--green); font-weight: 600 }
 .chips.scroll { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-right: -16px; padding-right: 16px } .chips.scroll::-webkit-scrollbar { display: none }
 .chip { flex: none; width: auto; min-height: 34px; padding: 0 12px; border-radius: 6px; font-size: var(--t-s); white-space: nowrap; font-weight: 600; color: var(--ink-2); background: var(--sleeve); box-shadow: inset 0 0 0 1px var(--board-edge) }
 .chip.on { background: var(--ink); color: var(--board); box-shadow: none }
+.chip-count { margin-left: 6px; font-size: 11px; font-weight: 600; color: var(--ink-3) }
+.chip.on .chip-count { color: inherit; opacity: .72 }
+/* tags as a rail of their own under the filters: several can be on at once, and the leading key clears them */
+.filters.tag-rail { margin-top: 4px }
+button.filter-ico { min-height: 34px; padding: 0 }
+.tag-rail-empty { display: flex; align-items: center; gap: 6px; margin: 6px 0 2px; font-size: var(--t-xs); color: var(--ink-3) }
 .selbar {
   position: fixed; left: 0; right: 0; bottom: calc(var(--rail-h) + var(--inset-bottom)); max-width: 560px; margin: auto; z-index: 6;
   display: flex; align-items: center; gap: 8px; padding: 8px 12px 8px 16px; background: var(--ink); color: var(--board); border-radius: 0
@@ -879,6 +885,20 @@ nav button.scan-key:active:not(:disabled) .ind { transform: scale(.94) }
 .mycards-actions .trade.sq { width: 48px; min-height: 48px }
 .stall-row { margin: 14px -16px 0; width: calc(100% + 32px); border-block: 1px solid var(--rule-soft) }
 .stall-row > svg { color: var(--ink-3); flex: none }
+/* under the holding: the cards the plan allows, and what the shown card gives away */
+.stall-row + section > .group.band:first-child { margin-top: 0; border-top: 0 }
+.mycard-row { min-height: 60px } .mycard-mini-wrap { display: inline-flex; flex: none }
+.mycard-mini { width: 56px; aspect-ratio: 1.75; flex: none; display: block; border-radius: 4px; box-shadow: 0 0 0 1px var(--rule); pointer-events: none }
+.mycard-row.on { background: var(--wash) }
+.mycard-tag { flex: none; display: inline-flex; align-items: center; min-height: 22px; padding: 0 8px; border-radius: 4px; background: var(--brand-wash); color: var(--brand); font-size: 11px; font-weight: 650 }
+.mycard-facts { margin-bottom: 24px }
+.mycard-mini-wrap { position: relative }
+.mycard-locked { display: flex; align-items: center; padding-right: 8px; position: relative }
+.mycard-locked > .index-row { flex: 1; min-width: 0 }
+.mycard-locked .mycard-mini { opacity: .4; filter: grayscale(1) }
+.mycard-lock { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--ink-2) }
+.mycard-locked .muted { color: var(--amber) }
+.index-row + .mycard-locked::before, .mycard-locked + .mycard-locked::before, .mycard-locked + .index-row::before { content: ''; position: absolute; top: 0; left: 16px; right: 0; height: 1px; background: var(--rule-soft) }
 @media (prefers-reduced-motion: reduce) { .mycards-track { scroll-behavior: auto } }
 @media (min-width: 900px) { .mycards-hero .mycards-item { flex-basis: min(100%, 520px) } .mycards-track { margin-left: -28px; margin-right: -28px; padding-left: 28px; padding-right: 28px } .stall-row { margin-left: -28px; margin-right: -28px; width: calc(100% + 56px) } }
 /* card editor */
