@@ -51,6 +51,13 @@ Seen in the field: reads and Pulse Briefs fail on weak signal, which never happe
 
 ## C. Accounts (the user, with guidance)
 
+- [ ] **C0. Emails** (decided 2026-10-10). Google Play Console stays on the existing developer account. A new business Gmail
+      for everything else: GitHub, Cloudflare, Supabase, RevenueCat, and Google Cloud (Gemini keys, sign-in client, the
+      billing service account). Cross-access as a backup: the new Gmail added as admin in Play Console (Users and
+      permissions), the developer account given Owner on the Google Cloud projects. Two-step verification on both, each the
+      other's recovery email. Never sign up for these with a domain address (a lapsed domain would lock you out). Public
+      addresses on the domain (`support@`, `privacy@`) forward to the new Gmail through Cloudflare Email Routing (free,
+      receive only); Brevo's free plan only when sending from `support@` is needed.
 - [ ] C1. GitHub: new account, one repo, environments development / staging / production, approval before production.
 - [ ] C2. Cloudflare: one account (Workers, KV, R2, Pages, Access).
 - [ ] C3. Supabase: `pulse-test` and `pulse-prod` projects in **Mumbai (ap-south-1)**.
