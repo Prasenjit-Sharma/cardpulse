@@ -1,7 +1,7 @@
 // Run: node --test test/mycards.test.mjs
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { MAX_CARDS, MAX_LIST, cardsFromEntries, cardsToEntries, emptyCard, initials, planCardRestore, sanitizeCard } from '../src/lib/mycards.ts'
+import { MAX_CARDS, MAX_LIST, splitByLimit, cardsFromEntries, cardsToEntries, emptyCard, initials, planCardRestore, sanitizeCard } from '../src/lib/mycards.ts'
 
 test('a new card is blank, on the given accent, with the default template and font', () => {
   const c = emptyCard('navy', 5)
@@ -34,3 +34,13 @@ test('restoring never duplicates an id already on the phone', () => {
   assert.deepEqual(plan.add.map((c) => c.id), ['b']); assert.equal(plan.skipped, 1)
 })
 test('the limit is five', () => assert.equal(MAX_CARDS, 5))
+
+test('a plan keeps its oldest cards; the rest are locked, in the given order', () => {
+  const at = (id, createdAt) => ({ ...emptyCard('graphite', createdAt), id })
+  const cards = [at('c', 3), at('a', 1), at('b', 2)]
+  const one = splitByLimit(cards, 1)
+  assert.deepEqual(one.active.map((c) => c.id), ['a'])
+  assert.deepEqual(one.locked.map((c) => c.id), ['c', 'b'])
+  assert.deepEqual(splitByLimit(cards, 5).locked, [])
+  assert.deepEqual(splitByLimit([at('y', 1), at('x', 1)], 1).active.map((c) => c.id), ['x'], 'same moment: by id, as the server does')
+})

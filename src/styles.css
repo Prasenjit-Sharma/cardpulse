@@ -268,6 +268,7 @@ input[inputmode='tel'], .num input { font-variant-numeric: tabular-nums }
   border-radius: 6px; font-size: var(--t-s); font-weight: 600; color: var(--ink); max-width: 100%;
 }
 .pick svg:last-child, .event-pick svg:last-child { color: var(--ink-3); transform: rotate(90deg) }
+.pick.on { background: var(--ink); color: var(--board); box-shadow: none } .pick.on svg { color: inherit !important }
 .pick .pick-label, .event-pick .pick-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 46vw }
 .event-pick { align-self: center; color: var(--ink-2) }
 .pick.flat { background: none; box-shadow: none; padding: 0; min-height: 30px; width: 100%; justify-content: space-between; font-size: var(--t-l); border-radius: 0 }
@@ -841,6 +842,10 @@ nav button.scan-key:active:not(:disabled) .ind { transform: scale(.94) }
 .sheet-item:active:not(:disabled) { background: var(--board-2); transform: none }
 .sheet-item .grow { display: flex; flex-direction: column; text-align: left }
 .sheet-item .lbl { font-weight: 500 } .sheet-item small { color: var(--ink-3); font-weight: 400 }
+.sheet-fig { flex: none; min-width: 24px; text-align: right; font-size: var(--t-s); font-weight: 650; color: var(--ink-3) }
+.sheet-item.checked .check-dot svg { color: var(--brand-ink) }
+.sheet-empty, .sheet-note { margin: 4px 14px 8px; font-size: var(--t-xs); line-height: 1.45; color: var(--ink-3) }
+.sheet-foot { display: flex; gap: 8px; padding: 8px 14px 4px } .sheet-foot .grow { flex: 1 }
 .sheet-item.checked { color: var(--brand) } .sheet-item.checked .lbl { font-weight: 600 } .sheet-item.checked svg { color: var(--brand) }
 
 /* ---------- the log sheet ---------- */
@@ -865,7 +870,6 @@ nav button.scan-key:active:not(:disabled) .ind { transform: scale(.94) }
 .mycards-add { width: 100%; aspect-ratio: 1.75; display: flex; align-items: center; justify-content: center; gap: 10px; border: 1.5px dashed var(--board-edge); border-radius: 12px; background: var(--band); color: var(--ink-2); font-weight: 600 }
 .mycards-add:active:not(:disabled) { transform: none; background: var(--board-2) }
 .mycards-dots { margin: -14px 0 12px }
-.holding-note { margin: 6px 0 0; font-size: var(--t-xs); color: var(--ink-3) }
 .index-row.static { cursor: default }
 .contact-row.reading.parked strong { color: var(--amber) }
 .contact-row.reading.parked:active { background: var(--band) }
@@ -877,10 +881,31 @@ nav button.scan-key:active:not(:disabled) .ind { transform: scale(.94) }
 .mycards-actions { display: flex; gap: 8px; margin-top: 14px }
 .mycards-actions .cta { flex: 1; min-height: 48px; font-size: var(--t-l) }
 .mycards-actions .trade.sq { width: 48px; min-height: 48px }
-.stall-row { margin: 14px -16px 0; width: calc(100% + 32px); border-block: 1px solid var(--rule-soft) }
-.stall-row > svg { color: var(--ink-3); flex: none }
+/* under the holding: the cards the plan allows, and what the shown card gives away */
+.expo + section > .group.band:first-child { margin-top: 0; border-top: 0 }
+/* Exhibition mode: one highlighted row on the indigo wash, like the event strip; its Start key is ink so Share card stays the one accent */
+.index-row.expo { margin: 16px -16px 0; width: calc(100% + 32px); min-height: 64px; background: var(--wash); border-block: 1px solid var(--brand-edge) }
+.index-row.expo:active:not(:disabled) { background: var(--wash-press) }
+.index-row.expo .tool-well { width: 40px; height: 40px; border-radius: 10px; flex: none }
+.index-row.expo strong { display: flex; align-items: center; gap: 8px }
+.expo-go { flex: none; display: inline-flex; align-items: center; min-height: 36px; padding: 0 14px; border-radius: 8px; background: var(--ink); color: var(--board); font-size: var(--t-s); font-weight: 650 }
+/* signed out, Views and Leads share one cell that says what they need */
+.figgrid > .fig-span { grid-column: span 2 }
+.fig-word { display: inline-flex; align-items: center; gap: 2px; font-size: 16px !important; letter-spacing: 0 !important }
+.mycard-row { min-height: 60px } .mycard-mini-wrap { display: inline-flex; flex: none }
+.mycard-mini { width: 56px; aspect-ratio: 1.75; flex: none; display: block; border-radius: 4px; box-shadow: 0 0 0 1px var(--rule); pointer-events: none }
+.mycard-row.on { background: var(--wash) }
+.mycard-tag { flex: none; display: inline-flex; align-items: center; min-height: 22px; padding: 0 8px; border-radius: 4px; background: var(--brand-wash); color: var(--brand); font-size: 11px; font-weight: 650 }
+.mycard-facts { margin-bottom: 24px }
+.mycard-mini-wrap { position: relative }
+.mycard-locked { display: flex; align-items: center; padding-right: 8px; position: relative }
+.mycard-locked > .index-row { flex: 1; min-width: 0 }
+.mycard-locked .mycard-mini { opacity: .4; filter: grayscale(1) }
+.mycard-lock { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--ink-2) }
+.mycard-locked .muted { color: var(--amber) }
+.index-row + .mycard-locked::before, .mycard-locked + .mycard-locked::before, .mycard-locked + .index-row::before { content: ''; position: absolute; top: 0; left: 16px; right: 0; height: 1px; background: var(--rule-soft) }
 @media (prefers-reduced-motion: reduce) { .mycards-track { scroll-behavior: auto } }
-@media (min-width: 900px) { .mycards-hero .mycards-item { flex-basis: min(100%, 520px) } .mycards-track { margin-left: -28px; margin-right: -28px; padding-left: 28px; padding-right: 28px } .stall-row { margin-left: -28px; margin-right: -28px; width: calc(100% + 56px) } }
+@media (min-width: 900px) { .mycards-hero .mycards-item { flex-basis: min(100%, 520px) } .mycards-track { margin-left: -28px; margin-right: -28px; padding-left: 28px; padding-right: 28px } .index-row.expo { margin-left: -28px; margin-right: -28px; width: calc(100% + 56px); padding-left: 28px; padding-right: 28px } }
 /* card editor */
 /* the card being made stays in view, seated on a band, while its fields scroll under it */
 .editor-preview { position: sticky; top: 0; z-index: 3; margin: 0 -16px; padding: 4px 16px 14px; background: var(--wash); border-bottom: 1px solid var(--brand-edge) }

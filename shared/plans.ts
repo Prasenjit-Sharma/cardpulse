@@ -11,6 +11,10 @@ export const ALLOWANCE: Record<Tier, { cards: number; briefs: number }> = {
   unlimited: { cards: 1_000_000, briefs: 30 },   // shown as "Unlimited"; fair use is DAILY.unlimitedReads
 }
 export const isUnlimited = (t: Tier) => t === 'unlimited'
+/** Digital cards (My Card) a plan may hold: plans up to ₹100 a month get 2, up to ₹200 get 3, above that 5. */
+export const MY_CARDS: Record<Tier, number> = { free: 1, starter: 2, plus: 3, pro: 5, unlimited: 5 }
+/** While an Exhibition pass runs, the account keeps this many whatever its plan; when it ends the plan's own number returns. */
+export const PASS_MY_CARDS = 5
 export const TRIAL_BRIEFS = 3
 export const PASS = { cards: 1000, days: 7, price: 499 }
 export const PLANS: { tier: PaidTier; name: string; monthly: number; yearly: number; gives: string }[] = [

@@ -10,7 +10,7 @@ export type TemplateId = 'ledger' | 'header' | 'split' | 'noir' | 'bold'
 export type FontId = 'archivo' | 'inter'
 export const TEMPLATES: TemplateId[] = ['ledger', 'header', 'split', 'noir', 'bold']
 export const FONTS: FontId[] = ['archivo', 'inter']
-export const MAX_CARDS = 5
+export const MAX_CARDS = 5        // the most any plan keeps; each plan's own number is MY_CARDS in shared/plans.ts
 export const MAX_LIST = 3
 
 /** The user's own digital business card. */
@@ -23,6 +23,15 @@ export interface MyCard {
   website: string; address: string; social: string[]
   photo?: Blob
   template: TemplateId; accent: string; font: FontId
+}
+
+/**
+ * A plan keeps its oldest cards (MY_CARDS in shared/plans.ts); any over the limit, after a move to a smaller plan or a
+ * restore, are locked: kept and editable, never shown or shared. Same order as the server (migration 0008).
+ */
+export function splitByLimit(cards: MyCard[], limit: number): { active: MyCard[]; locked: MyCard[] } {
+  const keep = new Set([...cards].sort((a, b) => a.createdAt - b.createdAt || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)).slice(0, limit).map((c) => c.id))
+  return { active: cards.filter((c) => keep.has(c.id)), locked: cards.filter((c) => !keep.has(c.id)) }
 }
 
 export const emptyCard = (accent: string = CARD_ACCENT, now = Date.now()): MyCard => ({

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ALLOWANCE, DAILY, EXTRA_BRIEFS, isUnlimited, PACKS, PASS, PLANS, TRIAL_BRIEFS, rupees, type PaidTier, type Tier } from '../../shared/plans'
+import { ALLOWANCE, DAILY, EXTRA_BRIEFS, isUnlimited, MY_CARDS, PACKS, PASS, PASS_MY_CARDS, PLANS, TRIAL_BRIEFS, rupees, type PaidTier, type Tier } from '../../shared/plans'
 import type { Balance } from '../lib/balance'
 import { signInWithGoogle, useSession } from '../lib/auth'
 import { refreshBalance, useBalanceError } from '../lib/useBalance'
@@ -13,9 +13,9 @@ const yearSaving = (p: { monthly: number; yearly: number }) => p.monthly * 12 - 
 const BEST_SAVING = Math.max(...PLANS.map(yearSaving))
 /** What each plan gives, in the product's own words; every line is true today. */
 const GIVES: Record<PaidTier, string[]> = {
-  starter: [`${ALLOWANCE.starter.cards} cards read every month`, `${ALLOWANCE.starter.briefs} Pulse Briefs a month`, 'Lead capture and brochures at your stall', 'Export, digital card and QR exchange'],
-  plus: [`${ALLOWANCE.plus.cards} cards read every month`, `${ALLOWANCE.plus.briefs} Pulse Briefs a month`, 'Everything in Starter'],
-  pro: [`${ALLOWANCE.pro.cards} cards read every month`, `${ALLOWANCE.pro.briefs} Pulse Briefs a month: who they are and what their company does, with sources`, 'Everything in Plus'],
+  starter: [`${ALLOWANCE.starter.cards} cards read every month`, `${ALLOWANCE.starter.briefs} Pulse Briefs a month`, 'Lead capture and brochures at your stall', `${MY_CARDS.starter} digital cards, export and QR exchange`],
+  plus: [`${ALLOWANCE.plus.cards} cards read every month`, `${ALLOWANCE.plus.briefs} Pulse Briefs a month`, `${MY_CARDS.plus} digital cards`, 'Everything in Starter'],
+  pro: [`${ALLOWANCE.pro.cards} cards read every month`, `${ALLOWANCE.pro.briefs} Pulse Briefs a month: who they are and what their company does, with sources`, `${MY_CARDS.pro} digital cards`, 'Everything in Plus'],
   unlimited: [`Unlimited cards (fair use: ${DAILY.unlimitedReads} a day)`, `${ALLOWANCE.unlimited.briefs} Pulse Briefs a month`, 'Everything in Pro'],
 }
 const TAG: Partial<Record<PaidTier, string>> = { unlimited: 'Best for exhibitors', pro: 'Most Briefs' }
@@ -177,11 +177,11 @@ export default function PlanPage({ balance, signedIn, onBack }: { balance: Balan
       )}
 
       <h3 className="pl-section">At an exhibition</h3>
-      <button className="pl-pass" onClick={() => setItem({ name: 'Exhibition pass', gives: `Up to ${PASS.cards.toLocaleString('en-IN')} cards over ${PASS.days} days, from the day it starts, with lead capture and brochures`, price: rupees(PASS.price) })}>
+      <button className="pl-pass" onClick={() => setItem({ name: 'Exhibition pass', gives: `Up to ${PASS.cards.toLocaleString('en-IN')} cards over ${PASS.days} days, from the day it starts, with lead capture, brochures and ${PASS_MY_CARDS} digital cards`, price: rupees(PASS.price) })}>
         <span className="pl-pass-stub" aria-hidden="true"><Icon name="booth" size={22} /><span>{PASS.days}<small>days</small></span></span>
         <span className="pl-pass-body">
           <strong>Exhibition pass</strong>
-          <span>Up to <b className="num">{PASS.cards.toLocaleString('en-IN')}</b> cards over {PASS.days} days, with lead capture and brochures. One account, every phone at the stall.</span>
+          <span>Up to <b className="num">{PASS.cards.toLocaleString('en-IN')}</b> cards over {PASS.days} days, with lead capture, brochures and {PASS_MY_CARDS} digital cards. One account, every phone at the stall.</span>
           <span className="pl-pass-price num">{rupees(PASS.price)}<small> once</small></span>
         </span>
       </button>

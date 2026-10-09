@@ -19,28 +19,29 @@ import Picker from './Picker'
 import Sheet from './Sheet'
 import { showEvent } from '../lib/eventname'
 
-type Mode = 'share' | 'leads'
+export type Mode = 'share' | 'leads'
 type Step = 'setup' | 'show'
 
 /**
- * Setup is a compact bottom sheet — mode, event and caption, all optional to change, same as every other sheet in
+ * Two ways in. `quick` (the QR key, a long press on the card, "Show my QR") goes straight to the full-screen offline QR
+ * and closes from there. Otherwise it is Exhibition mode: setup is a compact bottom sheet — mode, event and caption, all optional to change, same as every other sheet in
  * the app. Only "Show QR" opens the full-screen view: the QR as big as the screen allows, nothing else competing,
  * screen kept awake. "Just share" is the offline vCard QR (works with zero signal on either phone); "Collect leads"
  * publishes the card and encodes a link instead, so the visitor's own phone can leave their details.
  */
-export default function StallMode({ card, events, initialEventId, onClose, onPack, entitled, onLocked }: { card: MyCard; events: EventRec[]; initialEventId?: string; onClose: () => void; /** "What visitors get" for an event. */ onPack: (eventId: string) => void; /** Lead capture comes with a plan or pass (balance.canCollect). */ entitled: boolean; /** Shows what lead capture does, for an account without it. */ onLocked: () => void }) {
+export default function StallMode({ card, events, initialEventId, quick = false, initialMode = 'share', onClose, onPack, entitled, onLocked }: { card: MyCard; events: EventRec[]; initialEventId?: string; /** Straight to the full-screen QR, no setup; closing it closes everything. */ quick?: boolean; /** Exhibition mode opens on Collect leads when the account can collect. */ initialMode?: Mode; onClose: () => void; /** "What visitors get" for an event. */ onPack: (eventId: string) => void; /** Lead capture comes with a plan or pass (balance.canCollect). */ entitled: boolean; /** Shows what lead capture does, for an account without it. */ onLocked: () => void }) {
   const canvas = useRef<HTMLCanvasElement>(null)
-  const [step, setStep] = useState<Step>('setup')
+  const [step, setStep] = useState<Step>(quick ? 'show' : 'setup')
   const photoUrl = useObjectUrl(card.photo)
   const [picKind, setPicKind] = useState<PhotoKind>('face')
-  useBackClose(step === 'show', () => { setStep('setup'); return false })
+  useBackClose(step === 'show', () => { if (quick) { onClose(); return } setStep('setup'); return false })
   useEffect(() => { if (step === 'show') noteShare(card.id, 'qr') }, [step, card.id])
   const { supported } = useWakeLock(step === 'show')
   const session = useSession()
   const online = useOnline()
-  const [mode, setMode] = useState<Mode>('share')
+  const [mode, setMode] = useState<Mode>(quick ? 'share' : initialMode)
   const [eventChoice, setEventChoice] = useState(initialEventId ?? '')
-  const [caption, setCaption] = useState(defaultCaption('share'))
+  const [caption, setCaption] = useState(defaultCaption(quick ? 'share' : initialMode))
   const [captionTouched, setCaptionTouched] = useState(false)
   const [slug, setSlug] = useState<string | null>(null)
   const [publishing, setPublishing] = useState(false)
@@ -62,7 +63,7 @@ export default function StallMode({ card, events, initialEventId, onClose, onPac
     setPublishing(true); setPublishError('')
     void publishCard(card, session!.user.id)
       .then((r) => setSlug(r.slug))
-      .catch(() => setPublishError('Could not set this up. Try again.'))
+      .catch((e: unknown) => setPublishError(String((e as { message?: string })?.message).includes('card_limit') ? 'Your plan has no room to put this card online. Delete a card or see plans.' : 'Could not set this up. Try again.'))
       .finally(() => setPublishing(false))
   }, [mode, canCollect, slug, publishing, online, card, session])
 
@@ -87,7 +88,7 @@ export default function StallMode({ card, events, initialEventId, onClose, onPac
 
   if (step === 'setup') {
     return (
-      <Sheet open onClose={onClose} title="Show QR">
+      <Sheet open onClose={onClose} title="Exhibition mode">
         <div className="log-form">
           {cloudEnabled && (
             <div className="seg stall-seg" role="group" aria-label="Stall mode">
@@ -125,7 +126,9 @@ export default function StallMode({ card, events, initialEventId, onClose, onPac
 
   return createPortal(
     <div className="stall" role="dialog" aria-modal="true" aria-label="QR code for your contact card">
-      <button className="icon-btn ghost stall-close" onClick={() => setStep('setup')} aria-label="Back to setup"><Icon name="back" size={22} /></button>
+      {quick
+        ? <button className="icon-btn ghost stall-close" onClick={onClose} aria-label="Close"><Icon name="x" size={22} /></button>
+        : <button className="icon-btn ghost stall-close" onClick={() => setStep('setup')} aria-label="Back to setup"><Icon name="back" size={22} /></button>}
       {eventName && <span className="stall-event-tag">{showEvent(eventName)}</span>}
       <p className="stall-cap">{caption}</p>
       {showQr && <canvas ref={canvas} className="stall-qr" role="img" aria-label={`Contact card QR for ${card.name}`} />}

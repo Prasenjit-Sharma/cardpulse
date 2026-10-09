@@ -70,3 +70,13 @@ test('the Home figure: a count, or Unlimited (never 1000000)', () => {
   assert.equal(cardsFigure(withCards(132)), '132')
   assert.equal(cardsFigure({ ...base, tier: 'unlimited', cards: { ...base.cards, left: 1000012 } }), 'Unlimited')
 })
+
+test('digital cards: the plan number, or five while an Exhibition pass runs', async () => {
+  const { myCardLimit } = await import('../src/lib/balance.ts')
+  const now = Date.parse('2026-10-09T12:00:00Z')
+  const b = (tier, endsAt) => ({ tier, periodEnd: '2026-11-01', canCollect: false, cards: { month: { used: 0, allowance: 20 }, pass: endsAt ? { used: 0, allowance: 1000, endsAt } : null, pack: 0, left: 20 }, briefs: { month: { used: 0, allowance: 0 }, extra: 0, trial: 0, left: 0 } })
+  assert.equal(myCardLimit(null, now), 1, 'signed out is Free')
+  assert.equal(myCardLimit(b('starter'), now), 2)
+  assert.equal(myCardLimit(b('free', '2026-10-12T00:00:00Z'), now), 5, 'a running pass')
+  assert.equal(myCardLimit(b('plus', '2026-10-01T00:00:00Z'), now), 3, 'an ended pass in a cached balance counts for nothing')
+})
