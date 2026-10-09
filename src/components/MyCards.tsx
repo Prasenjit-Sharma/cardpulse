@@ -208,28 +208,21 @@ function CardFacts({ card, onEdit }: { card: MyCard; onEdit: () => void }) {
 }
 
 /**
- * Exhibition mode, the stall setup, as its own block: what it does in three steps, the live event it files under, and one
- * ink key (the screen's accent stays on Share card). Without a plan or pass it still opens, on Just share, with lead
- * capture shown locked there.
+ * Exhibition mode, the stall setup, as one highlighted row on the indigo wash (the event strip's idiom): the booth well,
+ * its name with the Live tag, where leads go, and an ink Start key, so Share card stays the screen's one accent. Without a
+ * plan or pass it still opens, on Just share, with lead capture shown locked there.
  */
 function Expo({ entitled, liveEvent, onStart }: { entitled: boolean; liveEvent?: string; onStart: () => void }) {
-  const line = !entitled ? 'Show your QR big at the stall. Lead capture comes with any plan or the Exhibition pass.'
-    : liveEvent ? `Leads file under ${showEvent(liveEvent)}, live today.` : 'Visitors leave their details from their own phone.'
+  const line = !entitled ? 'Your QR, big. Leads with a plan or pass'
+    : liveEvent ? `Leads file under ${showEvent(liveEvent)}` : 'Visitors scan, leave details, get your brochure'
   return (
-    <section className="expo" aria-labelledby="expo-title">
-      <div className="expo-head">
-        <span className="tool-well"><Icon name="booth" size={22} /></span>
-        <span className="grow">
-          <strong id="expo-title">Exhibition mode{liveEvent && <em className="live-tag">Live</em>}{!entitled && <em className="expo-lock"><Icon name="lock" size={11} />Plan or pass</em>}</strong>
-          <span className="expo-line">{line}</span>
-        </span>
-      </div>
-      <ol className="expo-steps" aria-label="How it works">
-        <li><Icon name="qr" size={18} /><span>They scan</span></li>
-        <li className={entitled ? '' : 'off'}><Icon name="useradd" size={18} /><span>Leave details</span></li>
-        <li className={entitled ? '' : 'off'}><Icon name="file" size={18} /><span>Get your brochure</span></li>
-      </ol>
-      <button className="expo-go" onClick={onStart}>Start exhibition mode<Icon name="chevron" size={18} /></button>
-    </section>
+    <button className="index-row expo" onClick={onStart}>
+      <span className="tool-well"><Icon name="booth" size={20} /></span>
+      <span className="grow">
+        <strong>Exhibition mode{liveEvent && <em className="live-tag">Live</em>}</strong>
+        <span className="muted">{line}</span>
+      </span>
+      <span className="expo-go" aria-hidden="true">Start</span>
+    </button>
   )
 }
