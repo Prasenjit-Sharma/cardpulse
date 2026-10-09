@@ -15,14 +15,15 @@ Prices, limits and sources checked on 2026-10-09 are under "Research notes" at t
 
 Seen in the field: reads and Pulse Briefs fail on weak signal, which never happened on a personal free Gemini key (no sign-in then).
 
-- [ ] **A1. Token renewal never means "signed out".** If the hourly sign-in token cannot be renewed on a weak signal, use the last
+- [x] **A1. Token renewal never means "signed out".** If the hourly sign-in token cannot be renewed on a weak signal, use the last
       good one and renew in the background; a read answered `sign_in` while the app holds a session is retried, not parked as
       "Waiting for sign-in" (today it can stay parked until the app restarts).
-- [ ] **A2. Time limit on getting the token** (it can hang today), falling back to the last good token.
-- [ ] **A3. Pulse Brief retries** network failures twice with short waits (today: one attempt in an 8 to 20 s wait).
-- [ ] **A4. No double charge on a lost answer.** Each read and brief carries a request id; the Worker keeps the answer briefly
-      (KV) and a retry with the same id gets it again without a second charge.
-- [ ] A5. Tests for each, the APK on the phone, and a check of the Worker logs for `sign_in` refusals from signed-in accounts.
+- [x] **A2. Time limit on getting the token** (it can hang today), falling back to the last good token.
+- [x] **A3. Pulse Brief retries** network failures twice with short waits (today: one attempt in an 8 to 20 s wait).
+- [x] **A4. No double charge on a lost answer.** Each read and brief carries a request id; the Worker keeps the answer briefly
+      (built as migration 0010: the database charges an id once; a read's id comes from its card ids, a brief's is new per tap).
+- [ ] A5. Tests written (2026-10-09). Still to do: run migration `0010_charge_once.sql`, deploy the Worker, try the APK on a
+      weak signal, and check the Worker logs for `sign_in` refusals from signed-in accounts.
 
 ## B. Code before the new accounts
 

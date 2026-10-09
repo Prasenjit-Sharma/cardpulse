@@ -43,3 +43,9 @@ test('a photo the reader rejected (422) is not retried by itself', () => {
   assert.equal(f.transient, false)
   assert.match(f.message, /could not be read/i)
 })
+
+test('a signed-in phone whose token was refused on a weak signal waits and retries; it is never parked as signed out', () => {
+  const e = Object.assign(new Error('Reconnecting your sign-in. Trying again shortly.'), { status: 503, code: 'reconnect' })
+  const f = classifyFailure(e)
+  assert.equal(f.transient, true); assert.equal(f.waiting, undefined); assert.match(f.message, /Reconnecting/)
+})

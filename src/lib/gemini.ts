@@ -1,5 +1,5 @@
 import { buildRequest, GeminiError, parseResponse, type ImageInput, type Layout, type Parsed } from '../../shared/extract-core'
-import { supabase } from './supabase'
+import { tokens } from './token'
 
 export { GeminiError }
 export const DEFAULT_MODEL = 'gemini-2.5-flash'
@@ -63,16 +63,29 @@ async function withRetry(send: (signal: AbortSignal) => Promise<Response>): Prom
   throw lastErr ?? new GeminiError('Extraction failed')
 }
 
-/** `layout`: 'sides' reads 1-2 photos as one card; 'batch' reads up to 6 photos as different cards, in a single call. */
-export async function extractCard(blobs: Blob[], opts: ReadOptions, layout: Layout = 'sides'): Promise<ExtractionResult> {
+/**
+ * `layout`: 'sides' reads 1-2 photos as one card; 'batch' reads up to 6 photos as different cards, in a single call.
+ * `rid` (requestIdFor the card ids) is the same on every retry of these photos, so the server never charges them twice.
+ */
+export async function extractCard(blobs: Blob[], opts: ReadOptions, layout: Layout = 'sides', rid?: string): Promise<ExtractionResult> {
   const images: ImageInput[] = await Promise.all(blobs.map(async (b) => ({ mime: b.type || 'image/jpeg', data: await toBase64(b) })))
 
   if (serverMode && !opts.useOwnKey) {
     // Signed in, the read counts against the account's own daily quota rather than a limit shared by everyone on the
     // same hall Wi-Fi. The token travels in the body so no CORS change was needed on the server.
-    const auth = supabase ? (await supabase.auth.getSession().catch(() => null))?.data.session?.access_token : undefined
-    const { json, ms } = await withRetry((signal) =>
-      fetch(`${API_URL}/v1/extract`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ images, layout, ...(auth ? { auth } : {}) }), signal }))
+    const send = (auth: string | undefined) => withRetry((signal) =>
+      fetch(`${API_URL}/v1/extract`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ images, layout, ...(auth ? { auth } : {}), ...(rid ? { rid } : {}) }), signal }))
+    let r: Awaited<ReturnType<typeof send>>
+    try { r = await send(await tokens.get()) } catch (e) {
+      // the server refused an old token, but this phone is signed in: renew once and send again, never "signed out"
+      if (!(e instanceof GeminiError && e.code === 'sign_in' && tokens.signedIn())) throw e
+      const fresh = await tokens.renew()
+      try { r = await send(fresh) } catch (e2) {
+        if (e2 instanceof GeminiError && e2.code === 'sign_in' && tokens.signedIn()) throw new GeminiError('Reconnecting your sign-in. Trying again shortly.', 503, { code: 'reconnect' })
+        throw e2
+      }
+    }
+    const { json, ms } = r
     return { ...(json as Parsed), latencyMs: ms, model: json.model, balance: json.balance }
   }
 

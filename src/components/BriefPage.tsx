@@ -7,7 +7,8 @@ import { useStoredBalance } from '../lib/useBalance'
 import { BriefFailure, briefText, freshBrief, hasLink, linkLabel, pendingBrief, requestBrief, runBrief, type Brief, type Section } from '../lib/brief'
 import { API_URL } from '../lib/gemini'
 import { shareNav } from '../lib/platform'
-import { supabase } from '../lib/supabase'
+import { tokens } from '../lib/token'
+import { newRequestId } from '../lib/requestid'
 import type { BriefLink } from '../../shared/brief-core'
 import type { Contact } from '../lib/types'
 import { useBackClose } from '../lib/useBackClose'
@@ -19,7 +20,6 @@ const CAPTIONS = ['Reading the card…', 'Recalling what is known…', 'Writing 
 const CAPTION_AT_MS = [0, 2500, 6000]           // timed: the model does not report its steps
 const TITLES: Record<Section, string> = { person: 'About the person', company: 'About the company', starters: 'Conversation starters' }
 
-const accessToken = async () => (supabase ? (await supabase.auth.getSession().catch(() => null))?.data.session?.access_token : undefined)
 const day = (t: number) => new Date(t).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
 
 /**
@@ -56,7 +56,7 @@ export default function BriefPage({ contact, briefKey, onSave, onAddLink, onPlan
       .catch((e) => { if (alive.current) setError(e instanceof BriefFailure ? e : new BriefFailure('failed', "Couldn't make the brief. Try again.")) })
       .finally(() => { if (alive.current) setBusy(false) })
   }
-  const start = (fresh = false) => follow(runBrief(briefKey, async () => requestBrief(contact, { url: API_URL, token: await accessToken(), online: navigator.onLine, fetch: (...a) => fetch(...a), fresh, onBalance: (x) => { const nb = parseBalance(x); if (nb) setBalance(nb, userId) } })))
+  const start = (fresh = false) => follow(runBrief(briefKey, async () => requestBrief(contact, { url: API_URL, token: await tokens.get(), renew: tokens.renew, rid: newRequestId(), online: navigator.onLine, fetch: (...a) => fetch(...a), fresh, onBalance: (x) => { const nb = parseBalance(x); if (nb) setBalance(nb, userId) } })))
 
   // join a search already running for this contact; otherwise search when nothing is kept yet
   useEffect(() => {

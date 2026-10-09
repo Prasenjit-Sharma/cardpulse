@@ -704,3 +704,34 @@ test('rollout: an older database still saying pro_only gets the same plan_needed
     assert.equal((await res.json()).error.code, 'plan_needed')
   } finally { m.restore() }
 })
+
+test('weak signal: a read with a request id is charged through charge_reads_once; without 0010 it charges the plain way', async () => {
+  const two = { candidates: [{ content: { parts: [{ text: JSON.stringify({ languages: [], notes: '', contacts: [{ name: 'A', phones: [], emails: [], social: [] }] }) }] } }] }
+  const m = mockSupa({ gemini: two })
+  try {
+    const res = await worker.fetch(post({ images: [{ mime: 'image/png', data: png }], auth: token('p-1'), rid: 'read:0123456789abcdef' }), env(SUPA))
+    assert.equal(res.status, 200)
+    const once = m.calls.find((c) => c.url.endsWith('/rpc/charge_reads_once'))
+    assert.deepEqual(JSON.parse(once.init.body), { n: 1, p_request: 'read:0123456789abcdef' })
+    assert.equal(m.calls.filter((c) => c.url.includes('/rpc/charge_')).length, 1, 'charged once, not twice')
+  } finally { m.restore() }
+  // 0010 not run: the _once function is missing (404), so the plain charge still lands
+  const old = mockUpstream((url) => {
+    const u = String(url)
+    if (u.includes('/rpc/begin_')) return new Response(JSON.stringify([{ allowed: true, reason: null, day_limit: 300, balance: BAL }]))
+    if (u.endsWith('/rpc/charge_reads_once')) return new Response('{"message":"not found"}', { status: 404 })
+    if (u.includes('/rpc/charge_')) return new Response(JSON.stringify({ ...BAL, cards: { ...BAL.cards, left: 17 } }))
+    return new Response(JSON.stringify(two))
+  })
+  try {
+    const res = await worker.fetch(post({ images: [{ mime: 'image/png', data: png }], auth: token('p-2'), rid: 'read:0123456789abcdef' }), env(SUPA))
+    assert.equal((await res.json()).balance.cards.left, 17)
+    assert.ok(old.calls.some((c) => c.url.endsWith('/rpc/charge_reads')))
+  } finally { old.restore() }
+  // a malformed id is ignored: the plain charge
+  const m3 = mockSupa({ gemini: two })
+  try {
+    await worker.fetch(post({ images: [{ mime: 'image/png', data: png }], auth: token('p-3'), rid: 'x y' }), env(SUPA))
+    assert.ok(!m3.calls.some((c) => c.url.endsWith('_once')))
+  } finally { m3.restore() }
+})

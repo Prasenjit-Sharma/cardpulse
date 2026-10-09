@@ -164,9 +164,18 @@ export async function beginUse(token: unknown, env: Env, what: 'read' | 'brief')
   return userId ? { kind: 'account', userId, balance: row.balance ?? null } : { kind: 'none' }
 }
 
-/** After a good answer: the new balance, or null if the charge did not land (logged; the answer still goes back). */
-async function charge(token: string, env: Env, fn: 'charge_reads' | 'charge_brief', args: Record<string, unknown> = {}): Promise<unknown> {
-  const b = await rpc(fn, token, env, args)
+/** The app's request id: the same on every retry of one read or one brief, so a lost answer is never charged twice. */
+export const requestId = (x: unknown): string | null => (typeof x === 'string' && /^[A-Za-z0-9_:-]{8,100}$/.test(x) ? x : null)
+
+/**
+ * After a good answer: the new balance, or null if the charge did not land (logged; the answer still goes back). With a
+ * request id it charges through migration 0010's *_once functions, which charge an id only once; if those are missing
+ * (0010 not run) it charges the plain way.
+ */
+async function charge(token: string, env: Env, fn: 'charge_reads' | 'charge_brief', args: Record<string, unknown> = {}, rid: string | null = null): Promise<unknown> {
+  let b = rid ? await rpc(`${fn}_once`, token, env, { ...args, p_request: rid }) : null
+  if (b === REFUSED) { console.log(`${fn}_once refused: the token expired during the call, not charged`); return null }
+  if (b == null) b = await rpc(fn, token, env, args)
   if (b === REFUSED) { console.log(`${fn} refused: the token expired during the call, not charged`); return null }
   if (b == null) console.log(`${fn} failed: not charged`)
   return b
@@ -225,7 +234,7 @@ async function brief(req: Request, env: Env, origin: string | null, ctx?: { wait
   const key = env.BRIEF_API_KEY || env.GEMINI_API_KEY
   if (!key) return fail(500, 'not_configured', 'The service is not configured.', origin)
   if (Number(req.headers.get('content-length') ?? 0) > BRIEF_BODY_MAX) return fail(413, 'too_large', 'Request too large.', origin)
-  let body: { contact?: unknown; auth?: unknown; fresh?: unknown }
+  let body: { contact?: unknown; auth?: unknown; fresh?: unknown; rid?: unknown }
   try { body = await req.json() } catch { return fail(400, 'bad_request', 'Invalid request.', origin) }
   const input = validBriefInput(body?.contact)
   if (!input) return fail(400, 'bad_contact', "Add the contact's name or company first.", origin)
@@ -295,7 +304,7 @@ async function brief(req: Request, env: Env, origin: string | null, ctx?: { wait
     }
     // the model decides whether to search: this line in the log shows how often it does, and so what a brief costs
     console.log(`brief ok ${model} ${thinking}${nudged ? '+nudge' : ''}${checked ? '' : ' UNCHECKED'} company=${saved ? 'saved' : keys.length ? (body.fresh === true ? 'refreshed' : 'new') : 'not shared'}: ${usageLine(raw)} sources=${result.sources.length}`)
-    const balance = use.kind === 'account' ? (await charge(body.auth as string, env, 'charge_brief')) ?? use.balance : null
+    const balance = use.kind === 'account' ? (await charge(body.auth as string, env, 'charge_brief', {}, requestId(body.rid))) ?? use.balance : null
     return json({ ...result, model, balance, ...(checked ? {} : { unchecked: true }) }, 200, origin)
   } catch (e) {
     return fail(502, 'bad_output', e instanceof BriefError ? "Couldn't make the brief. Try again." : 'Unexpected response.', origin)
@@ -323,7 +332,7 @@ export default {
     if (!env.GEMINI_API_KEY) return fail(500, 'not_configured', 'The reading service is not configured.', origin)
 
     if (Number(req.headers.get('content-length') ?? 0) > MAX_BASE64_CHARS.sides + 2048) return fail(413, 'too_large', 'Photo is too large.', origin)
-    let body: { images?: unknown; layout?: unknown; auth?: unknown }
+    let body: { images?: unknown; layout?: unknown; auth?: unknown; rid?: unknown }
     try { body = await req.json() } catch { return fail(400, 'bad_request', 'Invalid request.', origin) }
     const layout: Layout | null = body.layout === undefined || body.layout === 'sides' ? 'sides' : body.layout === 'batch' ? 'batch' : null
     if (!layout) return fail(400, 'bad_layout', 'Unknown layout.', origin)
@@ -376,7 +385,7 @@ export default {
       // A batch whose people cannot all be matched to a photo is thrown away by the app and read again card by card,
       // so it is not charged here; the re-reads are.
       const usable = layout !== 'batch' || parsed.contacts.every((c) => Number.isInteger(c.image) && c.image! >= 1 && c.image! <= images.length)
-      if (use.kind === 'account' && parsed.contacts.length && usable) balance = (await charge(auth!, env, 'charge_reads', { n: Math.min(parsed.contacts.length, MAX_CHARGE) })) ?? balance
+      if (use.kind === 'account' && parsed.contacts.length && usable) balance = (await charge(auth!, env, 'charge_reads', { n: Math.min(parsed.contacts.length, MAX_CHARGE) }, requestId(body.rid))) ?? balance
       else if (use.kind === 'none' && auth) console.log('extract uncharged: balance service unavailable')
       return json({ ...parsed, model, balance }, 200, origin)
     } catch (e) {

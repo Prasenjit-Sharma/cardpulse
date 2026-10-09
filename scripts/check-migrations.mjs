@@ -338,4 +338,27 @@ assert.equal((await as('anon', null, `select * from public.get_public_card('SLUG
 await assert.rejects(publish(M, 'm6', 'SLUGM006', '2026-02-06'), /card_limit/)
 console.log('ok 0009 the Exhibition pass keeps five digital cards while it runs')
 
+// ── 0010 charge once per request id: a lost answer retried on a weak signal is not charged twice ──
+await db.exec(readFileSync(ROOT + '0010_charge_once.sql', 'utf8'))
+await db.exec(readFileSync(ROOT + '0010_charge_once.sql', 'utf8'))   // re-runnable
+const N = '88888888-8888-8888-8888-88888888888a'
+await db.exec(`insert into auth.users values ('${N}')`)
+const left = async () => (await bal(N)).cards.left
+const start = await left()
+await as('authenticated', N, `select public.charge_reads_once(2, 'read:aaaaaaaaaaaaaaaa')`)
+assert.equal(await left(), start - 2)
+await as('authenticated', N, `select public.charge_reads_once(2, 'read:aaaaaaaaaaaaaaaa')`)
+assert.equal(await left(), start - 2, 'the same read retried is not charged again')
+await as('authenticated', N, `select public.charge_reads_once(1, 'read:bbbbbbbbbbbbbbbb')`)
+assert.equal(await left(), start - 3, 'another read is')
+assert.equal((await db.query(`select count(*)::int as n from public.usage where owner_id = '${N}' and request_id is null`)).rows[0].n, 0, 'every charge row carries its id')
+const briefs = async () => (await bal(N)).briefs.left
+const b0 = await briefs()
+await as('authenticated', N, `select public.charge_brief_once('brief:cccccccccccc')`)
+await as('authenticated', N, `select public.charge_brief_once('brief:cccccccccccc')`)
+assert.equal(await briefs(), b0 - 1, 'a brief retried is charged once')
+await assert.rejects(as('authenticated', N, `select public.charge_reads_once(1, 'short')`), /bad request id/)
+await assert.rejects(as('anon', null, `select public.charge_reads_once(1, 'read:dddddddddddddddd')`), /permission denied/)
+console.log('ok 0010 charge once per request id, reads and briefs')
+
 console.log('ALL OK')
