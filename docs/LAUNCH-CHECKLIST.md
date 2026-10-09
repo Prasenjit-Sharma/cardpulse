@@ -22,7 +22,7 @@ Seen in the field: reads and Pulse Briefs fail on weak signal, which never happe
 - [x] **A3. Pulse Brief retries** network failures twice with short waits (today: one attempt in an 8 to 20 s wait).
 - [x] **A4. No double charge on a lost answer.** Each read and brief carries a request id; the Worker keeps the answer briefly
       (built as migration 0010: the database charges an id once; a read's id comes from its card ids, a brief's is new per tap).
-- [ ] A5. Tests written (2026-10-09). Still to do: run migration `0010_charge_once.sql`, deploy the Worker, try the APK on a
+- [ ] A5. Tests written, migration 0010 run and the Worker deployed (2026-10-10). Still to do: try the APK on a
       weak signal, and check the Worker logs for `sign_in` refusals from signed-in accounts.
 
 ## B. Code before the new accounts
