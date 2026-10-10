@@ -60,6 +60,13 @@ Seen in the field: reads and Pulse Briefs fail on weak signal, which never happe
 - [ ] **B2. Decision:** stay on 3.5 Flash-Lite for reading and 3.5 Flash for Briefs. Re-test medium photo detail once 50+
       opened cards are synced (11 cards cannot show a difference under about 8 points). Re-check the Unlimited plan's
       price or fair use (see "Pricing check" under Open decisions). Add a fallback model on overload (3.1 Flash-Lite, same key).
+- [x] B2a. Google's notice (2026-10-10): `temperature`, `top_p` and `top_k` will be refused by upcoming models, and
+      `thinking_budget` must become `thinking_level`. Done: `temperature` removed from card reading
+      (`shared/extract-core.ts`), Pulse Brief (`shared/brief-core.ts`) and the brief lab; `thinking_budget` was never used
+      (Briefs already set `thinkingLevel`). Reading test after the change: 82.4% and 89.0% (opened cards 86.0%, 89.8%),
+      inside the earlier range. The Worker needs a deploy to send the new requests.
+- [ ] B2b. Later: Google now calls `generateContent` "legacy" (still fully supported) and recommends the Interactions API.
+      Move the Worker's two calls when convenient, before a model we need drops `generateContent`.
 - [ ] B3. Photos and brochures on Cloudflare R2 (10 GB free, no download fees) instead of Supabase storage (1 GB free).
 - [ ] B4. One clean starting Supabase migration (0001 to 0010 folded together), the two daily brakes merged into one
       table, dead functions dropped.

@@ -47,7 +47,7 @@ const variants = VARIANTS.filter((v) => !pick || pick.includes(v.id)).flatMap((v
 const rows = [], briefs = []
 for (const c of contacts) {
   for (const v of variants) {
-    const body = { contents: [{ role: 'user', parts: [{ text: v.prompt(c) }] }], tools: [{ google_search: {} }], generationConfig: { temperature: 0.2, thinkingConfig: { thinkingLevel: v.thinking } } }
+    const body = { contents: [{ role: 'user', parts: [{ text: v.prompt(c) }] }], tools: [{ google_search: {} }], generationConfig: { thinkingConfig: { thinkingLevel: v.thinking } } }
     const t0 = Date.now()
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': K }, body: JSON.stringify(body) })
     const ms = Date.now() - t0
