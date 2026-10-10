@@ -89,13 +89,17 @@ Seen in the field: reads and Pulse Briefs fail on weak signal, which never happe
 
 ## C. Accounts (the user, with guidance)
 
-- [ ] **C0. Emails** (decided 2026-10-10). Google Play Console stays on the existing developer account. A new business Gmail
-      for everything else: GitHub, Cloudflare, Supabase, RevenueCat, and Google Cloud (Gemini keys, sign-in client, the
-      billing service account). Cross-access as a backup: the new Gmail added as admin in Play Console (Users and
-      permissions), the developer account given Owner on the Google Cloud projects. Two-step verification on both, each the
-      other's recovery email. Never sign up for these with a domain address (a lapsed domain would lock you out). Public
-      addresses on the domain (`support@`, `privacy@`) forward to the new Gmail through Cloudflare Email Routing (free,
-      receive only); Brevo's free plan only when sending from `support@` is needed.
+- [ ] **C0. Emails** (decided 2026-10-10, revised the same day). Two Gmails, each kept to Pulse:
+      - **Production Gmail** (the existing one): Google Play Console and GitHub (code, store listing, deploy secrets).
+      - **Service Gmail** (new, exclusively for Pulse's services): Cloudflare, Supabase, Google Cloud (Gemini keys,
+        sign-in client, the billing service account) and RevenueCat.
+      One account per service: never a second Supabase or Cloudflare account to stack free plans (most terms treat it as
+      abuse, and a suspension could take the production database with it). Deploys reach Cloudflare and Supabase through
+      access tokens stored in GitHub, so the account split does not matter technically. Two-step verification on both
+      Gmails, each the other's recovery email; the service Gmail added as admin in Play Console (Users and permissions)
+      and the production Gmail given Owner on the Google Cloud projects. Never sign up with a domain address (a lapsed
+      domain would lock you out); `support@` and `privacy@` on the domain forward to the service Gmail through
+      Cloudflare Email Routing (free, receive only), with Brevo's free plan only when sending from `support@` is needed.
 - [ ] C1. GitHub: new account, one repo, environments development / staging / production, approval before production.
 - [ ] C2. Cloudflare: one account (Workers, KV, R2, Pages, Access).
 - [ ] C3. Supabase: `pulse-test` and `pulse-prod` projects in **Mumbai (ap-south-1)**; run `supabase/baseline.sql` once in
@@ -103,6 +107,12 @@ Seen in the field: reads and Pulse Briefs fail on weak signal, which never happe
 - [ ] C4. Google Cloud: a project per environment, each with its own Gemini key (production on billing: the paid tier is
       what stops Google using the photos) and OAuth client.
 - [ ] C5. Domain from the cheapest registrar (compare the 3-year total, not the first year), nameservers pointed to Cloudflare.
+
+- [ ] **C6. Retire the development accounts** once the app runs on the new ones: the first Supabase project
+      (`xqwslvteyhfmnxcnlpsg`, real test cards and leads in it: delete the project, not just pause it), the first Cloudflare
+      Worker `cardpulse-api` and its KV namespace, and the Gemini keys used so far (revoke them in Google AI Studio). Update
+      the Mac Keychain items the lab scripts use (`cardpulse-supabase-secret`, `cardpulse-gemini-brief`) to the new keys,
+      and the project id in `scripts/grant.mjs`, `read-fetch.mjs` and `verify-*.mjs`.
 
 ## D. App release
 
