@@ -106,8 +106,8 @@ Seen in the field: reads and Pulse Briefs fail on weak signal, which never happe
       domain would lock you out); `support@` and `privacy@` on the domain forward to the service Gmail through
       Cloudflare Email Routing (free, receive only), with Brevo's free plan only when sending from `support@` is needed.
 - [ ] C1. GitHub: new account, one repo, environments development / staging / production, approval before production.
-- [ ] C2. Cloudflare: one account (Workers, KV, R2, Pages, Access).
-- [ ] C3. Supabase: `pulse-test` and `pulse-prod` projects in **Mumbai (ap-south-1)**; run `supabase/baseline.sql` once in
+- [ ] C2. (account created 2026-10-10) Cloudflare: one account (Workers, KV, R2, Pages, Access).
+- [ ] C3. (projects created 2026-10-10, Mumbai) Supabase: `pulse-test` and `pulse-prod` projects in **Mumbai (ap-south-1)**; run `supabase/baseline.sql` once in
       each (not the numbered migrations).
 - [ ] C4. Google Cloud: a project per environment, each with its own Gemini key (production on billing: the paid tier is
       what stops Google using the photos) and OAuth client.
