@@ -5,13 +5,16 @@
 // Keychain item "cardpulse-gemini-brief" (save it once: security add-generic-password -s cardpulse-gemini-brief -a brief -w),
 // --clipboard, or pasted when asked (typing hidden). Never shipped in the app.
 import { writeFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { briefPrompt, parseBriefResponse } from '../shared/brief-core.ts'
 import { geminiKey } from './geminikey.mjs'
 import { usageLine } from '../server/worker.ts'
 
-const MODEL = 'gemini-3.5-flash'
+// --model gemini-3.8-flash: another model; $ per million tokens, paid tier, checked 2026-10-09 (thinking is billed as output)
+const PRICES = { 'gemini-3.5-flash': { in: 1.5, out: 9 }, 'gemini-3.8-flash': { in: 0.75, out: 3.75 }, 'gemini-3.7-flash': { in: 0.75, out: 3.75 }, 'gemini-3.6-flash': { in: 0.75, out: 3.75 } }
+const MODEL = (() => { const i = process.argv.indexOf('--model'); return i > 0 ? process.argv[i + 1] : 'gemini-3.5-flash' })()
 const USD_INR = 96
-const PRICE = { in: 1.5, out: 9 }        // $ per million tokens, gemini-3.5-flash; thinking is billed as output
+const PRICE = PRICES[MODEL] ?? PRICES['gemini-3.5-flash']
 const SEARCH_USD = 14 / 1000            // per search after the free 5,000 a month
 
 const CONTACTS = [
@@ -70,6 +73,6 @@ for (const v of VARIANTS.filter((x) => variants.includes(x))) {
   const avg = (k) => (r.reduce((s, x) => s + x[k], 0) / r.length).toFixed(2)
   console.log(`  ${v.label.padEnd(32)} ${avg('secs')}s  searches ${avg('searches')}  ₹${avg('inr_free')} within free searches, ₹${avg('inr_paid')} after`)
 }
-const out = new URL('../.superpowers/brief-lab.json', import.meta.url)
+const out = new URL(`../.superpowers/brief-lab-${MODEL}.json`, import.meta.url)
 writeFileSync(out, JSON.stringify({ rows, briefs }, null, 2))
-console.log(`\nBriefs for comparing quality: ${out.pathname}`)
+console.log(`\nBriefs for comparing quality: ${fileURLToPath(out)}`)

@@ -7,9 +7,10 @@ import { readdirSync, readFileSync, existsSync, writeFileSync } from 'node:fs'
 import { buildRequest, parseResponse } from '../shared/extract-core.ts'
 import { accuracy, overall, scoreCard, sumTallies } from '../src/lib/score.ts'
 import { ALL_FIELDS } from '../src/lib/types.ts'
+import { fileURLToPath } from 'node:url'
 import { geminiKey } from './geminikey.mjs'
 
-const LAB = new URL('../.lab/', import.meta.url).pathname
+const LAB = fileURLToPath(new URL('../.lab/', import.meta.url))
 const USD_INR = 96
 /** $ per million tokens, paid tier, checked 2026-10-09 (thinking is billed as output). */
 const PRICE = {
@@ -18,11 +19,16 @@ const PRICE = {
   'gemini-2.5-flash-lite': { in: 0.10, out: 0.40 },
   'gemini-2.5-flash': { in: 0.30, out: 2.50 },
   'gemini-3.5-flash': { in: 1.50, out: 9.00 },
+  'gemma-4-31b-it': { in: 0, out: 0 },        // free on the API (free tier only)
+  'gemma-4-26b-a4b-it': { in: 0, out: 0 },
 }
 const arg = (k) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : undefined }
 const MODELS = (arg('--models') ?? 'gemini-3.5-flash-lite,gemini-2.5-flash-lite,gemini-3.1-flash-lite').split(',')
 const LIMIT = Number(arg('--limit') ?? Infinity)
 const PARALLEL = 3
+// --media low|medium|high: Gemini 3's photo detail (fewer image tokens at lower detail), to test the cost against accuracy
+const MEDIA = arg('--media')
+const withMedia = (req) => (MEDIA ? { ...req, generationConfig: { ...req.generationConfig, mediaResolution: `MEDIA_RESOLUTION_${MEDIA.toUpperCase()}` } } : req)
 
 if (!existsSync(`${LAB}cards`)) { console.error('No cards yet. Run: npm run read:fetch'); process.exit(1) }
 const cards = readdirSync(`${LAB}cards`).filter((d) => existsSync(`${LAB}cards/${d}/card.json`)).slice(0, LIMIT)
@@ -39,7 +45,7 @@ async function read(model, card) {
   const t0 = Date.now()
   for (let attempt = 0; attempt < 3; attempt++) {
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': K }, body: JSON.stringify(buildRequest(card.images, 'sides')),
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': K }, body: JSON.stringify(withMedia(buildRequest(card.images, 'sides'))),
     }).catch(() => null)
     if (res?.status === 429 || (res && res.status >= 500)) { await new Promise((r) => setTimeout(r, 3000 * (attempt + 1))); continue }
     const raw = await res?.json().catch(() => ({})) ?? {}

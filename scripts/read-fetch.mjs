@@ -4,10 +4,11 @@
 // real people's cards and stay on this Mac. QR contacts, thumbnail-only photos and cards with no photo are skipped.
 import { createClient } from '@supabase/supabase-js'
 import { mkdirSync, writeFileSync, existsSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { secretKey } from './secret.mjs'
 
 const URL = 'https://xqwslvteyhfmnxcnlpsg.supabase.co'
-const OUT = new globalThis.URL('../.lab/cards/', import.meta.url).pathname
+const OUT = fileURLToPath(new globalThis.URL('../.lab/cards/', import.meta.url))
 const arg = (k) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : undefined }
 
 const admin = createClient(URL, await secretKey(), { auth: { autoRefreshToken: false, persistSession: false } })
