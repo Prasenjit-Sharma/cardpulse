@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { lastBackupAt } from '../lib/backup'
 import { buildFeedback, sendFeedback, type Diagnostics } from '../lib/feedback'
 import { clearLog, readLog, subscribe } from '../lib/debug'
-import { DEFAULT_MODEL, listModels, serverMode } from '../lib/gemini'
+import { serverMode } from '../lib/gemini'
 import type { Settings, Theme } from '../lib/db'
 import { overall, scoreCard, sumTallies } from '../lib/score'
 import type { CardRecord, EventRec } from '../lib/types'
@@ -23,7 +23,6 @@ import Logo from './Logo'
 import Sheet, { SheetItem } from './Sheet'
 import { SettingGroup, SettingRow } from './SettingRow'
 
-const MODELS_KEY = 'cardpulse.models'
 
 interface Install { mode: 'native' | 'ios' | null; install: () => void }
 
@@ -134,7 +133,6 @@ export default function SettingsPage({ cards, events, settings, install, sync, o
         )}
         <SettingRow icon="trash" label="Delete all data" danger onClick={() => void wipe()} />
       </SettingGroup>
-      {!serverMode && <DeveloperKey settings={settings} onChange={onChange} />}
     </>
   )
 
@@ -231,7 +229,7 @@ function FeedbackSheet({ open, onClose, cards, settings, lines }: { open: boolea
     version: __APP_VERSION__, userAgent: navigator.userAgent, online: navigator.onLine, screen: `${screen.width}x${screen.height}`,
     installed: window.matchMedia('(display-mode: standalone)').matches,
     cards: { total: cards.length, failed: cards.filter((c) => c.status === 'error').length, waiting: cards.filter((c) => c.status === 'pending' && c.waiting).length },
-    settings: { keepPhotos: settings.keepPhotos, theme: settings.theme ?? 'system', ownKey: !!settings.useOwnKey },
+    settings: { keepPhotos: settings.keepPhotos, theme: settings.theme ?? 'system' },
     failures: [...new Set(cards.filter((c) => c.status === 'error' && c.error).map((c) => c.error!))].slice(0, 5),
     recentLog: lines.slice(-12),
   })
@@ -253,44 +251,5 @@ function FeedbackSheet({ open, onClose, cards, settings, lines }: { open: boolea
         {msg && <p className={msg.ok ? 'hint ok' : 'hint bad'} role="status">{msg.text}</p>}
       </div>
     </Sheet>
-  )
-}
-
-/** Only in a build with no Pulse reading service (local development): read cards with your own Gemini key. */
-function DeveloperKey({ settings, onChange }: { settings: Settings; onChange: (s: Settings) => void }) {
-  const [key, setKey] = useState(settings.apiKey)
-  const [busy, setBusy] = useState(false)
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
-  const [models, setModels] = useState<string[]>(() => {
-    try { const m = JSON.parse(localStorage.getItem(MODELS_KEY) ?? '[]') as string[]; if (m.length) return m } catch { /* ignore */ }
-    return settings.model ? [settings.model] : []
-  })
-  const connect = async () => {
-    setBusy(true); setMsg(null)
-    try {
-      const list = await listModels(key.trim())
-      const flash = list.filter((m) => /flash/.test(m) && !/(image|tts|live|audio|thinking|lite|preview|exp)/.test(m))
-      const pick = list.includes(settings.model) ? settings.model : list.includes(DEFAULT_MODEL) ? DEFAULT_MODEL : flash[flash.length - 1] ?? list[0]
-      setModels(list)
-      try { localStorage.setItem(MODELS_KEY, JSON.stringify(list)) } catch { /* ignore */ }
-      onChange({ ...settings, apiKey: key.trim(), model: pick })
-      setMsg({ ok: true, text: `Connected. ${list.length} models available.` })
-    } catch (e) {
-      setMsg({ ok: false, text: e instanceof Error ? e.message : 'Could not connect' })
-    } finally { setBusy(false) }
-  }
-  return (
-    <>
-      <h3 className="group band">Developer</h3>
-      <section className="dev-panel">
-        <p className="hint" style={{ marginTop: 0 }}>This build has no reading service, so cards are read with your own Gemini key. It stays on this device and is sent only to Google.</p>
-        <input type="password" aria-label="Gemini API key" autoComplete="off" placeholder="Gemini key (starts with AIza)" value={key} onChange={(e) => setKey(e.target.value)} />
-        <button className="cta wide" onClick={() => void connect()} disabled={!key.trim() || busy}>{busy ? 'Checking…' : 'Save and connect'}</button>
-        {msg && <p className={`inline-msg${msg.ok ? ' ok' : ' bad'}`}>{msg.text}</p>}
-        {models.length > 0 && (
-          <Picker className="pick wide" title="Model" value={settings.model} onChange={(v) => onChange({ ...settings, model: v })} options={models.map((m) => ({ value: m, label: m }))} />
-        )}
-      </section>
-    </>
   )
 }

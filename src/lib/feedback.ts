@@ -10,7 +10,7 @@ export interface Diagnostics {
   installed: boolean
   screen: string
   cards: { total: number; failed: number; waiting: number }
-  settings: { keepPhotos: string; theme: string; ownKey: boolean }
+  settings: { keepPhotos: string; theme: string }
   failures: string[]
   recentLog: string[]
 }
@@ -26,7 +26,7 @@ export function buildFeedback(message: string, diag?: Diagnostics): string {
       `App: Pulse v${diag.version}${diag.installed ? ' (installed)' : ' (browser)'}`,
       `Device: ${diag.userAgent}`, `Screen: ${diag.screen}`, `Online: ${diag.online ? 'yes' : 'no'}`,
       `Cards: ${diag.cards.total} total, ${diag.cards.failed} failed, ${diag.cards.waiting} waiting`,
-      `Settings: photos=${diag.settings.keepPhotos}, theme=${diag.settings.theme}, own key=${diag.settings.ownKey ? 'yes' : 'no'}`)
+      `Settings: photos=${diag.settings.keepPhotos}, theme=${diag.settings.theme}`)
     if (diag.failures.length) out.push('Recent read errors:', ...diag.failures.map((f) => `  - ${f}`))
     if (diag.recentLog.length) out.push('Recent activity:', ...diag.recentLog.map((l) => `  ${l}`))
   }

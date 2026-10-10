@@ -1,12 +1,8 @@
-import { buildRequest, GeminiError, parseResponse, type ImageInput, type Layout, type Parsed } from '../../shared/extract-core'
+import { GeminiError, type ImageInput, type Layout, type Parsed } from '../../shared/extract-core'
 import { tokens } from './token'
 
 export { GeminiError }
-export const DEFAULT_MODEL = 'gemini-2.5-flash'
-
-const BASE = 'https://generativelanguage.googleapis.com/v1beta'
-
-/** Set at build time (VITE_API_URL). When present, cards are read by our server and users need no API key. */
+/** Set at build time (VITE_API_URL): the Pulse reading service. Every build has one (dev, staging and production each their own). */
 export const API_URL = ((import.meta.env.VITE_API_URL as string | undefined) ?? '').replace(/\/$/, '')
 export const serverMode = API_URL !== ''
 
@@ -16,8 +12,6 @@ export interface ExtractionResult extends Parsed {
   /** What the account has left after this read (our server only; null when it could not be counted). */
   balance?: unknown
 }
-
-export interface ReadOptions { apiKey: string; model: string; useOwnKey: boolean }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
@@ -67,45 +61,22 @@ async function withRetry(send: (signal: AbortSignal) => Promise<Response>): Prom
  * `layout`: 'sides' reads 1-2 photos as one card; 'batch' reads up to 6 photos as different cards, in a single call.
  * `rid` (requestIdFor the card ids) is the same on every retry of these photos, so the server never charges them twice.
  */
-export async function extractCard(blobs: Blob[], opts: ReadOptions, layout: Layout = 'sides', rid?: string): Promise<ExtractionResult> {
+export async function extractCard(blobs: Blob[], layout: Layout = 'sides', rid?: string): Promise<ExtractionResult> {
   const images: ImageInput[] = await Promise.all(blobs.map(async (b) => ({ mime: b.type || 'image/jpeg', data: await toBase64(b) })))
 
-  if (serverMode && !opts.useOwnKey) {
-    // Signed in, the read counts against the account's own daily quota rather than a limit shared by everyone on the
-    // same hall Wi-Fi. The token travels in the body so no CORS change was needed on the server.
-    const send = (auth: string | undefined) => withRetry((signal) =>
-      fetch(`${API_URL}/v1/extract`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ images, layout, ...(auth ? { auth } : {}), ...(rid ? { rid } : {}) }), signal }))
-    let r: Awaited<ReturnType<typeof send>>
-    try { r = await send(await tokens.get()) } catch (e) {
-      // the server refused an old token, but this phone is signed in: renew once and send again, never "signed out"
-      if (!(e instanceof GeminiError && e.code === 'sign_in' && tokens.signedIn())) throw e
-      const fresh = await tokens.renew()
-      try { r = await send(fresh) } catch (e2) {
-        if (e2 instanceof GeminiError && e2.code === 'sign_in' && tokens.signedIn()) throw new GeminiError('Reconnecting your sign-in. Trying again shortly.', 503, { code: 'reconnect' })
-        throw e2
-      }
+  if (!serverMode) throw new GeminiError('Reading is not set up in this build (no VITE_API_URL).')
+  const send = (auth: string | undefined) => withRetry((signal) =>
+    fetch(`${API_URL}/v1/extract`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ images, layout, ...(auth ? { auth } : {}), ...(rid ? { rid } : {}) }), signal }))
+  let r: Awaited<ReturnType<typeof send>>
+  try { r = await send(await tokens.get()) } catch (e) {
+    // the server refused an old token, but this phone is signed in: renew once and send again, never "signed out"
+    if (!(e instanceof GeminiError && e.code === 'sign_in' && tokens.signedIn())) throw e
+    const fresh = await tokens.renew()
+    try { r = await send(fresh) } catch (e2) {
+      if (e2 instanceof GeminiError && e2.code === 'sign_in' && tokens.signedIn()) throw new GeminiError('Reconnecting your sign-in. Trying again shortly.', 503, { code: 'reconnect' })
+      throw e2
     }
-    const { json, ms } = r
-    return { ...(json as Parsed), latencyMs: ms, model: json.model, balance: json.balance }
   }
-
-  const { json, ms } = await withRetry((signal) =>
-    fetch(`${BASE}/models/${encodeURIComponent(opts.model)}:generateContent`, {
-      signal,
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': opts.apiKey },
-      body: JSON.stringify(buildRequest(images, layout)),
-    }))
-  return { ...parseResponse(json), latencyMs: ms, model: opts.model }
-}
-
-/** Lists models that support generateContent, so we never depend on a stale hard-coded name. (Own-key mode only.) */
-export async function listModels(apiKey: string): Promise<string[]> {
-  const res = await fetch(`${BASE}/models?pageSize=200`, { headers: { 'x-goog-api-key': apiKey } })
-  const json = await res.json().catch(() => ({}))
-  if (!res.ok) throw new GeminiError(json?.error?.message ?? `HTTP ${res.status}`, res.status)
-  return (json.models as { name: string; supportedGenerationMethods?: string[] }[])
-    .filter((m) => m.supportedGenerationMethods?.includes('generateContent') && /gemini/.test(m.name))
-    .map((m) => m.name.replace(/^models\//, ''))
-    .sort()
+  const { json, ms } = r
+  return { ...(json as Parsed), latencyMs: ms, model: json.model, balance: json.balance }
 }

@@ -49,12 +49,11 @@ test('a balance saved for one account is never shown for another', () => {
 
 test('scanGate: ask to sign in only once the session is known to be empty', async () => {
   const { scanGate } = await import('../src/lib/balance.ts')
-  const base = { accounts: true, ownKey: false, sessionKnown: true, signedIn: false }
+  const base = { accounts: true, sessionKnown: true, signedIn: false }
   assert.equal(scanGate(base), 'sign_in')
   assert.equal(scanGate({ ...base, sessionKnown: false }), 'wait', 'still loading: a signed-in user must not be asked to sign in')
   assert.equal(scanGate({ ...base, signedIn: true }), 'open')
   assert.equal(scanGate({ ...base, accounts: false }), 'open')
-  assert.equal(scanGate({ ...base, ownKey: true }), 'open')
 })
 
 test('v2: Unlimited shows as unlimited, and every paid plan counts its month of briefs', () => {

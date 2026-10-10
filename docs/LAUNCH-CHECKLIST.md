@@ -74,8 +74,11 @@ Seen in the field: reads and Pulse Briefs fail on weak signal, which never happe
 - [ ] B3. Photos and brochures on Cloudflare R2 (10 GB free, no download fees) instead of Supabase storage (1 GB free).
 - [ ] B4. One clean starting Supabase migration (0001 to 0010 folded together), the two daily brakes merged into one
       table, dead functions dropped.
-- [ ] B5. Remove unused code: own-Gemini-key mode (Settings, `listModels`, direct Gemini call), `promptAsk`, the `submit_lead`
-      fallback, the signed-out per-IP path in the Worker, the stale `server/README.md`.
+- [x] B5. Unused code removed (2026-10-10): the own-Gemini-key mode (Settings' Developer section, `listModels`, the direct
+      Gemini call, the key and model settings, Home's "Add your Gemini key" row; old saved settings are cleaned on load),
+      the `submit_lead` fallback in the app, and the stale `server/README.md` and README text. Kept on purpose: `promptAsk`
+      (the app's own prompt dialog, part of the design system) and the Worker's per-IP brake (it still guards uncharged
+      reads while Supabase is unreachable).
 - [ ] B6. Dev, staging and production settings for the web build, the Worker (Wrangler environments) and the Android app
       (`.dev` and `.staging` app id suffixes, so all three install side by side).
 - [ ] B7. Free safety nets: a nightly database backup (GitHub Actions) and a daily ping so a quiet week does not pause the

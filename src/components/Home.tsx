@@ -61,12 +61,10 @@ const FIRST_PROOFS: { icon: Parameters<typeof Icon>[0]['name']; title: string; t
  * Home is the day's desk: an indigo masthead carrying today's figures, the event that matters now, then a watchlist of
  * the people who need you (due, upcoming, recent, starred) with Call and WhatsApp one tap away. All of it above the fold.
  */
-export default function Home({ cards, events, dupes, ready, needsKey, install, backupNudge, onBackup, onSnoozeBackup, onOpenContact, onTogglePriority, onContacts, onCompanies, onStarred, onAttention, onInsights, onSetup, onSettings, onViewEvent, onEvents, onScan, onMyCard, cardsLeft, onPlans }: {
+export default function Home({ cards, events, dupes, install, backupNudge, onBackup, onSnoozeBackup, onOpenContact, onTogglePriority, onContacts, onCompanies, onStarred, onAttention, onInsights, onSettings, onViewEvent, onEvents, onScan, onMyCard, cardsLeft, onPlans }: {
   cards: CardRecord[]
   events: EventRec[]
   dupes: Map<string, CardRecord[]>
-  ready: boolean
-  needsKey: boolean
   install: Install
   backupNudge: boolean
   onBackup: () => void
@@ -78,7 +76,6 @@ export default function Home({ cards, events, dupes, ready, needsKey, install, b
   onStarred: () => void
   onAttention: () => void
   onInsights: () => void
-  onSetup: () => void
   onSettings: () => void
   onViewEvent: (id: string) => void
   onEvents: () => void
@@ -177,9 +174,6 @@ export default function Home({ cards, events, dupes, ready, needsKey, install, b
         )}
       </header>
 
-      {needsKey && !ready && (
-        <button className="banner-row check" onClick={onSetup}><Icon name="spark" size={18} /><span className="grow"><strong>Add your Gemini key</strong><small>Needed to read cards</small></span><Icon name="chevron" size={18} /></button>
-      )}
       {backupNudge && (
         <div className="banner-row static check">
           <Icon name="download" size={18} />

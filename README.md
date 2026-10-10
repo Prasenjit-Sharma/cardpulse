@@ -30,10 +30,10 @@ Deploying under a sub-path (e.g. GitHub Pages project site): `VITE_BASE=/cardpul
 
 ## Card reading
 
-Two modes:
-
-- **Server (production):** the app calls the Pulse API in `server/` and users need nothing. See `server/README.md` to deploy it, then set `VITE_API_URL`.
-- **Own key (development):** with no `VITE_API_URL`, open **Settings**, paste a free Gemini key from https://aistudio.google.com/apikey, and tap **Save and connect**.
+The app reads cards only through the Pulse API in `server/` (users need nothing; the Gemini key lives there). Every build
+sets `VITE_API_URL` to its own Worker; see `server/README.md` to deploy one. For local work, run the Worker with
+`npm run server:dev` and point `VITE_API_URL` at it. (The old "own key" mode, a Gemini key typed into Settings, was
+removed on 2026-10-10.)
 
 ## Notes
 
