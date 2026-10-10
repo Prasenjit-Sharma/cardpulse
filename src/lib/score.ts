@@ -1,4 +1,4 @@
-import { ALL_FIELDS, LIST_FIELDS, SCALAR_FIELDS, type CardRecord, type Contact, type FieldKey } from './types'
+import { ALL_FIELDS, LIST_FIELDS, SCALAR_FIELDS, type CardRecord, type Contact, type FieldKey } from './types.ts'
 
 const norm = (f: FieldKey, v: string) =>
   f === 'phones' ? v.replace(/\D/g, '').replace(/^(91)?0?(?=\d{10}$)/, '') : v.toLowerCase().replace(/\s+/g, ' ').trim()

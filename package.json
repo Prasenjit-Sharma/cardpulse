@@ -15,6 +15,8 @@
     "test:db": "node scripts/check-migrations.mjs",
     "icons": "node scripts/make-icons.mjs",
     "grant": "node scripts/grant.mjs",
+    "read:fetch": "node scripts/read-fetch.mjs",
+    "read:lab": "node scripts/read-lab.mjs",
     "verify:plans": "node scripts/verify-plans.mjs",
     "build:android": "tsc -b && vite build --mode android && cap sync android && cd android && ./gradlew assembleDebug",
     "apk:install": "adb install -r android/app/build/outputs/apk/debug/app-debug.apk",

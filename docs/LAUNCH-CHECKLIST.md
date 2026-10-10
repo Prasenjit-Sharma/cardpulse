@@ -41,9 +41,12 @@ Seen in the field: reads and Pulse Briefs fail on weak signal, which never happe
 
 ## B. Code before the new accounts
 
-- [ ] **B1. Reading test (read-lab),** like `scripts/brief-lab.mjs`: real card photos through Gemini 2.5 Flash-Lite and
-      3.5 Flash-Lite, scored field by field (names, phones, Hindi and regional scripts). Same for Briefs on 2.5 Flash.
-- [ ] B2. Switch models if accuracy holds: reading on `gemini-2.5-flash-lite` (about ₹0.025 a card, against ₹0.11 today),
+- [ ] **B1. Reading test.** Built 2026-10-10: `npm run read:fetch` downloads synced cards (photos from `sync-photos`, and
+      the contacts as read and as corrected) into the git-ignored `.lab/`; `npm run read:lab` reads them with 3.5 Flash-Lite,
+      2.5 Flash-Lite and 3.1 Flash-Lite using the app's prompt, and scores each field against the corrections with the
+      Accuracy page's own scorer (opened cards are checked truth). Still to do: run it on real cards, then Briefs on
+      2.5 Flash with `scripts/brief-lab.mjs`.
+- [ ] B2. Switch models if accuracy holds: reading on `gemini-2.5-flash-lite` (about ₹0.03 a card, against ₹0.13 today),
       Briefs on `gemini-2.5-flash` (1,500 free searches a day). Add a fallback model on overload (same key).
 - [ ] B3. Photos and brochures on Cloudflare R2 (10 GB free, no download fees) instead of Supabase storage (1 GB free).
 - [ ] B4. One clean starting Supabase migration (0001 to 0010 folded together), the two daily brakes merged into one
@@ -115,9 +118,9 @@ Seen in the field: reads and Pulse Briefs fail on weak signal, which never happe
 **Gemini, per 1M tokens (paid tier):** 3.5 Flash-Lite $0.30 in / $2.50 out (reading today); 3.1 Flash-Lite $0.25 / $1.50
 (shuts down May 2027); **2.5 Flash-Lite $0.10 / $0.40** (not deprecated); 3.5 Flash $1.50 / $9.00 (Briefs today);
 2.5 Flash $0.30 / $2.50. Search grounding: Gemini 3+ 5,000 free a month then $14 per 1,000; 2.5 models 1,500 free a day
-then $35 per 1,000. A measured card (1,578 in, 344 out) costs about ₹0.11 on 3.5 Flash-Lite and ₹0.025 on 2.5 Flash-Lite
-(₹84 to the dollar). Unlimited's fair use (about 6,000 cards a month) costs about ₹660 on today's model against about ₹679
-kept after Play's fee: nearly a loss. Billing on gives Tier 1 limits; $100 spent gives Tier 2.
+then $35 per 1,000. A measured card (1,578 in, 344 out) costs about ₹0.13 on 3.5 Flash-Lite and ₹0.03 on 2.5 Flash-Lite
+(₹96 to the dollar, as the lab scripts use). Unlimited's fair use (about 6,000 cards a month) costs about ₹770 on today's
+model against about ₹679 kept after Play's fee: a loss; about ₹170 on 2.5 Flash-Lite. Billing on gives Tier 1 limits; $100 spent gives Tier 2.
 
 **Alternatives to Gemini:** no cheap image model on OpenAI's standard price list; Mistral OCR about $4 per 1,000 pages
 (about ₹0.34 a card, text only); Qwen (Alibaba) cheap on third-party trackers, unverified, China-hosted. Decision: stay on
