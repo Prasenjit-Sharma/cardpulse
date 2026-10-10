@@ -110,17 +110,22 @@ Seen in the field: reads and Pulse Briefs fail on weak signal, which never happe
       (`origin`, Prasenjit-Sharma/cardpulse) until B6 is done and dev-only material is out. Then the final repo gets the
       cleaned source as ONE first commit, under byangomaaa's GitHub no-reply email: none of the 244 development commits (all
       authored with a personal email), no `.impeccable/`, no `docs/superpowers/`, no old project addresses. The first
-      attempt (`byangomaaa/pulse`, pushed with full history on 2026-10-10) is to be deleted or emptied before that; this
-      Mac's push access to it is scoped to `https://byangomaaa@github.com` (remote `release-hold`) and never touches the
-      other projects. Then: new account, one repo, environments development / staging / production, approval before production.
+      attempt (`byangomaaa/pulse`, pushed with full history by mistake) was deleted on 2026-10-10. This Mac's push access to
+      byangomaaa is scoped to `https://byangomaaa@github.com` and never touches the other projects. Then: new account, one repo, environments development / staging / production, approval before production.
 - [ ] C2. (account created 2026-10-10) Cloudflare: one account (Workers, KV, R2, Pages, Access).
 - [x] C3. (2026-10-10, Mumbai; `baseline.sql` run in both and checked from outside: tables, functions, grants, buckets)
       `pulse-test` = `efhhwamvfgcjgbpwfnuy`, `pulse-prod` = `suhlynnoeatjnrokaaox`. Supabase: `pulse-test` and `pulse-prod` projects in **Mumbai (ap-south-1)**; run `supabase/baseline.sql` once in
       each (not the numbered migrations).
 - [ ] C4. Google Cloud: a project per environment, each with its own Gemini key (production on billing: the paid tier is
       what stops Google using the photos) and OAuth client.
-- [ ] C5. Domain from the cheapest registrar (compare the 3-year total, not the first year), nameservers pointed to Cloudflare.
-
+- [ ] **C5. Domain. When: before B6** (soon after Google sign-in is set up), because B6 writes the domain into every
+      environment: the address in card QR codes and links (`VITE_PUBLIC_URL`), the Worker's allowed origins, the privacy
+      policy and account-deletion links in the Play listing and on Google's sign-in screen, and the App Links file that
+      opens card links in the app. Buying it later means changing all of those, and card links already shared would break.
+      How: buy at the registrar with the lowest 3-year total (GoDaddy, Hostinger; Cloudflare does not sell `.in`), turn off
+      paid add-ons (email, hosting, privacy is usually free), then point its nameservers to Cloudflare (free plan, the
+      pulsecardscanner account). On Cloudflare: Email Routing for `support@` and `privacy@` to the service Gmail. No GitHub
+      Pages: the site is Cloudflare Pages, built from the private repo.
 - [ ] **C6. Retire the development accounts** once the app runs on the new ones: the first Supabase project
       (`xqwslvteyhfmnxcnlpsg`, real test cards and leads in it: delete the project, not just pause it), the first Cloudflare
       Worker `cardpulse-api` and its KV namespace, and the Gemini keys used so far (revoke them in Google AI Studio). Update
