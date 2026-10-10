@@ -25,10 +25,12 @@ Prices, limits and sources checked on 2026-10-09 are under "Research notes" at t
       Supabase on the Mac was set aside: the phone could reach it only on home Wi-Fi, so no field or weak-signal testing.
       Database changes keep being tested with `npm run test:db` (PGlite, no Docker).
 
-- [ ] **Pricing check: Unlimited.** Reading costs about ₹0.114 a card on the only good model left (B1). Unlimited's fair use of
-      200 a day is about 6,000 a month, ₹684 in reading, against ₹679 kept from ₹799 after Play's 15%: a loss for a heavy
-      user, before Briefs. Options: fair use 100 a day (about ₹342), or a higher price. Every other plan is comfortable
-      (Starter about ₹11 of reading against ₹84 kept; Pro about ₹46 plus Briefs against ₹339).
+- [x] **Unlimited's fair use: 200 a day and 3,000 a month** (decided 2026-10-10). Reading costs about ₹0.114 a card (B1), so
+      the old 200 a day (about 6,000 a month, ₹684) lost money against ₹679 kept from ₹799. Now a heavy user costs about ₹342.
+      Competitors for comparison: CamCard Premium reportedly caps AI scans at 200 a month; Covve about ₹960 and Blinq about
+      ₹700 to 960 a month for "unlimited"; HiHello 20 a month below its team plan. Built: `shared/plans.ts`, migration
+      `0011_unlimited_fair_use.sql` (to run), Home and Plan & cards show "Unlimited" until 300 are left, then the count in
+      amber; past 3,000, pack cards, then photos wait for the month ("This month's fair use is used").
 
 ## A. Low-network fixes (first, on the current setup)
 
@@ -59,7 +61,7 @@ Seen in the field: reads and Pulse Briefs fail on weak signal, which never happe
       - Card photos weakest on regional scripts (68% for every model) and on addresses.
 - [ ] **B2. Decision:** stay on 3.5 Flash-Lite for reading and 3.5 Flash for Briefs. Re-test medium photo detail once 50+
       opened cards are synced (11 cards cannot show a difference under about 8 points). Re-check the Unlimited plan's
-      price or fair use (see "Pricing check" under Open decisions). Add a fallback model on overload (3.1 Flash-Lite, same key).
+      fair use (done: 3,000 a month). Add a fallback model on overload (3.1 Flash-Lite, same key).
 - [x] B2a. Google's notice (2026-10-10): `temperature`, `top_p` and `top_k` will be refused by upcoming models, and
       `thinking_budget` must become `thinking_level`. Done: `temperature` removed from card reading
       (`shared/extract-core.ts`), Pulse Brief (`shared/brief-core.ts`) and the brief lab; `thinking_budget` was never used

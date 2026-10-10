@@ -1,7 +1,7 @@
 // What the account has left, as the server last said (migration 0005's balance). Kept in memory and localStorage so
 // Home and Pulse Brief can show it offline; every read and brief answer brings a newer one. Pure apart from the small
 // store at the bottom; the fetching hook is in useBalance.ts.
-import { isUnlimited, LOW_CARDS, MY_CARDS, PASS_MY_CARDS, TRIAL_BRIEFS, type Tier } from '../../shared/plans.ts'
+import { isUnlimited, LOW_CARDS, MY_CARDS, PASS_MY_CARDS, TRIAL_BRIEFS, UNLIMITED_LOW, type Tier } from '../../shared/plans.ts'
 
 export interface Balance {
   tier: Tier
@@ -30,10 +30,14 @@ export function parseBalance(x: unknown): Balance | null {
 export const myCardLimit = (b: Balance | null | undefined, now = Date.now()): number =>
   Math.max(MY_CARDS[b?.tier ?? 'free'], b?.cards.pass && Date.parse(b.cards.pass.endsAt) > now ? PASS_MY_CARDS : 0)
 
-export const cardsLine = (b: Balance) => (isUnlimited(b.tier) ? 'Unlimited cards' : b.cards.left === 0 ? 'No cards left' : `${b.cards.left} ${b.cards.left === 1 ? 'card' : 'cards'} left`)
-/** The figure Home shows: the count, or "Unlimited" (Unlimited's allowance is a large number, never shown). */
-export const cardsFigure = (b: Balance) => (isUnlimited(b.tier) ? 'Unlimited' : String(b.cards.left))
-export const isLow = (b: Balance) => !isUnlimited(b.tier) && b.cards.left <= LOW_CARDS
+/** Unlimited still well inside its month's fair use (3,000 cards): show the word, not a count. */
+const roomy = (b: Balance) => isUnlimited(b.tier) && b.cards.left > UNLIMITED_LOW
+export const cardsLine = (b: Balance) => (roomy(b) ? 'Unlimited cards'
+  : b.cards.left === 0 ? (isUnlimited(b.tier) ? "This month's fair use is used" : 'No cards left')
+  : `${b.cards.left} ${b.cards.left === 1 ? 'card' : 'cards'} left${isUnlimited(b.tier) ? ' this month' : ''}`)
+/** The figure Home shows: the count, or "Unlimited" while an Unlimited account has plenty of its fair use left. */
+export const cardsFigure = (b: Balance) => (roomy(b) ? 'Unlimited' : String(b.cards.left))
+export const isLow = (b: Balance) => b.cards.left <= (isUnlimited(b.tier) ? UNLIMITED_LOW : LOW_CARDS)
 
 /** The line under Pulse Brief: a paid plan's month (and extra), or the trial; empty when none are left. */
 export function briefLine(b: Balance): string {

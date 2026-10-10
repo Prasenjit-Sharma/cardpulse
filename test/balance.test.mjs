@@ -66,6 +66,13 @@ test('v2: Unlimited shows as unlimited, and every paid plan counts its month of 
   assert.equal(briefLine({ ...starter, tier: 'pro', briefs: { month: { used: 0, allowance: 20 }, extra: 0, trial: 0, left: 20 } }), '20 briefs left this month')
 })
 
+test('Unlimited: the word while plenty of the month is left; the count, in amber, near the 3,000 fair use', () => {
+  const unl = (left) => ({ ...base, tier: 'unlimited', canCollect: true, cards: { ...base.cards, month: { used: 3000 - left, allowance: 3000 }, left } })
+  assert.equal(cardsFigure(unl(2500)), 'Unlimited'); assert.equal(isLow(unl(2500)), false)
+  assert.equal(cardsFigure(unl(300)), '300'); assert.equal(cardsLine(unl(300)), '300 cards left this month'); assert.equal(isLow(unl(300)), true)
+  assert.equal(cardsLine(unl(0)), "This month's fair use is used")
+})
+
 test('the Home figure: a count, or Unlimited (never 1000000)', () => {
   assert.equal(cardsFigure(withCards(132)), '132')
   assert.equal(cardsFigure({ ...base, tier: 'unlimited', cards: { ...base.cards, left: 1000012 } }), 'Unlimited')

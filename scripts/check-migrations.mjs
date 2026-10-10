@@ -361,4 +361,20 @@ await assert.rejects(as('authenticated', N, `select public.charge_reads_once(1, 
 await assert.rejects(as('anon', null, `select public.charge_reads_once(1, 'read:dddddddddddddddd')`), /permission denied/)
 console.log('ok 0010 charge once per request id, reads and briefs')
 
+// ── 0011 Unlimited's fair use: 3,000 cards a month (and 200 a day, unchanged) ──
+await db.exec(readFileSync(ROOT + '0011_unlimited_fair_use.sql', 'utf8'))
+await db.exec(readFileSync(ROOT + '0011_unlimited_fair_use.sql', 'utf8'))   // re-runnable
+const U = '88888888-8888-8888-8888-88888888888b'
+await db.exec(`insert into auth.users values ('${U}')`)
+await sudo(`select public.grant_plan('${U}', 'unlimited', 1)`)
+b = await bal(U); assert.equal(b.cards.month.allowance, 3000); assert.equal(b.cards.left, 3000); assert.equal(b.briefs.month.allowance, 30)
+await as('authenticated', U, `select public.charge_reads(200)`)
+assert.equal((await bal(U)).cards.left, 2800)
+assert.equal((await bal(I)).cards.month.allowance, 3000, 'an Unlimited plan granted before 0011 gets the new fair use')
+const V = '88888888-8888-8888-8888-88888888888c'
+await db.exec(`insert into auth.users values ('${V}')`)
+await sudo(`select public.grant_plan('${V}', 'pro', 1)`)
+assert.equal((await bal(V)).cards.month.allowance, 400, 'other plans unchanged')
+console.log('ok 0011 Unlimited fair use 3,000 a month, other plans unchanged')
+
 console.log('ALL OK')

@@ -675,9 +675,11 @@ export default function App() {
           </div>
         </div>
       </Sheet>
-      <Sheet open={gate === 'no_cards'} onClose={() => setGate(null)} title="No cards left">
+      <Sheet open={gate === 'no_cards'} onClose={() => setGate(null)} title={balance?.tier === 'unlimited' ? "This month's fair use is used" : 'No cards left'}>
         <div className="consent">
-          <p>Your photos are saved as <b>Waiting for cards</b>. They are read as soon as you add cards.</p>
+          <p>{balance?.tier === 'unlimited'
+            ? <>Unlimited reads up to {ALLOWANCE.unlimited.cards.toLocaleString('en-IN')} cards a month. Your photos are saved as <b>Waiting for cards</b> and are read when the month renews, or now with a card pack.</>
+            : <>Your photos are saved as <b>Waiting for cards</b>. They are read as soon as you add cards.</>}</p>
           <div className="consent-actions">
             <button className="outline" onClick={() => setGate(null)}>Later</button>
             <button className="cta" onClick={() => { setGate(null); openPlans() }}>See plans</button>
