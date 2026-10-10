@@ -4,6 +4,9 @@ compatibility_date = "2025-09-01"
 
 [vars]
 GEMINI_MODEL = "gemini-3.5-flash-lite"
+# Tried once when GEMINI_MODEL is overloaded or failing (429, 500, 503, 504). Reading test 2026-10-10: 3.1 Flash-Lite read
+# 79% against 3.5 Flash-Lite's 83 to 91%, so a fallback only, not a replacement. It shuts down on 7 May 2027: replace it before.
+GEMINI_FALLBACK_MODEL = "gemini-3.1-flash-lite"
 # Pulse Brief. By default Gemini writes it from what it already knows (works on a free key). To switch on Google
 # Search later: put a PAID project's key in a second secret, so card reading stays on the free key, and set the flag:
 #   npx wrangler secret put BRIEF_API_KEY

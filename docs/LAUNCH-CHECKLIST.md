@@ -61,7 +61,9 @@ Seen in the field: reads and Pulse Briefs fail on weak signal, which never happe
       - Card photos weakest on regional scripts (68% for every model) and on addresses.
 - [ ] **B2. Decision:** stay on 3.5 Flash-Lite for reading and 3.5 Flash for Briefs. Re-test medium photo detail once 50+
       opened cards are synced (11 cards cannot show a difference under about 8 points). Re-check the Unlimited plan's
-      fair use (done: 3,000 a month). Add a fallback model on overload (3.1 Flash-Lite, same key).
+      fair use (done: 3,000 a month). Fallback model built 2026-10-10: on 429, 500, 503 or 504 the Worker
+      tries `GEMINI_FALLBACK_MODEL` (3.1 Flash-Lite, in `wrangler.toml`) once within the phone's wait; replace it before it
+      shuts down on 7 May 2027.
 - [x] B2a. Google's notice (2026-10-10): `temperature`, `top_p` and `top_k` will be refused by upcoming models, and
       `thinking_budget` must become `thinking_level`. Done: `temperature` removed from card reading
       (`shared/extract-core.ts`), Pulse Brief (`shared/brief-core.ts`) and the brief lab; `thinking_budget` was never used

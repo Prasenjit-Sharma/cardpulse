@@ -6,6 +6,8 @@ import { BriefError, buildBriefRequest, buildPersonRequest, companyEntry, compan
 export interface Env {
   GEMINI_API_KEY: string
   GEMINI_MODEL?: string
+  /** Tried once when GEMINI_MODEL is overloaded or failing (429, 500, 503, 504), so a read does not wait for the phone to retry. */
+  GEMINI_FALLBACK_MODEL?: string
   /** The model for Pulse Brief. Falls back to GEMINI_MODEL. */
   BRIEF_MODEL?: string
   /** "1" turns on Google Search for Pulse Brief. Needs a key whose plan allows Search grounding (a paid key). */
@@ -186,6 +188,9 @@ const MAX_CHARGE = 200
 
 /** A read is normally 3 to 10 s. Past this the request is stuck upstream; fail fast so the app can retry. */
 const UPSTREAM_TIMEOUT_MS = 40_000
+/** The fallback model only gets what is left of this, so the phone (55 s per attempt) is never left waiting past its own limit. */
+const FALLBACK_BUDGET_MS = 48_000
+const FALLBACK_ON = new Set([429, 500, 503, 504])
 const BRIEF_BODY_MAX = 16_384
 
 /**
@@ -355,17 +360,28 @@ export default {
     const wait = rateWait(rateKey)
     if (wait) { refused('read', 'rate_limited', rateKey, wait); return fail(429, 'rate_limited', `Too many scans. Try again in ${Math.ceil(wait / 60)} min.`, origin, { 'Retry-After': String(wait) }) }
 
-    const model = env.GEMINI_MODEL || DEFAULT_MODEL
+    const primary = env.GEMINI_MODEL || DEFAULT_MODEL
+    const fallback = env.GEMINI_FALLBACK_MODEL && env.GEMINI_FALLBACK_MODEL !== primary ? env.GEMINI_FALLBACK_MODEL : ''
+    const started = Date.now()
+    const ask = (m: string, ms: number) => fetch(`${env.GEMINI_BASE ?? UPSTREAM}/models/${encodeURIComponent(m)}:generateContent`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
+      body: JSON.stringify(buildRequest(images, layout)),
+      signal: AbortSignal.timeout(ms),
+    })
+    let model = primary
     let upstream: Response
     try {
-      upstream = await fetch(`${env.GEMINI_BASE ?? UPSTREAM}/models/${encodeURIComponent(model)}:generateContent`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
-        body: JSON.stringify(buildRequest(images, layout)),
-        signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
-      })
+      upstream = await ask(primary, UPSTREAM_TIMEOUT_MS)
     } catch {
       return fail(502, 'upstream_unreachable', 'The reading service is unavailable. Try again.', origin)
+    }
+    // Overloaded or failing: try the second model once now, inside the time the phone is still waiting, rather than
+    // sending the phone away to retry. A photo Gemini rejects (400) or a stuck call is not retried here.
+    const left = FALLBACK_BUDGET_MS - (Date.now() - started)
+    if (fallback && FALLBACK_ON.has(upstream.status) && left >= 8_000) {
+      console.log(`extract upstream ${upstream.status} ${primary}: trying ${fallback}`)
+      try { upstream = await ask(fallback, left); model = fallback } catch { /* keep the first model's answer */ }
     }
 
     const upstreamError = upstream.ok ? '' : await upstream.clone().text().catch(() => '')

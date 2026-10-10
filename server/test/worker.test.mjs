@@ -735,3 +735,34 @@ test('weak signal: a read with a request id is charged through charge_reads_once
     assert.ok(!m3.calls.some((c) => c.url.endsWith('_once')))
   } finally { m3.restore() }
 })
+
+test('fallback model: an overloaded main model gives way to the fallback once; a rejected photo and an unset fallback do not', async () => {
+  const FB = { GEMINI_MODEL: 'main-model', GEMINI_FALLBACK_MODEL: 'second-model' }
+  for (const status of [429, 503]) {
+    const m = mockUpstream((url) => (String(url).includes('main-model') ? new Response('{"error":{"message":"overloaded"}}', { status }) : new Response(JSON.stringify(geminiOk))))
+    try {
+      const res = await worker.fetch(post({ images: [{ mime: 'image/png', data: png }] }), env(FB))
+      assert.equal(res.status, 200, `after ${status}`)
+      assert.equal((await res.json()).model, 'second-model', 'the answer says which model read it')
+      assert.deepEqual(m.calls.map((c) => c.url.match(/models\/([^:]+)/)[1]), ['main-model', 'second-model'])
+    } finally { m.restore() }
+  }
+  // a photo Gemini rejects is about the photo: no second model
+  const bad = mockUpstream(() => new Response(JSON.stringify({ error: { status: "INVALID_ARGUMENT", message: "Unable to process input image" } }), { status: 400 }))
+  try {
+    const res = await worker.fetch(post({ images: [{ mime: 'image/png', data: png }] }), env(FB))
+    assert.equal(res.status, 422); assert.equal(bad.calls.length, 1)
+  } finally { bad.restore() }
+  // both overloaded: the phone hears busy, as before
+  const both = mockUpstream(() => new Response('{}', { status: 503 }))
+  try {
+    const res = await worker.fetch(post({ images: [{ mime: 'image/png', data: png }] }), env(FB))
+    assert.equal(res.status, 502); assert.equal(both.calls.length, 2)
+  } finally { both.restore() }
+  // no fallback set: one call, as before
+  const one = mockUpstream(() => new Response('{}', { status: 503 }))
+  try {
+    await worker.fetch(post({ images: [{ mime: 'image/png', data: png }] }), env({ GEMINI_MODEL: 'main-model' }))
+    assert.equal(one.calls.length, 1)
+  } finally { one.restore() }
+})
