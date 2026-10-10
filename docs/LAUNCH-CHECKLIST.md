@@ -77,6 +77,11 @@ Seen in the field: reads and Pulse Briefs fail on weak signal, which never happe
       over: `consume_scan`, `consume_brief`, `submit_lead`. `npm run test:db` builds the database both ways and compares
       every table, column, function body, policy, grant, trigger, index, constraint and bucket (scripts/check-baseline.mjs),
       then checks the baseline's behaviour. From now on a change is a new numbered migration AND folded into the baseline.
+- [ ] B4a. Hardening (after launch is fine): give each table explicit grants in `baseline.sql` (only what the app and the
+      security-invoker functions need, e.g. read-only `usage`, `credits`, `daily_brakes`), test them in check-baseline, then
+      switch off "Automatically expose new tables" in both projects. The projects were created with it on (2026-10-10)
+      because the baseline relies on Supabase's default grants, with row-level security on every table; "Enable
+      automatic RLS" was switched on as a safety net for tables added later.
 - [x] B5. Unused code removed (2026-10-10): the own-Gemini-key mode (Settings' Developer section, `listModels`, the direct
       Gemini call, the key and model settings, Home's "Add your Gemini key" row; old saved settings are cleaned on load),
       the `submit_lead` fallback in the app, and the stale `server/README.md` and README text. Kept on purpose: `promptAsk`
