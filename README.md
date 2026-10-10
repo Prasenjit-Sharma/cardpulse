@@ -37,5 +37,5 @@ removed on 2026-10-10.)
 
 ## Notes
 
-- Contacts and photos live in the browser (IndexedDB). They go to the cloud only if the user signs in and turns on sync. Database changes are in `supabase/migrations/`, run by hand in the Supabase SQL editor.
+- Contacts and photos live in the browser (IndexedDB). They go to the cloud only if the user signs in and turns on sync. A new Supabase project runs `supabase/baseline.sql` once (the whole database); the numbered files in `supabase/migrations/` are the first project's history. A change is written as a new numbered migration and folded into `baseline.sql`; `npm run test:db` checks both define the same database.
 - On the free Gemini tier Google may use submitted images to improve its products. Use sample cards, or a paid tier for real users.

@@ -72,8 +72,11 @@ Seen in the field: reads and Pulse Briefs fail on weak signal, which never happe
 - [ ] B2b. Later: Google now calls `generateContent` "legacy" (still fully supported) and recommends the Interactions API.
       Move the Worker's two calls when convenient, before a model we need drops `generateContent`.
 - [ ] B3. Photos and brochures on Cloudflare R2 (10 GB free, no download fees) instead of Supabase storage (1 GB free).
-- [ ] B4. One clean starting Supabase migration (0001 to 0010 folded together), the two daily brakes merged into one
-      table, dead functions dropped.
+- [x] B4. `supabase/baseline.sql` (2026-10-10): the whole database for a new project in one run, migrations 0001 to 0011
+      folded together. Changes: one `daily_brakes` table replaces `scan_usage` and `brief_usage` (10 tables); not carried
+      over: `consume_scan`, `consume_brief`, `submit_lead`. `npm run test:db` builds the database both ways and compares
+      every table, column, function body, policy, grant, trigger, index, constraint and bucket (scripts/check-baseline.mjs),
+      then checks the baseline's behaviour. From now on a change is a new numbered migration AND folded into the baseline.
 - [x] B5. Unused code removed (2026-10-10): the own-Gemini-key mode (Settings' Developer section, `listModels`, the direct
       Gemini call, the key and model settings, Home's "Add your Gemini key" row; old saved settings are cleaned on load),
       the `submit_lead` fallback in the app, and the stale `server/README.md` and README text. Kept on purpose: `promptAsk`
@@ -95,7 +98,8 @@ Seen in the field: reads and Pulse Briefs fail on weak signal, which never happe
       receive only); Brevo's free plan only when sending from `support@` is needed.
 - [ ] C1. GitHub: new account, one repo, environments development / staging / production, approval before production.
 - [ ] C2. Cloudflare: one account (Workers, KV, R2, Pages, Access).
-- [ ] C3. Supabase: `pulse-test` and `pulse-prod` projects in **Mumbai (ap-south-1)**.
+- [ ] C3. Supabase: `pulse-test` and `pulse-prod` projects in **Mumbai (ap-south-1)**; run `supabase/baseline.sql` once in
+      each (not the numbered migrations).
 - [ ] C4. Google Cloud: a project per environment, each with its own Gemini key (production on billing: the paid tier is
       what stops Google using the photos) and OAuth client.
 - [ ] C5. Domain from the cheapest registrar (compare the 3-year total, not the first year), nameservers pointed to Cloudflare.
