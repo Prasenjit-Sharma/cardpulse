@@ -31,7 +31,7 @@ function client(uid) {
     return b
   }
   return {
-    auth: { getSession: async () => ({ data: { session: { user: { id: uid }, access_token: 't' } } }) },
+    auth: { getSession: async () => ({ data: { session: { user: { id: uid }, access_token: 't' } } }), onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }) },
     from: q,
     async rpc(name, args) {
       assert.equal(name, 'sync_push')

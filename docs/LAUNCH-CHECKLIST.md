@@ -29,7 +29,7 @@ Prices, limits and sources checked on 2026-10-09 are under "Research notes" at t
       the old 200 a day (about 6,000 a month, ₹684) lost money against ₹679 kept from ₹799. Now a heavy user costs about ₹342.
       Competitors for comparison: CamCard Premium reportedly caps AI scans at 200 a month; Covve about ₹960 and Blinq about
       ₹700 to 960 a month for "unlimited"; HiHello 20 a month below its team plan. Built: `shared/plans.ts`, migration
-      `0011_unlimited_fair_use.sql` (to run), Home and Plan & cards show "Unlimited" until 300 are left, then the count in
+      `0011_unlimited_fair_use.sql` (run 2026-10-10), Home and Plan & cards show "Unlimited" until 300 are left, then the count in
       amber; past 3,000, pack cards, then photos wait for the month ("This month's fair use is used").
 
 ## A. Low-network fixes (first, on the current setup)
