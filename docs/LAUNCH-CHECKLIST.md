@@ -61,7 +61,9 @@ Seen in the field: reads and Pulse Briefs fail on weak signal, which never happe
       - Card photos weakest on regional scripts (68% for every model) and on addresses.
 - [ ] **B2. Decision:** stay on 3.5 Flash-Lite for reading and 3.5 Flash for Briefs. Re-test medium photo detail once 50+
       opened cards are synced (11 cards cannot show a difference under about 8 points). Re-check the Unlimited plan's
-      fair use (done: 3,000 a month). Add a fallback model on overload (3.1 Flash-Lite, same key).
+      fair use (done: 3,000 a month). Fallback model built 2026-10-10: on 429, 500, 503 or 504 the Worker
+      tries `GEMINI_FALLBACK_MODEL` (3.1 Flash-Lite, in `wrangler.toml`) once within the phone's wait; replace it before it
+      shuts down on 7 May 2027.
 - [x] B2a. Google's notice (2026-10-10): `temperature`, `top_p` and `top_k` will be refused by upcoming models, and
       `thinking_budget` must become `thinking_level`. Done: `temperature` removed from card reading
       (`shared/extract-core.ts`), Pulse Brief (`shared/brief-core.ts`) and the brief lab; `thinking_budget` was never used
@@ -70,10 +72,16 @@ Seen in the field: reads and Pulse Briefs fail on weak signal, which never happe
 - [ ] B2b. Later: Google now calls `generateContent` "legacy" (still fully supported) and recommends the Interactions API.
       Move the Worker's two calls when convenient, before a model we need drops `generateContent`.
 - [ ] B3. Photos and brochures on Cloudflare R2 (10 GB free, no download fees) instead of Supabase storage (1 GB free).
-- [ ] B4. One clean starting Supabase migration (0001 to 0010 folded together), the two daily brakes merged into one
-      table, dead functions dropped.
-- [ ] B5. Remove unused code: own-Gemini-key mode (Settings, `listModels`, direct Gemini call), `promptAsk`, the `submit_lead`
-      fallback, the signed-out per-IP path in the Worker, the stale `server/README.md`.
+- [x] B4. `supabase/baseline.sql` (2026-10-10): the whole database for a new project in one run, migrations 0001 to 0011
+      folded together. Changes: one `daily_brakes` table replaces `scan_usage` and `brief_usage` (10 tables); not carried
+      over: `consume_scan`, `consume_brief`, `submit_lead`. `npm run test:db` builds the database both ways and compares
+      every table, column, function body, policy, grant, trigger, index, constraint and bucket (scripts/check-baseline.mjs),
+      then checks the baseline's behaviour. From now on a change is a new numbered migration AND folded into the baseline.
+- [x] B5. Unused code removed (2026-10-10): the own-Gemini-key mode (Settings' Developer section, `listModels`, the direct
+      Gemini call, the key and model settings, Home's "Add your Gemini key" row; old saved settings are cleaned on load),
+      the `submit_lead` fallback in the app, and the stale `server/README.md` and README text. Kept on purpose: `promptAsk`
+      (the app's own prompt dialog, part of the design system) and the Worker's per-IP brake (it still guards uncharged
+      reads while Supabase is unreachable).
 - [ ] B6. Dev, staging and production settings for the web build, the Worker (Wrangler environments) and the Android app
       (`.dev` and `.staging` app id suffixes, so all three install side by side).
 - [ ] B7. Free safety nets: a nightly database backup (GitHub Actions) and a daily ping so a quiet week does not pause the
@@ -90,7 +98,8 @@ Seen in the field: reads and Pulse Briefs fail on weak signal, which never happe
       receive only); Brevo's free plan only when sending from `support@` is needed.
 - [ ] C1. GitHub: new account, one repo, environments development / staging / production, approval before production.
 - [ ] C2. Cloudflare: one account (Workers, KV, R2, Pages, Access).
-- [ ] C3. Supabase: `pulse-test` and `pulse-prod` projects in **Mumbai (ap-south-1)**.
+- [ ] C3. Supabase: `pulse-test` and `pulse-prod` projects in **Mumbai (ap-south-1)**; run `supabase/baseline.sql` once in
+      each (not the numbered migrations).
 - [ ] C4. Google Cloud: a project per environment, each with its own Gemini key (production on billing: the paid tier is
       what stops Google using the photos) and OAuth client.
 - [ ] C5. Domain from the cheapest registrar (compare the 3-year total, not the first year), nameservers pointed to Cloudflare.

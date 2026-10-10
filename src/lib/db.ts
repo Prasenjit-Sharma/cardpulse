@@ -28,17 +28,17 @@ export async function listCards(): Promise<CardRecord[]> {
 const KEY = 'cardpulse.settings'
 export type KeepPhotos = 'full' | 'thumb' | 'none'
 export type Theme = 'system' | 'light' | 'dark'
-export interface Settings { apiKey: string; model: string; keepPhotos: KeepPhotos; theme?: Theme; /** The app's accent colour, by id (src/lib/accents.ts). Blue when unset. */ accent?: string; /** How contacts are named when saved to the phone (so the company shows on incoming calls). */ nameFormat?: NameFormat; /** Developer option: bypass the Pulse server and call Gemini directly. */ useOwnKey?: boolean }
+export interface Settings { keepPhotos: KeepPhotos; theme?: Theme; /** The app's accent colour, by id (src/lib/accents.ts). Blue when unset. */ accent?: string; /** How contacts are named when saved to the phone (so the company shows on incoming calls). */ nameFormat?: NameFormat }
 
-/** Can cards be read right now? Server mode needs nothing from the user; direct mode needs a key and a model. */
-export const readerReady = (s: Settings) => (serverMode && !s.useOwnKey) || (!!s.apiKey && !!s.model)
+/** Can cards be read? Only in a build that has the Pulse reading service (every build does once VITE_API_URL is set). */
+export const readerReady = (): boolean => serverMode
 export function loadSettings(): Settings {
   try {
-    const s: Settings = { apiKey: '', model: '', keepPhotos: 'full', ...JSON.parse(localStorage.getItem(KEY) ?? '{}') }
-    // The own-key developer switch is no longer shown when the reading service exists; a phone that had it on must not be stuck needing a key.
-    return serverMode ? { ...s, useOwnKey: false } : s
+    // settings saved by older builds may still carry apiKey, model and useOwnKey (the removed own-key mode): dropped here
+    const { apiKey: _k, model: _m, useOwnKey: _o, ...s } = { keepPhotos: 'full', ...JSON.parse(localStorage.getItem(KEY) ?? '{}') }
+    return s as Settings
   } catch {
-    return { apiKey: '', model: '', keepPhotos: 'full' }
+    return { keepPhotos: 'full' }
   }
 }
 export function saveSettings(s: Settings) {

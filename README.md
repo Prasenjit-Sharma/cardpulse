@@ -30,12 +30,12 @@ Deploying under a sub-path (e.g. GitHub Pages project site): `VITE_BASE=/cardpul
 
 ## Card reading
 
-Two modes:
-
-- **Server (production):** the app calls the Pulse API in `server/` and users need nothing. See `server/README.md` to deploy it, then set `VITE_API_URL`.
-- **Own key (development):** with no `VITE_API_URL`, open **Settings**, paste a free Gemini key from https://aistudio.google.com/apikey, and tap **Save and connect**.
+The app reads cards only through the Pulse API in `server/` (users need nothing; the Gemini key lives there). Every build
+sets `VITE_API_URL` to its own Worker; see `server/README.md` to deploy one. For local work, run the Worker with
+`npm run server:dev` and point `VITE_API_URL` at it. (The old "own key" mode, a Gemini key typed into Settings, was
+removed on 2026-10-10.)
 
 ## Notes
 
-- Contacts and photos live in the browser (IndexedDB). They go to the cloud only if the user signs in and turns on sync. Database changes are in `supabase/migrations/`, run by hand in the Supabase SQL editor.
+- Contacts and photos live in the browser (IndexedDB). They go to the cloud only if the user signs in and turns on sync. A new Supabase project runs `supabase/baseline.sql` once (the whole database); the numbered files in `supabase/migrations/` are the first project's history. A change is written as a new numbered migration and folded into `baseline.sql`; `npm run test:db` checks both define the same database.
 - On the free Gemini tier Google may use submitted images to improve its products. Use sample cards, or a paid tier for real users.

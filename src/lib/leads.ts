@@ -19,10 +19,7 @@ export function leadToContact(lead: Lead, localEvents: EventRec[]): { contact: C
   return matched ? { contact, eventId: matched.id } : { contact }
 }
 
-/**
- * Sends a visitor's details, answered with the event's visitor pack (null when there is none). A server without
- * migration 0004 has no submit_lead_pack: the details still go through the older submit_lead, with no pack.
- */
+/** Sends a visitor's details, answered with the event's visitor pack (null when there is none). */
 export async function submitLead(cardId: string, eventId: string | null, eventName: string | null, fields: { name: string; phone: string; email: string; company: string }): Promise<Pack | null> {
   if (!supabase) throw new Error('Cloud features are not configured.')
   const args = {
@@ -30,11 +27,8 @@ export async function submitLead(cardId: string, eventId: string | null, eventNa
     p_name: fields.name.trim(), p_phone: fields.phone.trim() || null, p_email: fields.email.trim() || null, p_company: fields.company.trim() || null,
   }
   const { data, error } = await supabase.rpc('submit_lead_pack', args)
-  if (!error) return readPack((data as { pack?: unknown } | null)?.pack)
-  if (!/PGRST202|could not find the function|does not exist/i.test(`${error.code ?? ''} ${error.message}`)) throw error
-  const { error: old } = await supabase.rpc('submit_lead', args)
-  if (old) throw old
-  return null
+  if (error) throw error
+  return readPack((data as { pack?: unknown } | null)?.pack)
 }
 
 /** What the visitor sees when their details could not be sent: a stall without a plan or pass is not collecting. */

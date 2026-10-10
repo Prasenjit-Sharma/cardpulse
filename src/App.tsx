@@ -197,7 +197,7 @@ export default function App() {
    */
   const enqueueRef = useRef<(ids: string[]) => Promise<void>>(async () => {})
   const runJob = useCallback(async (ids: string[]): Promise<void> => {
-    const { apiKey, model, keepPhotos, useOwnKey } = settingsRef.current
+    const { keepPhotos } = settingsRef.current
     const found = (await Promise.all(ids.map((id) => getCard(id)))).filter((c): c is CardRecord => !!c && readable(c))
     const cards: CardRecord[] = []
     for (const c of found) {
@@ -224,19 +224,18 @@ export default function App() {
     }
 
     try {
-      const opts = { apiKey, model, useOwnKey: !!useOwnKey }
       if (cards.length === 1) {
         const c = cards[0]!
-        const r = await extractCard(c.back ? [c.image!, c.back] : [c.image!], opts, 'sides', await requestIdFor([c.id]))
+        const r = await extractCard(c.back ? [c.image!, c.back] : [c.image!], 'sides', await requestIdFor([c.id]))
         noteBalance(r.balance)
         const contacts = r.contacts.map(stripImage)
-        await finish(c, contacts, { model: r.model ?? model, latencyMs: r.latencyMs, tokensIn: r.tokensIn, tokensOut: r.tokensOut, languages: r.languages, notes: r.notes, batchSize: 1 })
+        await finish(c, contacts, { model: r.model ?? '', latencyMs: r.latencyMs, tokensIn: r.tokensIn, tokensOut: r.tokensOut, languages: r.languages, notes: r.notes, batchSize: 1 })
         notifyAdded(contacts.length, c.id)
       } else {
         const n = cards.length
         const blobs = await Promise.all(cards.map((c) => fitForBatch(c.image!, n)))
         log(`batch of ${n}: ${blobs.map((b) => Math.round(b.size / 1024) + 'KB').join(' ')} in one call`)
-        const r = await extractCard(blobs, opts, 'batch', await requestIdFor(cards.map((c) => c.id)))
+        const r = await extractCard(blobs, 'batch', await requestIdFor(cards.map((c) => c.id)))
         noteBalance(r.balance)
         // Which card does each person belong to? Gemini numbers the photos. If any person has no valid number we
         // cannot attribute them safely, so read those cards one by one instead of guessing.
@@ -253,7 +252,7 @@ export default function App() {
           total += contacts.length
           if (contacts.length && !first) first = cards[i]!.id
           await finish(cards[i]!, contacts, {
-            model: r.model ?? model, latencyMs: Math.round(r.latencyMs / n),
+            model: r.model ?? '', latencyMs: Math.round(r.latencyMs / n),
             tokensIn: r.tokensIn == null ? undefined : Math.round(r.tokensIn / n), tokensOut: r.tokensOut == null ? undefined : Math.round(r.tokensOut / n),
             languages: r.languages, notes: r.notes, batchSize: n,
           })
@@ -388,9 +387,8 @@ export default function App() {
   }, [tab, userId, online])
 
   const addGroups = useCallback(async (groups: File[][], prepared: boolean) => {
-    const { apiKey, model } = settingsRef.current
-    log(`addGroups n=${groups.length} prepared=${prepared} key=${!!apiKey} model=${model || 'none'}`)
-    if (!readerReady(settingsRef.current)) { setBanner('Add your Gemini API key in Settings first.'); setTab('settings'); return }
+    log(`addGroups n=${groups.length} prepared=${prepared}`)
+    if (!readerReady()) { setBanner('Reading is not set up in this build.'); return }
     setBanner('Saving photos…')
     const ids: string[] = []
     for (const group of groups) {
@@ -426,7 +424,7 @@ export default function App() {
   // signed-in user to sign in.
   const scanWaiting = useRef(false)
   const scan = () => {
-    const g = scanGate({ accounts: serverMode && cloudEnabled, ownKey: !!settings.useOwnKey, sessionKnown, signedIn: !!userId })
+    const g = scanGate({ accounts: serverMode && cloudEnabled, sessionKnown, signedIn: !!userId })
     scanWaiting.current = g === 'wait'
     if (g === 'sign_in') setGate('sign_in')
     else if (g === 'open') { if (hasLiveCamera) setCamOpen(true); else fallbackInput.current?.click() }
@@ -602,10 +600,10 @@ export default function App() {
             }}
           />
         ) : tab === 'home' ? (
-          <Home cards={cards} events={events} dupes={dupes} cardsLeft={balance ? { left: balance.cards.left, low: isLow(balance), figure: cardsFigure(balance) } : undefined} onPlans={openPlans} ready={readerReady(settings)} needsKey={!serverMode || !!settings.useOwnKey} install={install} backupNudge={nudgeBackup}
+          <Home cards={cards} events={events} dupes={dupes} cardsLeft={balance ? { left: balance.cards.left, low: isLow(balance), figure: cardsFigure(balance) } : undefined} onPlans={openPlans} install={install} backupNudge={nudgeBackup}
             onBackup={() => void backupNow().then((m) => setBanner(m), () => setBanner('The export could not be saved. Try again.'))} onSnoozeBackup={() => { snoozeBackupNudge(); setBackupTick((n) => n + 1) }}
             onOpenContact={(id, idx) => setOpen({ id, idx })} onTogglePriority={(id, idx) => void togglePriority(id, idx)} onContacts={() => openContacts()} onCompanies={() => goto('companies')} onStarred={() => openContacts('priority')}
-            onAttention={() => openContacts('attention')} onInsights={() => goto('insights', 'home')} onSetup={() => goto('settings', 'home')} onSettings={() => goto('settings', 'home')}
+            onAttention={() => openContacts('attention')} onInsights={() => goto('insights', 'home')} onSettings={() => goto('settings', 'home')}
             onViewEvent={(id) => { setContactsFilter(undefined); setContactsCompany(''); setActiveEvent(id); goto('contacts') }} onEvents={() => gotoTab('exhibition')} onScan={scan} onMyCard={() => gotoTab('mycard')} />
         ) : tab === 'mycard' ? (
           <MyCards cards={liveCards} locked={lockedCards} limit={cardLimit} pass={!!balance?.cards.pass && cardLimit > MY_CARDS[balance.tier]} tier={balance?.tier ?? 'free'} stats={cardStats}
