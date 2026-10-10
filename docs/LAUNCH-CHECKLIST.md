@@ -106,9 +106,13 @@ Seen in the field: reads and Pulse Briefs fail on weak signal, which never happe
       and the production Gmail given Owner on the Google Cloud projects. Never sign up with a domain address (a lapsed
       domain would lock you out); `support@` and `privacy@` on the domain forward to the service Gmail through
       Cloudflare Email Routing (free, receive only), with Brevo's free plan only when sending from `support@` is needed.
-- [ ] C1. (repo created 2026-10-10: `byangomaaa/pulse`, private, full history pushed; Actions paused until the deploys
-      move to Cloudflare in B6/E; this Mac's `origin` now points there, the old repo is the remote `dev-origin` and its
-      GitHub Pages site stays up for the current app until E is live) GitHub: new account, one repo, environments development / staging / production, approval before production.
+- [ ] C1. **Final repo on `byangomaaa`, with a clean start** (revised 2026-10-10). Development continues in the old repo
+      (`origin`, Prasenjit-Sharma/cardpulse) until B6 is done and dev-only material is out. Then the final repo gets the
+      cleaned source as ONE first commit, under byangomaaa's GitHub no-reply email: none of the 244 development commits (all
+      authored with a personal email), no `.impeccable/`, no `docs/superpowers/`, no old project addresses. The first
+      attempt (`byangomaaa/pulse`, pushed with full history on 2026-10-10) is to be deleted or emptied before that; this
+      Mac's push access to it is scoped to `https://byangomaaa@github.com` (remote `release-hold`) and never touches the
+      other projects. Then: new account, one repo, environments development / staging / production, approval before production.
 - [ ] C2. (account created 2026-10-10) Cloudflare: one account (Workers, KV, R2, Pages, Access).
 - [x] C3. (2026-10-10, Mumbai; `baseline.sql` run in both and checked from outside: tables, functions, grants, buckets)
       `pulse-test` = `efhhwamvfgcjgbpwfnuy`, `pulse-prod` = `suhlynnoeatjnrokaaox`. Supabase: `pulse-test` and `pulse-prod` projects in **Mumbai (ap-south-1)**; run `supabase/baseline.sql` once in
