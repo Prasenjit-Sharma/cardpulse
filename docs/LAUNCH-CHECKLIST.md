@@ -95,9 +95,10 @@ Seen in the field: reads and Pulse Briefs fail on weak signal, which never happe
 ## C. Accounts (the user, with guidance)
 
 - [ ] **C0. Emails** (decided 2026-10-10, revised the same day). Two Gmails, each kept to Pulse:
-      - **Production Gmail** (the existing one): Google Play Console and GitHub (code, store listing, deploy secrets).
-      - **Service Gmail** (new, exclusively for Pulse's services): Cloudflare, Supabase, Google Cloud (Gemini keys,
-        sign-in client, the billing service account) and RevenueCat.
+      - **Production Gmail `byangomaaa@gmail.com`**: Google Play Console and GitHub (account `byangomaaa`: this project's
+        code and deploy secrets). Set for this project only (`git config --local`); other projects on the Mac keep theirs.
+      - **Service Gmail `pulsecardscanner@gmail.com`** (exclusively for Pulse's services): Cloudflare, Supabase, Google
+        Cloud (Gemini keys, sign-in clients, the billing service account) and RevenueCat.
       One account per service: never a second Supabase or Cloudflare account to stack free plans (most terms treat it as
       abuse, and a suspension could take the production database with it). Deploys reach Cloudflare and Supabase through
       access tokens stored in GitHub, so the account split does not matter technically. Two-step verification on both
@@ -105,7 +106,9 @@ Seen in the field: reads and Pulse Briefs fail on weak signal, which never happe
       and the production Gmail given Owner on the Google Cloud projects. Never sign up with a domain address (a lapsed
       domain would lock you out); `support@` and `privacy@` on the domain forward to the service Gmail through
       Cloudflare Email Routing (free, receive only), with Brevo's free plan only when sending from `support@` is needed.
-- [ ] C1. GitHub: new account, one repo, environments development / staging / production, approval before production.
+- [ ] C1. (repo created 2026-10-10: `byangomaaa/pulse`, private, full history pushed; Actions paused until the deploys
+      move to Cloudflare in B6/E; this Mac's `origin` now points there, the old repo is the remote `dev-origin` and its
+      GitHub Pages site stays up for the current app until E is live) GitHub: new account, one repo, environments development / staging / production, approval before production.
 - [ ] C2. (account created 2026-10-10) Cloudflare: one account (Workers, KV, R2, Pages, Access).
 - [x] C3. (2026-10-10, Mumbai; `baseline.sql` run in both and checked from outside: tables, functions, grants, buckets)
       `pulse-test` = `efhhwamvfgcjgbpwfnuy`, `pulse-prod` = `suhlynnoeatjnrokaaox`. Supabase: `pulse-test` and `pulse-prod` projects in **Mumbai (ap-south-1)**; run `supabase/baseline.sql` once in
