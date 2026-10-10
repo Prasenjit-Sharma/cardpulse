@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ALLOWANCE, DAILY, EXTRA_BRIEFS, isUnlimited, MY_CARDS, PACKS, PASS, PASS_MY_CARDS, PLANS, TRIAL_BRIEFS, rupees, type PaidTier, type Tier } from '../../shared/plans'
+import { ALLOWANCE, DAILY, EXTRA_BRIEFS, isUnlimited, MY_CARDS, UNLIMITED_LOW, PACKS, PASS, PASS_MY_CARDS, PLANS, TRIAL_BRIEFS, rupees, type PaidTier, type Tier } from '../../shared/plans'
 import type { Balance } from '../lib/balance'
 import { signInWithGoogle, useSession } from '../lib/auth'
 import { refreshBalance, useBalanceError } from '../lib/useBalance'
@@ -16,7 +16,7 @@ const GIVES: Record<PaidTier, string[]> = {
   starter: [`${ALLOWANCE.starter.cards} cards read every month`, `${ALLOWANCE.starter.briefs} Pulse Briefs a month`, 'Lead capture and brochures at your stall', `${MY_CARDS.starter} digital cards, export and QR exchange`],
   plus: [`${ALLOWANCE.plus.cards} cards read every month`, `${ALLOWANCE.plus.briefs} Pulse Briefs a month`, `${MY_CARDS.plus} digital cards`, 'Everything in Starter'],
   pro: [`${ALLOWANCE.pro.cards} cards read every month`, `${ALLOWANCE.pro.briefs} Pulse Briefs a month: who they are and what their company does, with sources`, `${MY_CARDS.pro} digital cards`, 'Everything in Plus'],
-  unlimited: [`Unlimited cards (fair use: ${DAILY.unlimitedReads} a day)`, `${ALLOWANCE.unlimited.briefs} Pulse Briefs a month`, 'Everything in Pro'],
+  unlimited: [`Unlimited cards (fair use: ${DAILY.unlimitedReads} a day, ${ALLOWANCE.unlimited.cards.toLocaleString('en-IN')} a month)`, `${ALLOWANCE.unlimited.briefs} Pulse Briefs a month`, 'Everything in Pro'],
 }
 const TAG: Partial<Record<PaidTier, string>> = { unlimited: 'Best for exhibitors', pro: 'Most Briefs' }
 
@@ -73,8 +73,8 @@ function Holding({ balance, signedIn }: { balance: Balance | null; signedIn: boo
       </div>
       <h2>{TIER_NAME[b.tier]}</h2>
       <div className="pl-meters">
-        {isUnlimited(b.tier)
-          ? <div className="pl-meter pl-meter-off"><div className="pl-meter-top"><span>Cards</span><b>Unlimited</b></div><small className="pl-meter-word">fair use {DAILY.unlimitedReads} a day</small></div>
+        {isUnlimited(b.tier) && monthLeft > UNLIMITED_LOW
+          ? <div className="pl-meter pl-meter-off"><div className="pl-meter-top"><span>Cards</span><b>Unlimited</b></div><small className="pl-meter-word">fair use {DAILY.unlimitedReads} a day, {b.cards.month.allowance.toLocaleString('en-IN')} a month</small></div>
           : <Meter label="Cards" left={monthLeft} of={b.cards.month.allowance} word="left this month" />}
         {b.tier !== 'free'
           ? <Meter label="Pulse Briefs" left={briefMonthLeft} of={b.briefs.month.allowance} word="left this month" />

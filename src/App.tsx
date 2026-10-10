@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { deleteCard, deleteCardRaw, getCard, listCards, loadSettings, putCard, readerReady, saveSettings, type Settings } from './lib/db'
 import { log } from './lib/debug'
 import { extractCard, serverMode } from './lib/gemini'
+import { requestIdFor } from './lib/requestid'
 import { fitForBatch, prepareImage } from './lib/image'
 import { prepareCardImage } from './lib/cardImage'
 import type { CardRecord, Contact, EventRec } from './lib/types'
@@ -226,7 +227,7 @@ export default function App() {
       const opts = { apiKey, model, useOwnKey: !!useOwnKey }
       if (cards.length === 1) {
         const c = cards[0]!
-        const r = await extractCard(c.back ? [c.image!, c.back] : [c.image!], opts)
+        const r = await extractCard(c.back ? [c.image!, c.back] : [c.image!], opts, 'sides', await requestIdFor([c.id]))
         noteBalance(r.balance)
         const contacts = r.contacts.map(stripImage)
         await finish(c, contacts, { model: r.model ?? model, latencyMs: r.latencyMs, tokensIn: r.tokensIn, tokensOut: r.tokensOut, languages: r.languages, notes: r.notes, batchSize: 1 })
@@ -235,7 +236,7 @@ export default function App() {
         const n = cards.length
         const blobs = await Promise.all(cards.map((c) => fitForBatch(c.image!, n)))
         log(`batch of ${n}: ${blobs.map((b) => Math.round(b.size / 1024) + 'KB').join(' ')} in one call`)
-        const r = await extractCard(blobs, opts, 'batch')
+        const r = await extractCard(blobs, opts, 'batch', await requestIdFor(cards.map((c) => c.id)))
         noteBalance(r.balance)
         // Which card does each person belong to? Gemini numbers the photos. If any person has no valid number we
         // cannot attribute them safely, so read those cards one by one instead of guessing.
@@ -674,9 +675,11 @@ export default function App() {
           </div>
         </div>
       </Sheet>
-      <Sheet open={gate === 'no_cards'} onClose={() => setGate(null)} title="No cards left">
+      <Sheet open={gate === 'no_cards'} onClose={() => setGate(null)} title={balance?.tier === 'unlimited' ? "This month's fair use is used" : 'No cards left'}>
         <div className="consent">
-          <p>Your photos are saved as <b>Waiting for cards</b>. They are read as soon as you add cards.</p>
+          <p>{balance?.tier === 'unlimited'
+            ? <>Unlimited reads up to {ALLOWANCE.unlimited.cards.toLocaleString('en-IN')} cards a month. Your photos are saved as <b>Waiting for cards</b> and are read when the month renews, or now with a card pack.</>
+            : <>Your photos are saved as <b>Waiting for cards</b>. They are read as soon as you add cards.</>}</p>
           <div className="consent-actions">
             <button className="outline" onClick={() => setGate(null)}>Later</button>
             <button className="cta" onClick={() => { setGate(null); openPlans() }}>See plans</button>

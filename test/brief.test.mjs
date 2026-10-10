@@ -53,9 +53,9 @@ test('request: offline, signed out, over the limit and failures are named; succe
   const limit = async () => new Response(JSON.stringify({ error: { code: 'daily_limit', message: 'You have used today\'s 10 fresh searches.' } }), { status: 429 })
   await assert.rejects(requestBrief(person(), { url: 'https://api', token: 't', online: true, fetch: limit }), (e) => e.code === 'daily_limit' && /10 fresh/.test(e.message))
   const boom = async () => { throw new TypeError('fetch failed') }
-  await assert.rejects(requestBrief(person(), { url: 'https://api', token: 't', online: true, fetch: boom }), (e) => e.code === 'failed')
+  await assert.rejects(requestBrief(person(), { url: 'https://api', token: 't', online: true, fetch: boom, sleep: async () => {} }), (e) => e.code === 'failed')
   const bad = async () => new Response('{"error":{"code":"bad_output","message":"secret detail"}}', { status: 502 })
-  await assert.rejects(requestBrief(person(), { url: 'https://api', token: 't', online: true, fetch: bad }), (e) => e.code === 'failed' && !/secret/.test(e.message))
+  await assert.rejects(requestBrief(person(), { url: 'https://api', token: 't', online: true, fetch: bad, sleep: async () => {} }), (e) => e.code === 'failed' && !/secret/.test(e.message))
   let sent
   const spy = async (u, init) => { sent = { u, body: JSON.parse(init.body) }; return ok() }
   const b = await requestBrief(person(), { url: 'https://api', token: 't', online: true, fetch: spy, now: 42 })
@@ -102,4 +102,35 @@ test('requestBrief keeps the server\'s unchecked mark (written without a web sea
 test('requestBrief: a free account out of trial briefs is told Brief comes with every plan', async () => {
   const f = async () => new Response(JSON.stringify({ error: { code: 'plan_needed' } }), { status: 402 })
   await assert.rejects(requestBrief(person(), { url: 'https://api', token: 't', online: true, fetch: f }), (e) => e.code === 'plan_needed' && e.message === 'Pulse Brief comes with every plan.')
+})
+
+test('weak signal: a brief retries a dropped connection and a server hiccup, carrying the same request id', async () => {
+  const quick = async () => {}
+  const bodies = []
+  let n = 0
+  const flaky = async (_u, init) => {
+    bodies.push(JSON.parse(init.body)); n++
+    if (n === 1) throw new TypeError('fetch failed')
+    if (n === 2) return new Response('{"error":{"code":"upstream_error"}}', { status: 502 })
+    return new Response(JSON.stringify({ person: 'P', company: 'C', starters: [], links: [], sources: [] }))
+  }
+  const b = await requestBrief(person(), { url: 'https://api', token: 't', online: true, fetch: flaky, rid: 'brief:abcdefgh', sleep: quick })
+  assert.equal(b.person, 'P'); assert.equal(n, 3)
+  assert.deepEqual(bodies.map((x) => x.rid), ['brief:abcdefgh', 'brief:abcdefgh', 'brief:abcdefgh'])
+  // three drops in a row: it gives up with the plain failure
+  const down = async () => { throw new TypeError('fetch failed') }
+  await assert.rejects(requestBrief(person(), { url: 'https://api', token: 't', online: true, fetch: down, sleep: quick }), (e) => e.code === 'failed')
+})
+
+test('weak signal: an old token refused is renewed once and sent again, instead of asking a signed-in user to sign in', async () => {
+  const auths = []
+  const f = async (_u, init) => {
+    const body = JSON.parse(init.body); auths.push(body.auth)
+    if (body.auth === 'old') return new Response('{"error":{"code":"sign_in","message":"Sign in to use Pulse Brief."}}', { status: 401 })
+    return new Response(JSON.stringify({ person: 'P', company: '', starters: [], links: [], sources: [] }))
+  }
+  const b = await requestBrief(person(), { url: 'https://api', token: 'old', renew: async () => 'new', online: true, fetch: f, sleep: async () => {} })
+  assert.equal(b.person, 'P'); assert.deepEqual(auths, ['old', 'new'])
+  // no new token to be had: the sign-in message stands
+  await assert.rejects(requestBrief(person(), { url: 'https://api', token: 'old', renew: async () => 'old', online: true, fetch: f, sleep: async () => {} }), (e) => e.code === 'sign_in')
 })

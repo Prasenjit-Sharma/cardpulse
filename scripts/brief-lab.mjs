@@ -4,15 +4,17 @@
 // Needs the Gemini key that Pulse Brief uses (the paid "Business card" project), read in this order: GEMINI_KEY, the Mac
 // Keychain item "cardpulse-gemini-brief" (save it once: security add-generic-password -s cardpulse-gemini-brief -a brief -w),
 // --clipboard, or pasted when asked (typing hidden). Never shipped in the app.
-import { execFileSync } from 'node:child_process'
 import { writeFileSync } from 'node:fs'
-import { stdin, stdout } from 'node:process'
+import { fileURLToPath } from 'node:url'
 import { briefPrompt, parseBriefResponse } from '../shared/brief-core.ts'
+import { geminiKey } from './geminikey.mjs'
 import { usageLine } from '../server/worker.ts'
 
-const MODEL = 'gemini-3.5-flash'
+// --model gemini-3.8-flash: another model; $ per million tokens, paid tier, checked 2026-10-09 (thinking is billed as output)
+const PRICES = { 'gemini-3.5-flash': { in: 1.5, out: 9 }, 'gemini-3.8-flash': { in: 0.75, out: 3.75 }, 'gemini-3.7-flash': { in: 0.75, out: 3.75 }, 'gemini-3.6-flash': { in: 0.75, out: 3.75 } }
+const MODEL = (() => { const i = process.argv.indexOf('--model'); return i > 0 ? process.argv[i + 1] : 'gemini-3.5-flash' })()
 const USD_INR = 96
-const PRICE = { in: 1.5, out: 9 }        // $ per million tokens, gemini-3.5-flash; thinking is billed as output
+const PRICE = PRICES[MODEL] ?? PRICES['gemini-3.5-flash']
 const SEARCH_USD = 14 / 1000            // per search after the free 5,000 a month
 
 const CONTACTS = [
@@ -35,28 +37,7 @@ const VARIANTS = [
   { id: 'low2', label: 'low thinking, 2 searches', thinking: 'low', prompt: (i) => twoSearches(briefPrompt(i, true)) },
 ]
 
-async function key() {
-  const clean = (s) => s.replace(/\s+/g, '')
-  if (process.env.GEMINI_KEY) return clean(process.env.GEMINI_KEY)
-  try { const k = clean(execFileSync('security', ['find-generic-password', '-s', 'cardpulse-gemini-brief', '-w'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })); if (k) return k } catch { /* not in the Keychain */ }
-  if (process.argv.includes('--clipboard')) return clean(execFileSync('pbpaste', { encoding: 'utf8' }))
-  if (!stdin.isTTY) { console.error('Set GEMINI_KEY, or pass --clipboard after copying the key.'); process.exit(1) }
-  stdout.write('Gemini key for Pulse Brief (typing hidden, or just Enter to read the clipboard): ')
-  return new Promise((resolve) => {
-    let typed = '', timer
-    stdin.setRawMode(true); stdin.resume(); stdin.setEncoding('utf8')
-    const done = (k) => { clearTimeout(timer); stdin.setRawMode(false); stdin.pause(); stdout.write('\n'); resolve(k) }
-    stdin.on('data', (chunk) => {
-      if (chunk.includes('\u0003')) process.exit(130)
-      typed += chunk
-      clearTimeout(timer)
-      if (/[\r\n]$/.test(chunk)) timer = setTimeout(() => done(clean(typed) || clean(execFileSync('pbpaste', { encoding: 'utf8' }))), 150)
-    })
-  })
-}
-
-const K = await key()
-if (!/^[\w.-]{30,}$/.test(K)) { console.error(`That does not look like an API key (read ${K.length} characters, starting "${K.slice(0, 4)}"). Copy the key itself and try again.`); process.exit(1) }
+const K = await geminiKey('Gemini key for Pulse Brief')
 
 // --only "<name>" --variants min,now --repeat 3: a narrower run
 const arg = (k) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : undefined }
@@ -66,7 +47,7 @@ const variants = VARIANTS.filter((v) => !pick || pick.includes(v.id)).flatMap((v
 const rows = [], briefs = []
 for (const c of contacts) {
   for (const v of variants) {
-    const body = { contents: [{ role: 'user', parts: [{ text: v.prompt(c) }] }], tools: [{ google_search: {} }], generationConfig: { temperature: 0.2, thinkingConfig: { thinkingLevel: v.thinking } } }
+    const body = { contents: [{ role: 'user', parts: [{ text: v.prompt(c) }] }], tools: [{ google_search: {} }], generationConfig: { thinkingConfig: { thinkingLevel: v.thinking } } }
     const t0 = Date.now()
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': K }, body: JSON.stringify(body) })
     const ms = Date.now() - t0
@@ -92,6 +73,6 @@ for (const v of VARIANTS.filter((x) => variants.includes(x))) {
   const avg = (k) => (r.reduce((s, x) => s + x[k], 0) / r.length).toFixed(2)
   console.log(`  ${v.label.padEnd(32)} ${avg('secs')}s  searches ${avg('searches')}  ₹${avg('inr_free')} within free searches, ₹${avg('inr_paid')} after`)
 }
-const out = new URL('../.superpowers/brief-lab.json', import.meta.url)
+const out = new URL(`../.superpowers/brief-lab-${MODEL}.json`, import.meta.url)
 writeFileSync(out, JSON.stringify({ rows, briefs }, null, 2))
-console.log(`\nBriefs for comparing quality: ${out.pathname}`)
+console.log(`\nBriefs for comparing quality: ${fileURLToPath(out)}`)

@@ -77,8 +77,8 @@ export const THINKING: Thinking[] = ['minimal', 'low', 'medium', 'high']
 export function buildBriefRequest(i: BriefInput, search = false, thinking: Thinking = 'low') {
   const contents = [{ role: 'user', parts: [{ text: briefPrompt(i, search) }] }]
   return search
-    ? { contents, tools: [{ google_search: {} }], generationConfig: { temperature: 0.2, thinkingConfig: { thinkingLevel: thinking } } }
-    : { contents, generationConfig: { temperature: 0.2, responseMimeType: 'application/json' } }
+    ? { contents, tools: [{ google_search: {} }], generationConfig: { thinkingConfig: { thinkingLevel: thinking } } }
+    : { contents, generationConfig: { responseMimeType: 'application/json' } }
 }
 
 /* ---------- the shared company store ---------- */
@@ -155,7 +155,7 @@ export function buildPersonRequest(i: BriefInput, company: string, thinking: Thi
     'links: at most 3 pages from your search that belong to this person, their LinkedIn profile first. kind is one of linkedin, website, indiamart, facebook, instagram, justdial, tradeindia, other. Only a LinkedIn profile whose name, company and designation match this card. Never guess or build a URL.',
     'Rules: only facts from the search results. No praise words (renowned, leading, innovative, key player). Plain Indian English.',
   ].join('\n')
-  return { contents: [{ role: 'user', parts: [{ text }] }], tools: [{ google_search: {} }], generationConfig: { temperature: 0.2, thinkingConfig: { thinkingLevel: thinking } } }
+  return { contents: [{ role: 'user', parts: [{ text }] }], tools: [{ google_search: {} }], generationConfig: { thinkingConfig: { thinkingLevel: thinking } } }
 }
 
 /** A brief from the person-only answer and the stored company. */

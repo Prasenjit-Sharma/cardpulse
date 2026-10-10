@@ -11,3 +11,6 @@ server/.wrangler
 .superpowers/
 test/sync-sim/out/
 .impeccable/review/
+
+# read-lab: real people's card photos, kept on this Mac only
+.lab/

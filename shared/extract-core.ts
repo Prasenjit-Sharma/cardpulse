@@ -99,7 +99,7 @@ export function buildRequest(images: ImageInput[], layout: Layout = 'sides') {
   })
   return {
     contents: [{ parts }],
-    generationConfig: { temperature: 0, responseMimeType: 'application/json', responseSchema },
+    generationConfig: { responseMimeType: 'application/json', responseSchema },
   }
 }
 

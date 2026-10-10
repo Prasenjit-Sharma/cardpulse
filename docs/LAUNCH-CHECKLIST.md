@@ -6,55 +6,102 @@ Prices, limits and sources checked on 2026-10-09 are under "Research notes" at t
 
 ## Open decisions
 
-- [ ] **Backend:** all-Cloudflare (Worker + D1 + R2 + own sign-in) or Supabase free + R2. See "Backend choice" below.
-- [ ] **Final Android app ID.** Today `in.cardpulse.app`; it can never change once published.
-- [ ] **Payments:** RevenueCat (free under $2,500 monthly revenue, then 1%) or Play Billing built directly (free, about a week more).
-- [ ] **Dev database:** local (Supabase CLI or `wrangler dev` with local D1) or a cloud project.
+- [x] **Backend: Supabase free + Cloudflare R2** (decided 2026-10-10). Supabase keeps sign-in, row-level security and its
+      dashboard; photos and brochures move to R2; a daily ping keeps the project awake and a nightly job backs it up; Pro
+      ($25 a month) only when revenue covers it. All-Cloudflare was weighed and set aside: about the same speed for users,
+      cheaper at scale, but sign-in and every access check would be ours to build and secure. See "Backend choice" below.
+- [x] **Final Android app ID: `in.pulsecardscanner.app`** (decided 2026-10-10; `.dev` and `.staging` suffixes for the
+      other builds). Applied in B6, together with the sign-in return link (`in.pulsecardscanner.app://auth/callback` in the
+      manifest and `src/lib/platform.ts`) and Supabase's allowed redirect URLs, so sign-in breaks only once.
+- [x] **Payments: RevenueCat** (decided 2026-10-10) over Google Play Billing (Apple in-app purchase later). Free under
+      $2,500 monthly tracked revenue, then 1%. It checks purchases, handles renewals, failed UPI AutoPay mandates, grace
+      periods, refunds and upgrades, and calls a Worker webhook that runs the existing grant functions. Customers pay with
+      whatever Play offers (UPI and UPI AutoPay, cards, net banking). Razorpay inside the app was ruled out on 2026-10-05:
+      Play requires its own billing for digital goods, and India's alternative billing still costs 11%. Later idea: sell
+      on the website through Razorpay (for example passes bought by a company for its stall staff); the app may honour
+      those purchases but must not point users to them.
+- [x] **Dev database: two free cloud projects** (decided 2026-10-10): `pulse-test`, shared by the dev and staging builds, and
+      `pulse-prod` for the store app only (closed-test testers use production builds, so their accounts carry over). Local
+      Supabase on the Mac was set aside: the phone could reach it only on home Wi-Fi, so no field or weak-signal testing.
+      Database changes keep being tested with `npm run test:db` (PGlite, no Docker).
+
+- [x] **Unlimited's fair use: 200 a day and 3,000 a month** (decided 2026-10-10). Reading costs about ₹0.114 a card (B1), so
+      the old 200 a day (about 6,000 a month, ₹684) lost money against ₹679 kept from ₹799. Now a heavy user costs about ₹342.
+      Competitors for comparison: CamCard Premium reportedly caps AI scans at 200 a month; Covve about ₹960 and Blinq about
+      ₹700 to 960 a month for "unlimited"; HiHello 20 a month below its team plan. Built: `shared/plans.ts`, migration
+      `0011_unlimited_fair_use.sql` (run 2026-10-10), Home and Plan & cards show "Unlimited" until 300 are left, then the count in
+      amber; past 3,000, pack cards, then photos wait for the month ("This month's fair use is used").
 
 ## A. Low-network fixes (first, on the current setup)
 
 Seen in the field: reads and Pulse Briefs fail on weak signal, which never happened on a personal free Gemini key (no sign-in then).
 
-- [ ] **A1. Token renewal never means "signed out".** If the hourly sign-in token cannot be renewed on a weak signal, use the last
+- [x] **A1. Token renewal never means "signed out".** If the hourly sign-in token cannot be renewed on a weak signal, use the last
       good one and renew in the background; a read answered `sign_in` while the app holds a session is retried, not parked as
       "Waiting for sign-in" (today it can stay parked until the app restarts).
-- [ ] **A2. Time limit on getting the token** (it can hang today), falling back to the last good token.
-- [ ] **A3. Pulse Brief retries** network failures twice with short waits (today: one attempt in an 8 to 20 s wait).
-- [ ] **A4. No double charge on a lost answer.** Each read and brief carries a request id; the Worker keeps the answer briefly
-      (KV) and a retry with the same id gets it again without a second charge.
-- [ ] A5. Tests for each, the APK on the phone, and a check of the Worker logs for `sign_in` refusals from signed-in accounts.
+- [x] **A2. Time limit on getting the token** (it can hang today), falling back to the last good token.
+- [x] **A3. Pulse Brief retries** network failures twice with short waits (today: one attempt in an 8 to 20 s wait).
+- [x] **A4. No double charge on a lost answer.** Each read and brief carries a request id; the Worker keeps the answer briefly
+      (built as migration 0010: the database charges an id once; a read's id comes from its card ids, a brief's is new per tap).
+- [ ] A5. Tests written, migration 0010 run and the Worker deployed (2026-10-10). Still to do: try the APK on a
+      weak signal, and check the Worker logs for `sign_in` refusals from signed-in accounts.
 
 ## B. Code before the new accounts
 
-- [ ] **B1. Reading test (read-lab),** like `scripts/brief-lab.mjs`: real card photos through Gemini 2.5 Flash-Lite and
-      3.5 Flash-Lite, scored field by field (names, phones, Hindi and regional scripts). Same for Briefs on 2.5 Flash.
-- [ ] B2. Switch models if accuracy holds: reading on `gemini-2.5-flash-lite` (about ₹0.025 a card, against ₹0.11 today),
-      Briefs on `gemini-2.5-flash` (1,500 free searches a day). Add a fallback model on overload (same key).
+- [x] **B1. Reading test** (built and run 2026-10-10 on 11 synced cards, 7 opened): `npm run read:fetch` pulls synced cards
+      and their corrections into the git-ignored `.lab/`; `npm run read:lab [-- --models … --media medium]` compares models
+      with the app's prompt and the Accuracy page's scorer. Results:
+      - **2.5 Flash-Lite and 2.5 Flash are closed to new users** ("no longer available to new users"): not an option.
+      - 3.5 Flash-Lite (today): 83.5 to 91.4% across three identical runs, about 7 s, ₹0.114 a card.
+      - 3.1 Flash-Lite: 79.3%, ₹0.082, shuts down May 2027. Gemma 4 26B (free tier only, so Google may use the photos):
+        76%, 14 s; Gemma 4 31B broke the JSON format on 9 of 11. None beat today's model.
+      - Medium photo detail on 3.5 Flash-Lite: ₹0.095 a card (17% less), 83.5 to 88.0%; inside the run-to-run noise.
+      - Pulse Brief: 3.8 Flash (Google's suggested successor) is cheaper but ran no web search on 4 of 4 contacts (briefs
+        from memory, shown as unchecked); 3.5 Flash searched where it mattered. Keep 3.5 Flash.
+      - Card photos weakest on regional scripts (68% for every model) and on addresses.
+- [ ] **B2. Decision:** stay on 3.5 Flash-Lite for reading and 3.5 Flash for Briefs. Re-test medium photo detail once 50+
+      opened cards are synced (11 cards cannot show a difference under about 8 points). Re-check the Unlimited plan's
+      fair use (done: 3,000 a month). Add a fallback model on overload (3.1 Flash-Lite, same key).
+- [x] B2a. Google's notice (2026-10-10): `temperature`, `top_p` and `top_k` will be refused by upcoming models, and
+      `thinking_budget` must become `thinking_level`. Done: `temperature` removed from card reading
+      (`shared/extract-core.ts`), Pulse Brief (`shared/brief-core.ts`) and the brief lab; `thinking_budget` was never used
+      (Briefs already set `thinkingLevel`). Reading test after the change: 82.4% and 89.0% (opened cards 86.0%, 89.8%),
+      inside the earlier range. The Worker needs a deploy to send the new requests.
+- [ ] B2b. Later: Google now calls `generateContent` "legacy" (still fully supported) and recommends the Interactions API.
+      Move the Worker's two calls when convenient, before a model we need drops `generateContent`.
 - [ ] B3. Photos and brochures on Cloudflare R2 (10 GB free, no download fees) instead of Supabase storage (1 GB free).
-- [ ] B4. Backend per the decision above: one clean starting migration (or the D1 schema), daily brakes merged into one
+- [ ] B4. One clean starting Supabase migration (0001 to 0010 folded together), the two daily brakes merged into one
       table, dead functions dropped.
 - [ ] B5. Remove unused code: own-Gemini-key mode (Settings, `listModels`, direct Gemini call), `promptAsk`, the `submit_lead`
       fallback, the signed-out per-IP path in the Worker, the stale `server/README.md`.
 - [ ] B6. Dev, staging and production settings for the web build, the Worker (Wrangler environments) and the Android app
       (`.dev` and `.staging` app id suffixes, so all three install side by side).
-- [ ] B7. Free safety nets: a nightly database backup (GitHub Actions, or D1 Time Travel) and, on Supabase free, a daily ping
-      so a quiet week does not pause the project.
+- [ ] B7. Free safety nets: a nightly database backup (GitHub Actions) and a daily ping so a quiet week does not pause the
+      Supabase project.
 
 ## C. Accounts (the user, with guidance)
 
+- [ ] **C0. Emails** (decided 2026-10-10). Google Play Console stays on the existing developer account. A new business Gmail
+      for everything else: GitHub, Cloudflare, Supabase, RevenueCat, and Google Cloud (Gemini keys, sign-in client, the
+      billing service account). Cross-access as a backup: the new Gmail added as admin in Play Console (Users and
+      permissions), the developer account given Owner on the Google Cloud projects. Two-step verification on both, each the
+      other's recovery email. Never sign up for these with a domain address (a lapsed domain would lock you out). Public
+      addresses on the domain (`support@`, `privacy@`) forward to the new Gmail through Cloudflare Email Routing (free,
+      receive only); Brevo's free plan only when sending from `support@` is needed.
 - [ ] C1. GitHub: new account, one repo, environments development / staging / production, approval before production.
-- [ ] C2. Cloudflare: one account (Workers, KV, R2, Pages, Access; D1 if chosen).
-- [ ] C3. Supabase (if kept): staging and production projects in **Mumbai (ap-south-1)**.
+- [ ] C2. Cloudflare: one account (Workers, KV, R2, Pages, Access).
+- [ ] C3. Supabase: `pulse-test` and `pulse-prod` projects in **Mumbai (ap-south-1)**.
 - [ ] C4. Google Cloud: a project per environment, each with its own Gemini key (production on billing: the paid tier is
       what stops Google using the photos) and OAuth client.
 - [ ] C5. Domain from the cheapest registrar (compare the 3-year total, not the first year), nameservers pointed to Cloudflare.
 
 ## D. App release
 
-- [ ] D1. Final app id applied.
+- [ ] D1. Final app id `in.pulsecardscanner.app` checked in the release build (Java package, namespace, return link).
 - [ ] D2. Native Google sign-in (Credential Manager).
 - [ ] D3. Release signing key, Play App Signing, version numbers, release bundle (AAB).
-- [ ] D4. Play Billing (RevenueCat or direct), with a webhook to the Worker that grants plans, passes and packs.
+- [ ] D4. RevenueCat over Play Billing: products from `shared/plans.ts` in Play Console, the RevenueCat Capacitor plugin,
+      and a webhook to the Worker that grants plans, passes and packs (needs a Supabase server key for the Worker).
 
 ## E. Website (Cloudflare Pages, free)
 
@@ -71,10 +118,10 @@ Seen in the field: reads and Pulse Briefs fail on weak signal, which never happe
 
 ## G. After launch
 
-- [ ] G1. Paid plans only when revenue covers them (Supabase Pro $25 a month, or Workers Paid $5 a month).
+- [ ] G1. Paid plans only when revenue covers them (Supabase Pro $25 a month; Workers Paid $5 a month if traffic needs it).
 - [ ] G2. iPhone app (needs Sign in with Apple or an equal privacy option next to Google, per App Store guideline 4.8).
 
-## Backend choice (to decide)
+## Backend choice (decided 2026-10-10: Supabase free + R2)
 
 | | Supabase free + R2 | All-Cloudflare (D1 + R2 + own sign-in) |
 |---|---|---|
@@ -89,12 +136,13 @@ Seen in the field: reads and Pulse Briefs fail on weak signal, which never happe
 
 ## Research notes (checked 2026-10-09)
 
-**Gemini, per 1M tokens (paid tier):** 3.5 Flash-Lite $0.30 in / $2.50 out (reading today); 3.1 Flash-Lite $0.25 / $1.50
+**Gemini (update 2026-10-10: 2.5 Flash-Lite and 2.5 Flash refuse new users, so the 2.5 prices below are not reachable):**
+**per 1M tokens (paid tier):** 3.5 Flash-Lite $0.30 in / $2.50 out (reading today); 3.1 Flash-Lite $0.25 / $1.50
 (shuts down May 2027); **2.5 Flash-Lite $0.10 / $0.40** (not deprecated); 3.5 Flash $1.50 / $9.00 (Briefs today);
 2.5 Flash $0.30 / $2.50. Search grounding: Gemini 3+ 5,000 free a month then $14 per 1,000; 2.5 models 1,500 free a day
-then $35 per 1,000. A measured card (1,578 in, 344 out) costs about ₹0.11 on 3.5 Flash-Lite and ₹0.025 on 2.5 Flash-Lite
-(₹84 to the dollar). Unlimited's fair use (about 6,000 cards a month) costs about ₹660 on today's model against about ₹679
-kept after Play's fee: nearly a loss. Billing on gives Tier 1 limits; $100 spent gives Tier 2.
+then $35 per 1,000. A measured card (1,578 in, 344 out) costs about ₹0.13 on 3.5 Flash-Lite and ₹0.03 on 2.5 Flash-Lite
+(₹96 to the dollar, as the lab scripts use). Unlimited's fair use (about 6,000 cards a month) costs about ₹770 on today's
+model against about ₹679 kept after Play's fee: a loss; about ₹170 on 2.5 Flash-Lite. Billing on gives Tier 1 limits; $100 spent gives Tier 2.
 
 **Alternatives to Gemini:** no cheap image model on OpenAI's standard price list; Mistral OCR about $4 per 1,000 pages
 (about ₹0.34 a card, text only); Qwen (Alibaba) cheap on third-party trackers, unverified, China-hosted. Decision: stay on

@@ -16,6 +16,7 @@ export function classifyFailure(e: unknown): ReadFailure {
   const code = (e as { code?: string } | null)?.code
   if (code === 'no_cards') return { message: 'Waiting for cards', transient: false, waiting: 'cards' }
   if (code === 'sign_in') return { message: 'Waiting for sign-in', transient: false, waiting: 'sign_in' }
+  if (code === 'reconnect') return { message: 'Reconnecting. Trying again shortly.', transient: true }
   if (/today's limit/i.test(text)) return { message: text, transient: false }
   if (code === 'rate_limited') {
     const secs = (e as { retryAfter?: number } | null)?.retryAfter
