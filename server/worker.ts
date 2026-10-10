@@ -227,7 +227,7 @@ async function keepCompany(kv: NonNullable<Env['BRIEF_CACHE']>, keys: string[], 
   await Promise.all(keys.map((k) => kv.put(k, JSON.stringify(e), { expirationTtl: ttl }).catch(() => {})))
 }
 
-const nudge = (personOnly: boolean) => `You answered without running Google Search, so nothing in your answer can be checked. Run Google Search now (${personOnly ? 'for this person' : 'the company, then the person'}), then give the JSON answer again using only what the search found.`
+export const nudge = (personOnly: boolean) => `You answered without running Google Search, so nothing in your answer can be checked. Run Google Search now (${personOnly ? 'for this person' : 'the company, then the person'}), then give the JSON answer again using only what the search found.`
 
 const searchesRun = (raw: unknown) => {
   const q = (raw as { candidates?: { groundingMetadata?: { webSearchQueries?: unknown } }[] } | null)?.candidates?.[0]?.groundingMetadata?.webSearchQueries

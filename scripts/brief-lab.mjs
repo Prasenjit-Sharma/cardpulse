@@ -8,11 +8,11 @@ import { writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { briefPrompt, parseBriefResponse } from '../shared/brief-core.ts'
 import { geminiKey } from './geminikey.mjs'
-import { usageLine } from '../server/worker.ts'
+import { nudge, usageLine } from '../server/worker.ts'
 
 // --model gemini-3.8-flash: another model; $ per million tokens, paid tier, checked 2026-10-09 (thinking is billed as output)
-const PRICES = { 'gemini-3.5-flash': { in: 1.5, out: 9 }, 'gemini-3.8-flash': { in: 0.75, out: 3.75 }, 'gemini-3.7-flash': { in: 0.75, out: 3.75 }, 'gemini-3.6-flash': { in: 0.75, out: 3.75 } }
-const MODEL = (() => { const i = process.argv.indexOf('--model'); return i > 0 ? process.argv[i + 1] : 'gemini-3.5-flash' })()
+const PRICES = { 'gemini-3.5-flash': { in: 1.5, out: 9 }, 'gemini-3.6-flash': { in: 0.75, out: 3.75 }, 'gemini-3.8-flash': { in: 0.75, out: 3.75 }, 'gemini-3.7-flash': { in: 0.75, out: 3.75 }, 'gemini-3.6-flash': { in: 0.75, out: 3.75 } }
+const MODEL = (() => { const i = process.argv.indexOf('--model'); return i > 0 ? process.argv[i + 1] : 'gemini-3.6-flash' })()
 const USD_INR = 96
 const PRICE = PRICES[MODEL] ?? PRICES['gemini-3.5-flash']
 const SEARCH_USD = 14 / 1000            // per search after the free 5,000 a month
@@ -51,7 +51,14 @@ for (const c of contacts) {
     const t0 = Date.now()
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': K }, body: JSON.stringify(body) })
     const ms = Date.now() - t0
-    const raw = await res.json().catch(() => ({}))
+    let raw = await res.json().catch(() => ({}))
+    // --nudge: as the Worker does, a brief written without a search is told so and asked again in the same conversation
+    let nudged = false
+    if (res.ok && process.argv.includes('--nudge') && !(raw.candidates?.[0]?.groundingMetadata?.webSearchQueries?.length)) {
+      const said = raw.candidates?.[0]?.content ?? { parts: [{ text: '' }] }
+      const again = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': K }, body: JSON.stringify({ ...body, contents: [...body.contents, { ...said, role: 'model' }, { role: 'user', parts: [{ text: nudge(false) }] }] }) })
+      if (again.ok) { raw = await again.json(); nudged = true }
+    }
     if (!res.ok) { rows.push({ contact: c.name, variant: v.id, error: `${res.status} ${raw?.error?.message?.slice(0, 120)}` }); console.log(c.name, v.id, 'ERROR', res.status, raw?.error?.message?.slice(0, 160)); continue }
     const u = raw.usageMetadata ?? {}
     const tin = (u.promptTokenCount ?? 0) + (u.toolUsePromptTokenCount ?? 0), tout = (u.candidatesTokenCount ?? 0) + (u.thoughtsTokenCount ?? 0)
@@ -62,7 +69,7 @@ for (const c of contacts) {
     try { parsed = parseBriefResponse(raw) } catch (e) { parsed = { error: String(e?.message ?? e) } }
     rows.push({ contact: c.name, variant: v.id, secs: +(ms / 1000).toFixed(1), usage: usageLine(raw), searches: searches.length, inr_free: +model.toFixed(2), inr_paid: +withSearch.toFixed(2) })
     briefs.push({ contact: c.name, variant: v.label, queries: searches, person: parsed.person, company: parsed.company, sources: (parsed.sources ?? []).map((s) => s.title), error: parsed.error })
-    console.log(`${c.name.padEnd(16)} ${v.id.padEnd(5)} ${(ms / 1000).toFixed(1).padStart(5)}s  ${usageLine(raw)}  ₹${model.toFixed(2)} (₹${withSearch.toFixed(2)} after free searches)`)
+    console.log(`${c.name.padEnd(16)} ${v.id.padEnd(5)}${nudged ? '+n' : '  '} ${((Date.now() - t0) / 1000).toFixed(1).padStart(5)}s  ${usageLine(raw)}  ₹${model.toFixed(2)} (₹${withSearch.toFixed(2)} after free searches)`)
   }
 }
 

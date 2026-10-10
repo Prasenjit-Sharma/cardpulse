@@ -18,7 +18,8 @@ const PRICE = {
   'gemini-3.1-flash-lite': { in: 0.25, out: 1.50 },
   'gemini-2.5-flash-lite': { in: 0.10, out: 0.40 },
   'gemini-2.5-flash': { in: 0.30, out: 2.50 },
-  'gemini-3.5-flash': { in: 1.50, out: 9.00 },
+  'gemini-3.5-flash': { in: 1.50, out: 9.00 },   // retired 2026-10-10, served as 3.6 Flash
+  'gemini-3.6-flash': { in: 0.75, out: 3.75 },   // promotional price until 31 December 2026
   'gemma-4-31b-it': { in: 0, out: 0 },        // free on the API (free tier only)
   'gemma-4-26b-a4b-it': { in: 0, out: 0 },
 }

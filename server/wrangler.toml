@@ -16,7 +16,10 @@ GEMINI_FALLBACK_MODEL = "gemini-3.1-flash-lite"
 BRIEF_SEARCH = "1"
 # With search, flash-lite mostly answered from memory (searched 1 time in 4); gemini-3.5-flash with low thinking
 # searched 2 in 3 at 9 to 13 s (with default thinking it took 30 to 40 s). Without it, GEMINI_MODEL is used.
-BRIEF_MODEL = "gemini-3.5-flash"
+# 2026-10-10: Google retired gemini-3.5-flash and serves 3.6 Flash in its place; named directly, as Google advises. Brief lab
+# (4 contacts, two runs, with the Worker's nudge): searched 3 of 4 both times, like 3.5; about ₹0.16 to 0.18 a brief
+# before search fees against ₹0.32 (promotional price, doubling on 1 January 2027). It accepts "minimal" thinking.
+BRIEF_MODEL = "gemini-3.6-flash"
 # Brief lab, 6 Oct (4 real contacts): minimal thinking gave the same facts as low at 2.7x the speed (8 s, not 21 s) and a
 # sixth of the model cost (about ₹0.44, not ₹2.80); capping searches in the prompt made the model skip searching, so not done.
 BRIEF_THINKING = "minimal"

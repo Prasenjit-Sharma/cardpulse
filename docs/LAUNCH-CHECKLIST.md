@@ -69,6 +69,10 @@ Seen in the field: reads and Pulse Briefs fail on weak signal, which never happe
       (`shared/extract-core.ts`), Pulse Brief (`shared/brief-core.ts`) and the brief lab; `thinking_budget` was never used
       (Briefs already set `thinkingLevel`). Reading test after the change: 82.4% and 89.0% (opened cards 86.0%, 89.8%),
       inside the earlier range. The Worker needs a deploy to send the new requests.
+- [x] B2c. Google retired `gemini-3.5-flash` (2026-10-10) and now serves 3.6 Flash for it. Pulse Brief switched to
+      `gemini-3.6-flash` by name. Brief lab with the Worker's nudge (`--nudge`), two runs: searched 3 of 4 contacts both
+      times, as 3.5 did; about ₹0.16 to 0.18 a brief before search fees, half of 3.5's ₹0.32, until its price doubles on
+      1 January 2027. Nudged briefs take 7 to 12 s instead of 4 to 5. "Minimal" thinking still works on 3.6.
 - [ ] B2b. Later: Google now calls `generateContent` "legacy" (still fully supported) and recommends the Interactions API.
       Move the Worker's two calls when convenient, before a model we need drops `generateContent`.
 - [ ] B3. Photos and brochures on Cloudflare R2 (10 GB free, no download fees) instead of Supabase storage (1 GB free).
@@ -122,10 +126,15 @@ Seen in the field: reads and Pulse Briefs fail on weak signal, which never happe
       environment: the address in card QR codes and links (`VITE_PUBLIC_URL`), the Worker's allowed origins, the privacy
       policy and account-deletion links in the Play listing and on Google's sign-in screen, and the App Links file that
       opens card links in the app. Buying it later means changing all of those, and card links already shared would break.
-      How: buy at the registrar with the lowest 3-year total (GoDaddy, Hostinger; Cloudflare does not sell `.in`), turn off
-      paid add-ons (email, hosting, privacy is usually free), then point its nameservers to Cloudflare (free plan, the
-      pulsecardscanner account). On Cloudflare: Email Routing for `support@` and `privacy@` to the service Gmail. No GitHub
-      Pages: the site is Cloudflare Pages, built from the private repo.
+      Which (decided 2026-10-10): `pulsecardscanner.com` on Cloudflare Registrar, in the pulsecardscanner account. `.com`
+      because the address is printed in card QR codes that live for years and people type `.com` by default; the extension
+      has no effect on ranking or speed, and `.in` would tie the site to India in Google. Cloudflare because it sells at
+      cost (about $10.46 a year, so about $31 over 3 years, against GoDaddy's Re 1 then Rs 1599 a year plus GST), DNS is
+      already there (no nameserver change), and WHOIS privacy and DNSSEC are free. Prepay 3 to 5 years and keep auto-renew
+      on: a lapsed domain breaks every shared card. It is billed in USD, so the card needs international payments on.
+      Optional: `pulsecardscanner.app` (about $14.20 a year after the first) only as a redirect to `.com`, to stop squatting.
+      Then on Cloudflare: Email Routing for `support@` and `privacy@` to the service Gmail. No GitHub Pages: the site is
+      Cloudflare Pages, built from the private repo.
 - [ ] **C6. Retire the development accounts** once the app runs on the new ones: the first Supabase project
       (`xqwslvteyhfmnxcnlpsg`, real test cards and leads in it: delete the project, not just pause it), the first Cloudflare
       Worker `cardpulse-api` and its KV namespace, and the Gemini keys used so far (revoke them in Google AI Studio). Update
