@@ -182,6 +182,9 @@ Seen in the field: reads and Pulse Briefs fail on weak signal, which never happe
 
 - [ ] F1. Internal test track.
 - [ ] F2. Closed test with 15 to 20 testers (at least 12 opted in for 14 days in a row), feedback recorded.
+- [ ] F2a. Before public launch, a hard spending cap on Google Cloud: Billing → Budgets & caps offers "Spend cap enforcement"
+      (for some services only: check Gemini is covered). It pauses the service at the cap, so set it well above a busy expo
+      day; the ₹1,000 a month budget made on 2026-10-11 only alerts by email.
 - [ ] F3. Data safety form, store listing (`store/`), apply for production.
 
 ## G. After launch
