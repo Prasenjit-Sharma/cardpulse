@@ -151,8 +151,10 @@ export async function saveBlob(name: string, blob: Blob): Promise<void> {
 
 /* ---------- Google sign-in inside the app ---------- */
 
-/** Where Google sign-in returns inside the app. Listed in Supabase's redirect URLs; only this app answers the scheme. */
-export const APP_AUTH_REDIRECT = 'in.cardpulse.app://auth/callback'
+/** The app's id for this build (VITE_APP_ID: in.pulsecardscanner.app, or .dev / .staging); the store app's when unset. */
+export const APP_ID = env.VITE_APP_ID || 'in.pulsecardscanner.app'
+/** Where Google sign-in returns inside the app: a scheme only this build answers (its Android manifest uses the app id). Each one is listed in its Supabase project's redirect URLs. */
+export const APP_AUTH_REDIRECT = `${APP_ID}://auth/callback`
 
 /** The sign-in code from a link the app was opened with, or null for anything that is not our own successful return. */
 export function authCodeFromUrl(url: string): string | null {

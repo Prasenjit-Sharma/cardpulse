@@ -32,12 +32,13 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- Google sign-in returns here from the system browser (only this app answers the scheme) -->
+            <!-- Google sign-in returns here from the system browser: the scheme is this build's app id (in.pulsecardscanner.app,
+                 or .dev / .staging), so only this build answers it, and the web side uses the same id (VITE_APP_ID) -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="in.cardpulse.app" android:host="auth" />
+                <data android:scheme="${applicationId}" android:host="auth" />
             </intent-filter>
 
         </activity>

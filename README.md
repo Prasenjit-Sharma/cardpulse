@@ -35,6 +35,20 @@ sets `VITE_API_URL` to its own Worker; see `server/README.md` to deploy one. For
 `npm run server:dev` and point `VITE_API_URL` at it. (The old "own key" mode, a Gemini key typed into Settings, was
 removed on 2026-10-10.)
 
+## Environments
+
+Three builds, each with its own app id, website, API and database (settings in `.env.dev`, `.env.staging`, `.env.prod`,
+public values only; the table is in `server/README.md`). All three can be installed on one phone:
+
+```bash
+npm run android:dev        # Pulse Dev      in.pulsecardscanner.app.dev       → android/app/build/outputs/apk/dev/debug/
+npm run android:staging    # Pulse Staging  in.pulsecardscanner.app.staging   → …/apk/staging/debug/
+npm run android:prod       # Pulse          in.pulsecardscanner.app           → …/apk/prod/debug/
+npm run android:legacy     # the first development app (in.cardpulse.app), until checklist C6
+```
+
+Admin scripts take `--env test|prod|legacy` (default test), e.g. `npm run grant -- you@example.com pro --env test`.
+
 ## Notes
 
 - Contacts and photos live in the browser (IndexedDB). They go to the cloud only if the user signs in and turns on sync. A new Supabase project runs `supabase/baseline.sql` once (the whole database); the numbered files in `supabase/migrations/` are the first project's history. A change is written as a new numbered migration and folded into `baseline.sql`; `npm run test:db` checks both define the same database.

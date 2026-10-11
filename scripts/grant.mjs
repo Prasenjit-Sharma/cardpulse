@@ -1,19 +1,22 @@
-// Run: npm run grant -- you@example.com pro [months]   (asks for the Supabase secret key, typed hidden)
+// Run: npm run grant -- you@example.com pro [months] [--env test|prod|legacy]   (default test; the project's secret key
+// comes from its Keychain item, scripts/envs.mjs, or is asked for, typed hidden)
 // Gives one account a plan, a pack or an Exhibition pass, for testing until Play Billing (migration 0005's grant_*
 // functions, which only the service role may call). Never shipped in the app. Prints the account's new balance.
 import { createClient } from '@supabase/supabase-js'
 import { secretKey } from './secret.mjs'
+import { argsWithoutEnv, pickEnv } from './envs.mjs'
 
-const URL = 'https://xqwslvteyhfmnxcnlpsg.supabase.co'
+const ENV = pickEnv()
+const URL = ENV.url
 const ITEMS = {
   starter: ['grant_plan', 'starter'], plus: ['grant_plan', 'plus'], pro: ['grant_plan', 'pro'], unlimited: ['grant_plan', 'unlimited'],
   pack50: ['grant_pack', 'cards', 50], pack100: ['grant_pack', 'cards', 100], pack200: ['grant_pack', 'cards', 200],
   briefs10: ['grant_pack', 'briefs', 10], pass: ['grant_pass'],
 }
-const [email, what, n] = process.argv.slice(2)
+const [email, what, n] = argsWithoutEnv().slice(2)
 if (!email || !ITEMS[what]) { console.error('Usage: npm run grant -- <email> starter|plus|pro|unlimited [months] | pack50|pack100|pack200 | briefs10 | pass'); process.exit(1) }
 
-const SECRET = await secretKey()
+const SECRET = await secretKey(ENV.keychain)
 const admin = createClient(URL, SECRET, { auth: { autoRefreshToken: false, persistSession: false } })
 let user
 for (let page = 1; !user; page++) {

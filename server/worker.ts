@@ -188,6 +188,17 @@ const MAX_CHARGE = 200
 
 /** A read is normally 3 to 10 s. Past this the request is stuck upstream; fail fast so the app can retry. */
 const UPSTREAM_TIMEOUT_MS = 40_000
+/**
+ * Gemini answers 402 when the prepaid credit (AI Studio → Billing) is used up: every read and brief then fails until it is
+ * topped up. One unmistakable log line, so it is caught in the Worker's logs before users report reading failing.
+ */
+export function creditAlarm(status: number, what: 'read' | 'brief'): string | null {
+  if (status !== 402) return null
+  const line = `GEMINI CREDIT DEPLETED (${what}): top up at aistudio.google.com/billing; reading and briefs fail until then`
+  console.error(line)
+  return line
+}
+
 /** The fallback model only gets what is left of this, so the phone (55 s per attempt) is never left waiting past its own limit. */
 const FALLBACK_BUDGET_MS = 48_000
 const FALLBACK_ON = new Set([429, 500, 503, 504])
@@ -282,6 +293,7 @@ async function brief(req: Request, env: Env, origin: string | null, ctx?: { wait
   if (!upstream.ok) {
     // Google's own reason goes to the Worker's log (wrangler tail), never to the app: it can name the key or the plan
     console.log(`brief upstream ${upstream.status} ${model}: ${(await upstream.text().catch(() => '')).slice(0, 600)}`)
+    creditAlarm(upstream.status, 'brief')
     if (upstream.status === 429) return fail(429, 'busy', 'The service is busy. Try again in a moment.', origin, { 'Retry-After': '20' })
     return fail(502, 'upstream_error', "Couldn't make the brief. Try again.", origin)
   }
@@ -386,6 +398,7 @@ export default {
 
     const upstreamError = upstream.ok ? '' : await upstream.clone().text().catch(() => '')
     if (!upstream.ok) console.log(`extract upstream ${upstream.status} ${model}: ${upstreamError.slice(0, 600)}`)
+    creditAlarm(upstream.status, 'read')
     if (upstream.status === 429) return fail(429, 'busy', 'The reading service is busy. Try again in a moment.', origin, { 'Retry-After': '20' })
     // Gemini refusing this photo (400) is about the photo: not worth retrying. Key, payment or access trouble stays ours.
     if (upstream.status === 400 && photoRejected(upstreamError)) return fail(422, 'unreadable', 'Could not read that photo. Try a clearer one.', origin)

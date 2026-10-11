@@ -1,11 +1,13 @@
 // Run: SUPABASE_SECRET_KEY=<secret key> node scripts/verify-rls.mjs
 // Checks the live project's RLS and RPC boundaries. Creates and deletes two throwaway test users and one test card.
+import { secretKey } from './secret.mjs'
+import { pickEnv } from './envs.mjs'
 import { createClient } from '@supabase/supabase-js'
 
-const URL = 'https://xqwslvteyhfmnxcnlpsg.supabase.co'
-const PUBLISHABLE = 'sb_publishable_xRiJzrH9yCIo_NwHN1jNDw_zWfTAiqf'
-const SECRET = process.env.SUPABASE_SECRET_KEY
-if (!SECRET) { console.error('Set SUPABASE_SECRET_KEY in the environment before running this.'); process.exit(1) }
+const ENV = pickEnv()
+const URL = ENV.url
+const PUBLISHABLE = ENV.publishable
+const SECRET = await secretKey(ENV.keychain)
 
 const admin = createClient(URL, SECRET, { auth: { autoRefreshToken: false, persistSession: false } })
 const anon = () => createClient(URL, PUBLISHABLE, { auth: { autoRefreshToken: false, persistSession: false } })
