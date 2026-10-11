@@ -133,7 +133,12 @@ Seen in the field: reads and Pulse Briefs fail on weak signal, which never happe
         Gemini request fails (HTTP 402) and card reading stops. The Google Cloud $300 trial credit does NOT pay for Gemini.
         Keys `cardpulse-gemini-prod` and `-test` (bound to a service account `pulse-gemini` in each project, Gemini API only)
         are saved and accepted, but answered "prepayment credits are depleted" until credit is bought.
-        - [ ] Buy $5 of credit now (about 4,000 card reads); check both keys work (credit may be per project).
+        - [x] $5 of credit bought 2026-10-11 (India tax info added as an individual, no GSTIN). Credit is held by the billing
+          account, so one balance covers `pulse-prod` and `pulse-test`; both keys tested and working (paid tier).
+        - [ ] Watch weekly in AI Studio: Spend (per project and key, by day), Usage, Billing (balance). Top up in small
+          amounts: credit expires 12 months after purchase.
+        - [ ] B7: `npm run spend`, an estimated-rupees report from the database (card reads and briefs per environment, per
+          day and month, at ₹0.114 a card and about ₹0.17 a brief), so cost per user and per plan is visible.
         - [ ] Before the closed test: auto-reload on production (e.g. $10 when below $3, monthly limit about $50: the
           monthly limit is the real spending cap). The ₹1,000 Cloud budget alert may not see prepaid Gemini; watch the
           AI Studio balance.
