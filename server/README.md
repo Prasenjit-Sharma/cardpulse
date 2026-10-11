@@ -10,23 +10,29 @@ A small Cloudflare Worker that sits between the app and Gemini. The Gemini key l
 - Models: `GEMINI_MODEL` reads cards; when it answers 429, 500, 503 or 504, `GEMINI_FALLBACK_MODEL` is tried once. `BRIEF_MODEL` makes briefs. No `temperature` is sent (Google's upcoming models refuse it).
 - Upstream errors are hidden from the client. Images are never logged or stored.
 
-## Deploy (one time, about 5 minutes, free tier)
+## Environments and deploying
+
+Three Workers on the Pulse Cloudflare account (`wrangler.toml`), each with its own address, Brief cache, Supabase project
+and Gemini key; the app builds and websites match them:
+
+| Environment | API | Website | Database | App |
+|---|---|---|---|---|
+| dev | api-dev.pulsecardscanner.com | dev.pulsecardscanner.com | pulse-test | `npm run android:dev` (Pulse Dev) |
+| staging | api-staging.pulsecardscanner.com | staging.pulsecardscanner.com | pulse-test | `npm run android:staging` |
+| prod | api.pulsecardscanner.com | pulsecardscanner.com (with the website) | pulse-prod | `npm run android:prod` |
+
+Every Cloudflare command goes through the project token in the Mac Keychain (`cardpulse-cloudflare-token`), for that
+command only: the Mac is never logged in to the Pulse account.
 
 ```bash
-cd server
-npx wrangler login                       # opens your browser
-npx wrangler secret put GEMINI_API_KEY   # paste your key when asked
-npx wrangler deploy                      # prints https://cardpulse-api.<you>.workers.dev
+npm run cf -- deploy --env dev          # or staging, prod; always name the environment
+npm run cf:secrets                      # Gemini keys from the Keychain into each Worker (cardpulse-gemini-test / -prod)
+npm run cf:site -- dev                  # build and publish the dev (or staging) website (site.wrangler.toml)
+npm run cf -- tail --env prod           # live logs; watch for "GEMINI CREDIT DEPLETED" (top up in AI Studio → Billing)
 ```
 
-Then point the app at it and redeploy the site:
-
-```bash
-gh variable set API_URL --body https://cardpulse-api.<you>.workers.dev
-gh workflow run "Deploy to GitHub Pages"
-```
-
-For local builds: `VITE_API_URL=https://cardpulse-api.<you>.workers.dev npm run build`.
+The first development Worker (`cardpulse-api`, old account) still serves the legacy app until checklist C6:
+`npx wrangler deploy -c wrangler.legacy.toml` with the Mac's own login, and `npm run android:legacy` for its app.
 
 ## Develop
 

@@ -1,4 +1,4 @@
-package in.cardpulse.app;
+package in.pulsecardscanner.app;
 
 import android.os.Bundle;
 import com.getcapacitor.BridgeActivity;

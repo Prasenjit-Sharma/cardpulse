@@ -1,7 +1,7 @@
 // Run: node --test server/test
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import worker, { checkRate, rateHit, rateWait, usageLine } from '../worker.ts'
+import worker, { checkRate, creditAlarm, rateHit, rateWait, usageLine } from '../worker.ts'
 
 const GOOD = 'https://prasenjit-sharma.github.io'
 const png = Buffer.from('fake-image-bytes').toString('base64')
@@ -765,4 +765,18 @@ test('fallback model: an overloaded main model gives way to the fallback once; a
     await worker.fetch(post({ images: [{ mime: 'image/png', data: png }] }), env({ GEMINI_MODEL: 'main-model' }))
     assert.equal(one.calls.length, 1)
   } finally { one.restore() }
+})
+
+test('Gemini credit used up (402): one unmistakable log line, and the app hears a service problem, not the details', async () => {
+  assert.equal(creditAlarm(200, 'read'), null)
+  assert.match(creditAlarm(402, 'brief'), /GEMINI CREDIT DEPLETED \(brief\)/)
+  const logged = [], real = console.error
+  console.error = (l) => logged.push(String(l))
+  const m = mockUpstream(() => new Response('{"error":{"code":402,"status":"RESOURCE_EXHAUSTED","message":"Your prepayment credits are depleted."}}', { status: 402 }))
+  try {
+    const res = await worker.fetch(post({ images: [{ mime: 'image/png', data: png }] }), env())
+    assert.equal(res.status, 502)
+    assert.doesNotMatch(await res.text(), /prepayment/, 'Google\'s wording stays in the log')
+    assert.ok(logged.some((l) => /GEMINI CREDIT DEPLETED \(read\)/.test(l)))
+  } finally { m.restore(); console.error = real }
 })

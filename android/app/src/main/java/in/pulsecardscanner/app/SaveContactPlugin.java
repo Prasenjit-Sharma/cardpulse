@@ -1,4 +1,4 @@
-package in.cardpulse.app;
+package in.pulsecardscanner.app;
 
 import android.content.ActivityNotFoundException;
 import android.content.ContentValues;

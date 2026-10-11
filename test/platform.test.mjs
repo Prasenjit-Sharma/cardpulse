@@ -59,10 +59,10 @@ test('app share: closing the share sheet is a cancel (AbortError), like the brow
 })
 
 test('sign-in return: only our own callback with a code is exchanged', () => {
-  assert.equal(authCodeFromUrl('in.cardpulse.app://auth/callback?code=abc123'), 'abc123')
-  assert.equal(authCodeFromUrl('in.cardpulse.app://auth/callback?error=access_denied&error_description=cancelled'), null)
-  assert.equal(authCodeFromUrl('in.cardpulse.app://auth/callback'), null)
-  assert.equal(authCodeFromUrl('in.cardpulse.app://something-else?code=abc'), null)
+  assert.equal(authCodeFromUrl('in.pulsecardscanner.app://auth/callback?code=abc123'), 'abc123')
+  assert.equal(authCodeFromUrl('in.pulsecardscanner.app://auth/callback?error=access_denied&error_description=cancelled'), null)
+  assert.equal(authCodeFromUrl('in.pulsecardscanner.app://auth/callback'), null)
+  assert.equal(authCodeFromUrl('in.pulsecardscanner.app://something-else?code=abc'), null)
   assert.equal(authCodeFromUrl('https://evil.example/auth/callback?code=abc'), null)
   assert.equal(authCodeFromUrl('not a url'), null)
 })
@@ -93,19 +93,19 @@ function signInDeps({ exchangeError = null } = {}) {
 
 test('finishing sign-in: a code is exchanged and the browser closed (review I2)', async () => {
   const { deps, calls } = signInDeps()
-  await finishAppSignIn('in.cardpulse.app://auth/callback?code=abc', deps)
+  await finishAppSignIn('in.pulsecardscanner.app://auth/callback?code=abc', deps)
   assert.deepEqual(calls.exchanged, ['abc']); assert.equal(calls.closed, 1); assert.deepEqual(calls.notices, [])
 })
 
 test('finishing sign-in: Google sent an error, so nothing is exchanged and the user is told', async () => {
   const { deps, calls } = signInDeps()
-  await finishAppSignIn('in.cardpulse.app://auth/callback?error=access_denied', deps)
+  await finishAppSignIn('in.pulsecardscanner.app://auth/callback?error=access_denied', deps)
   assert.deepEqual(calls.exchanged, []); assert.equal(calls.closed, 1); assert.equal(calls.notices.length, 1)
 })
 
 test('finishing sign-in: a failed exchange is reported, not silent', async () => {
   const { deps, calls } = signInDeps({ exchangeError: new Error('invalid grant') })
-  await finishAppSignIn('in.cardpulse.app://auth/callback?code=old', deps)
+  await finishAppSignIn('in.pulsecardscanner.app://auth/callback?code=old', deps)
   assert.equal(calls.notices.length, 1); assert.match(calls.notices[0], /sign/i)
 })
 

@@ -4,11 +4,13 @@
 // one throwaway user.
 import { createClient } from '@supabase/supabase-js'
 import { secretKey } from './secret.mjs'
+import { argsWithoutEnv, pickEnv } from './envs.mjs'
 
-const URL = 'https://xqwslvteyhfmnxcnlpsg.supabase.co'
-const PUBLISHABLE = 'sb_publishable_xRiJzrH9yCIo_NwHN1jNDw_zWfTAiqf'
+const ENV = pickEnv()
+const URL = ENV.url
+const PUBLISHABLE = ENV.publishable
 
-const SECRET = await secretKey()
+const SECRET = await secretKey(ENV.keychain)
 const admin = createClient(URL, SECRET, { auth: { autoRefreshToken: false, persistSession: false } })
 let passed = 0, failed = 0
 function check(name, ok, detail = '') {

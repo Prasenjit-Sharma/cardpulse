@@ -91,8 +91,24 @@ Seen in the field: reads and Pulse Briefs fail on weak signal, which never happe
       the `submit_lead` fallback in the app, and the stale `server/README.md` and README text. Kept on purpose: `promptAsk`
       (the app's own prompt dialog, part of the design system) and the Worker's per-IP brake (it still guards uncharged
       reads while Supabase is unreachable).
-- [ ] B6. Dev, staging and production settings for the web build, the Worker (Wrangler environments) and the Android app
-      (`.dev` and `.staging` app id suffixes, so all three install side by side).
+- [x] B6. Environments (built 2026-10-11, on the Pulse accounts; nothing old was changed):
+      - App: `.env.dev`, `.env.staging`, `.env.prod` (public values, committed); app id `in.pulsecardscanner.app` with `.dev`
+        and `.staging` builds side by side, named Pulse Dev / Pulse Staging; the sign-in return scheme follows each build's
+        id; a `legacy` build keeps the old id, database and Worker for the phone that has it (until C6).
+        `npm run android:dev|staging|prod|legacy`. Card links on pulsecardscanner.com (and its subdomains) are recognised.
+      - Worker: `server/wrangler.toml` environments dev, staging, prod (pulse-api-dev, pulse-api-staging, pulse-api) at
+        api-dev / api-staging / api.pulsecardscanner.com, each with its own KV Brief cache and Gemini key (test key for dev
+        and staging, prod key for prod); checked from outside (health, sign-in required, other websites refused). A 402
+        from Gemini logs "GEMINI CREDIT DEPLETED". The old Worker's config is `server/wrangler.legacy.toml`.
+      - Websites: dev.pulsecardscanner.com and staging.pulsecardscanner.com, served as static files by Workers
+        (`server/site.wrangler.toml`; Cloudflare has folded Pages into Workers), kept out of search engines.
+        Production's site comes with E.
+      - Every Cloudflare command through the project token: `npm run cf`, `cf:secrets`, `cf:site`.
+      - Admin scripts take `--env test|prod|legacy` (scripts/envs.mjs); each project's secret key is its own Keychain
+        item (`cardpulse-supabase-secret-test`, `-prod`).
+      - [ ] On the phone: install Pulse Dev, sign in with Google (a test user on the pulse-test consent screen), read a card,
+        make a Brief, try a card link and a lead form on dev.pulsecardscanner.com. The new apps start EMPTY (an Android
+        app's data belongs to its id): move test contacts with Settings → Export → Backup file in the old app, then Restore.
 - [ ] B7. Free safety nets: a nightly database backup (GitHub Actions) and a daily ping so a quiet week does not pause the
       Supabase project.
 

@@ -1,10 +1,10 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace = "in.cardpulse.app"
+    namespace = "in.pulsecardscanner.app"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "in.cardpulse.app"
+        applicationId "in.pulsecardscanner.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
@@ -14,6 +14,44 @@ android {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
              // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    // One build per environment, each with its own app id so all can sit on one phone, and its own web settings
+    // (.env.<mode>, copied in by `npm run android:<env>`). The name and the custom URL scheme follow the app id.
+    flavorDimensions = ["env"]
+    productFlavors {
+        dev {
+            dimension "env"
+            applicationIdSuffix ".dev"
+            resValue "string", "app_name", "Pulse Dev"
+            resValue "string", "title_activity_main", "Pulse Dev"
+            resValue "string", "package_name", "in.pulsecardscanner.app.dev"
+            resValue "string", "custom_url_scheme", "in.pulsecardscanner.app.dev"
+        }
+        staging {
+            dimension "env"
+            applicationIdSuffix ".staging"
+            resValue "string", "app_name", "Pulse Staging"
+            resValue "string", "title_activity_main", "Pulse Staging"
+            resValue "string", "package_name", "in.pulsecardscanner.app.staging"
+            resValue "string", "custom_url_scheme", "in.pulsecardscanner.app.staging"
+        }
+        prod {
+            dimension "env"
+            resValue "string", "app_name", "Pulse"
+            resValue "string", "title_activity_main", "Pulse"
+            resValue "string", "package_name", "in.pulsecardscanner.app"
+            resValue "string", "custom_url_scheme", "in.pulsecardscanner.app"
+        }
+        // The first development app (old id, old database and Worker), so the phone that has it can still be updated
+        // until checklist C6. Built with `npm run android:legacy` (.env.android).
+        legacy {
+            dimension "env"
+            applicationId "in.cardpulse.app"
+            resValue "string", "app_name", "Pulse"
+            resValue "string", "title_activity_main", "Pulse"
+            resValue "string", "package_name", "in.cardpulse.app"
+            resValue "string", "custom_url_scheme", "in.cardpulse.app"
         }
     }
     buildTypes {

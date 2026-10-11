@@ -1,0 +1,21 @@
+# The Pulse website, served as static files by a Worker on the Pulse Cloudflare account (Cloudflare has folded Pages into
+# Workers). One per environment, each on its own address; the files are the web build of that environment (dist/).
+#   dev      pulse-web-dev      https://dev.pulsecardscanner.com       (kept out of search engines)
+#   staging  pulse-web-staging  https://staging.pulsecardscanner.com   (kept out of search engines)
+#   prod     pulse-web          https://pulsecardscanner.com           (with the website, checklist E)
+# Published with: npm run cf:site -- dev|staging
+name = "pulse-web"
+compatibility_date = "2025-09-01"
+account_id = "caf6401c7e28c7eb7044a283ea5e96dd"
+workers_dev = false
+
+[assets]
+directory = "../dist"
+
+[env.dev]
+name = "pulse-web-dev"
+routes = [{ pattern = "dev.pulsecardscanner.com", custom_domain = true }]
+
+[env.staging]
+name = "pulse-web-staging"
+routes = [{ pattern = "staging.pulsecardscanner.com", custom_domain = true }]

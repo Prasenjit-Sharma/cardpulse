@@ -6,12 +6,14 @@ import { createClient } from '@supabase/supabase-js'
 import { mkdirSync, writeFileSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { secretKey } from './secret.mjs'
+import { argsWithoutEnv, pickEnv } from './envs.mjs'
 
-const URL = 'https://xqwslvteyhfmnxcnlpsg.supabase.co'
+const ENV = pickEnv()
+const URL = ENV.url
 const OUT = fileURLToPath(new globalThis.URL('../.lab/cards/', import.meta.url))
 const arg = (k) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : undefined }
 
-const admin = createClient(URL, await secretKey(), { auth: { autoRefreshToken: false, persistSession: false } })
+const admin = createClient(URL, await secretKey(ENV.keychain), { auth: { autoRefreshToken: false, persistSession: false } })
 
 // one account only, when asked (the developer's own); otherwise every account that synced
 let owner

@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli'
 
 const config: CapacitorConfig = {
-  appId: 'in.cardpulse.app',
+  appId: 'in.pulsecardscanner.app',   // the store app; dev, staging and legacy builds set their own id (android/app/build.gradle)
   appName: 'Pulse',
   webDir: 'dist',
   server: { androidScheme: 'https' },

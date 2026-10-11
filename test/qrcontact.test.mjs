@@ -33,6 +33,9 @@ test('MeCard, tel: and mailto: become contacts', () => {
 test('a CardPulse "Collect leads" link is recognised with its event; other links and text are not contacts', () => {
   assert.deepEqual(parseCardLink('https://prasenjit-sharma.github.io/cardpulse/?card=7KQ4M2XA&event=e1&eventName=Plast%20India'), { slug: '7KQ4M2XA', eventId: 'e1', eventName: 'Plast India' })
   assert.deepEqual(parseQr('https://prasenjit-sharma.github.io/cardpulse/?card=7KQ4M2XA'), { kind: 'cardpulse', slug: '7KQ4M2XA' })
+  assert.deepEqual(parseCardLink('https://pulsecardscanner.com/?card=7KQ4M2XA'), { slug: '7KQ4M2XA' }, 'the Pulse site')
+  assert.deepEqual(parseCardLink('https://staging.pulsecardscanner.com/?card=7KQ4M2XA'), { slug: '7KQ4M2XA' }, 'its staging site')
+  assert.equal(parseCardLink('https://pulsecardscanner.com.evil.example/?card=7KQ4M2XA'), null, 'not a look-alike host')
   assert.equal(parseQr('https://evil.example/?card=7KQ4M2XA').kind, 'link', 'a lookalike on another site is just a link')
   assert.equal(parseQr('https://example.in').kind, 'link')
   assert.equal(parseQr('hello there').kind, 'text')

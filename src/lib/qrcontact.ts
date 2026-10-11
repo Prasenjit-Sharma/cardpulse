@@ -107,7 +107,8 @@ export function parseCardLink(text: string): { slug: string; eventId?: string; e
   try { u = new URL(text.trim()) } catch { return null }
   const slug = u.searchParams.get('card')
   if (!slug || !/^[0-9A-Za-z]{4,16}$/.test(slug)) return null
-  if (!/(^|\.)github\.io$|^localhost$|cardpulse/i.test(u.hostname)) return null
+  // the Pulse site (and its dev and staging sites); the first development site (github.io) until checklist C6
+  if (!/(^|\.)pulsecardscanner\.com$|(^|\.)github\.io$|^localhost$|cardpulse/i.test(u.hostname)) return null
   const eventId = u.searchParams.get('event') ?? undefined, eventName = u.searchParams.get('eventName') ?? undefined
   return { slug, ...(eventId ? { eventId } : {}), ...(eventName ? { eventName } : {}) }
 }
