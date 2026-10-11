@@ -127,7 +127,18 @@ Seen in the field: reads and Pulse Briefs fail on weak signal, which never happe
 - [ ] C4. Google Cloud: a project per environment, each with its own Gemini key (production on billing: the paid tier is
       what stops Google using the photos) and OAuth client.
       - [ ] Billing account "My Billing Account" (`01711F-18A36B-6F5963`, service Gmail): free trial started and upgraded
-        to a **paid account** on 2026-10-11, both projects linked. Done: upgrade. Original note: activate the full account at once: a trial account pauses everything when the trial ends,
+        to a **paid account** on 2026-10-11, both projects linked.
+        **Gemini is billed separately, by prepaid credit** (found 2026-10-11): new accounts default to Prepay; credits are
+        bought at aistudio.google.com/billing (minimum $5, expire 12 months after purchase, not refundable); at $0 every
+        Gemini request fails (HTTP 402) and card reading stops. The Google Cloud $300 trial credit does NOT pay for Gemini.
+        Keys `cardpulse-gemini-prod` and `-test` (bound to a service account `pulse-gemini` in each project, Gemini API only)
+        are saved and accepted, but answered "prepayment credits are depleted" until credit is bought.
+        - [ ] Buy $5 of credit now (about 4,000 card reads); check both keys work (credit may be per project).
+        - [ ] Before the closed test: auto-reload on production (e.g. $10 when below $3, monthly limit about $50: the
+          monthly limit is the real spending cap). The ₹1,000 Cloud budget alert may not see prepaid Gemini; watch the
+          AI Studio balance.
+        - [ ] B6: the Worker logs an unmistakable line when Gemini answers 402 (credit depleted), so it is noticed before
+          users report reading failing. Done: upgrade. Original note: activate the full account at once: a trial account pauses everything when the trial ends,
         Gemini keys included, which would stop card reading; upgrading keeps the remaining credit. Link `pulse-test` and
         `pulse-prod` to it; budget alert ₹1,000 a month (50%, 90%, 100%); one Gemini key per project from AI Studio, shown
         on the paid tier, saved as Keychain items `cardpulse-gemini-prod` and `cardpulse-gemini-test`.
