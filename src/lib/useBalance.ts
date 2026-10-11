@@ -5,21 +5,30 @@ import { log } from './debug'
 import { useOnline } from './useOnline'
 
 let lastError = ''
+let loading = false
 const errorSubs = new Set<() => void>()
 const setError = (e: string) => { lastError = e; errorSubs.forEach((f) => f()) }
+const setLoading = (v: boolean) => { loading = v; errorSubs.forEach((f) => f()) }
+/** Refused for want of a sign-in: right after signing in the first request can go out before the session is in place. */
+const notSignedInYet = (e: { code?: string; message?: string }) => e.code === '42501' || /permission denied|not signed in|JWT/i.test(e.message ?? '')
 
 /**
  * Asks the server for this account's balance (my_balance, migration 0005). A failure is kept (and written to the
  * diagnostic log) so Plan & cards can say why it has nothing to show, and offer to try again.
  */
-export async function refreshBalance(userId: string): Promise<void> {
+export async function refreshBalance(userId: string, retried = false): Promise<void> {
   if (!supabase) return
+  setLoading(true)
   const { data, error } = await supabase.rpc('my_balance')
   if (error) {
     log(`my_balance failed: ${error.code ?? ''} ${error.message}`)
+    // just signed in: the session lands a moment later, so ask once more before saying anything went wrong
+    if (!retried && notSignedInYet(error)) { await new Promise((r) => setTimeout(r, 1500)); return refreshBalance(userId, true) }
+    setLoading(false)
     setError(error.message || 'The server did not answer')
     return
   }
+  setLoading(false)
   const b = parseBalance(data)
   if (!b) { log(`my_balance: unexpected answer ${JSON.stringify(data).slice(0, 300)}`); setError('The server sent something unexpected'); return }
   setError('')
@@ -32,6 +41,13 @@ export function useBalance(userId: string | undefined): Balance | null {
   const b = useSyncExternalStore(subscribe, () => (userId ? getBalance(userId) : null))
   useEffect(() => { if (userId && online) void refreshBalance(userId) }, [userId, online])
   return b
+}
+
+/** A balance request is on its way. */
+export function useBalanceLoading(): boolean {
+  const [, bump] = useState(0)
+  useEffect(() => { const f = () => bump((n) => n + 1); errorSubs.add(f); return () => { errorSubs.delete(f) } }, [])
+  return loading
 }
 
 /** Why the last balance request failed, or '' when it did not. */

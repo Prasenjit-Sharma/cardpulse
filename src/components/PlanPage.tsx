@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { ALLOWANCE, DAILY, EXTRA_BRIEFS, isUnlimited, MY_CARDS, UNLIMITED_LOW, PACKS, PASS, PASS_MY_CARDS, PLANS, TRIAL_BRIEFS, rupees, type PaidTier, type Tier } from '../../shared/plans'
 import type { Balance } from '../lib/balance'
 import { signInWithGoogle, useSession } from '../lib/auth'
-import { refreshBalance, useBalanceError } from '../lib/useBalance'
+import { refreshBalance, useBalanceError, useBalanceLoading } from '../lib/useBalance'
 import Icon from './Icon'
 import Sheet from './Sheet'
 import './plan.css'
@@ -40,6 +40,7 @@ function Meter({ label, left, of, word }: { label: string; left: number; of: num
 function Holding({ balance, signedIn }: { balance: Balance | null; signedIn: boolean }) {
   const userId = useSession()?.user.id
   const error = useBalanceError()
+  const loading = useBalanceLoading()
   const [trying, setTrying] = useState(false)
   const retry = async () => { if (!userId) return; setTrying(true); await refreshBalance(userId).finally(() => setTrying(false)) }
   if (!signedIn) {
@@ -49,6 +50,15 @@ function Holding({ balance, signedIn }: { balance: Balance | null; signedIn: boo
         <h2>{ALLOWANCE.free.cards} cards a month</h2>
         <p>Sign in to start reading cards, with {TRIAL_BRIEFS} Pulse Briefs to try. QR codes and your digital card work without it.</p>
         <button className="pl-hero-cta" onClick={() => void signInWithGoogle()}>Sign in with Google</button>
+      </section>
+    )
+  }
+  if (!balance && loading) {
+    return (
+      <section className="pl-hero" aria-label="Your plan" aria-busy="true">
+        <span className="pl-kicker-line">Your plan</span>
+        <h2>Loading your plan…</h2>
+        <p>What you have left shows here in a moment.</p>
       </section>
     )
   }

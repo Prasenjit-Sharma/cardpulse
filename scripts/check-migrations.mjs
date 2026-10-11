@@ -10,6 +10,7 @@ const db = new PGlite()
 await db.exec(`
   create role anon nologin; create role authenticated nologin; create role service_role nologin;
   create schema auth; create table auth.users (id uuid primary key);
+  create table auth.identities (id uuid primary key default gen_random_uuid(), user_id uuid not null references auth.users(id) on delete cascade, provider text not null, provider_id text not null);
   create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
   grant usage on schema auth to anon, authenticated; grant execute on function auth.uid() to anon, authenticated;
   create schema storage;
@@ -376,5 +377,17 @@ await db.exec(`insert into auth.users values ('${V}')`)
 await sudo(`select public.grant_plan('${V}', 'pro', 1)`)
 assert.equal((await bal(V)).cards.month.allowance, 400, 'other plans unchanged')
 console.log('ok 0011 Unlimited fair use 3,000 a month, other plans unchanged')
+
+// ── 0012 free use survives deleting the account (behaviour is checked in check-baseline) ──
+await db.exec(readFileSync(ROOT + '0012_free_use_survives_deletion.sql', 'utf8'))
+await db.exec(readFileSync(ROOT + '0012_free_use_survives_deletion.sql', 'utf8'))   // re-runnable
+const W = '88888888-8888-8888-8888-88888888888d'
+await db.exec(`insert into auth.users values ('${W}'); insert into auth.identities (user_id, provider, provider_id) values ('${W}', 'google', 'w-sub')`)
+await as('authenticated', W, 'select public.charge_reads(4)')
+await as('authenticated', W, 'select public.delete_my_account()')
+const W2 = '88888888-8888-8888-8888-88888888888e'
+await db.exec(`insert into auth.users values ('${W2}'); insert into auth.identities (user_id, provider, provider_id) values ('${W2}', 'google', 'w-sub')`)
+assert.equal((await bal(W2)).cards.left, 16, 'the same sign-in comes back with the month\'s 4 cards still used')
+console.log('ok 0012 free use survives account deletion')
 
 console.log('ALL OK')

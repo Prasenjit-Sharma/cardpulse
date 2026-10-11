@@ -109,6 +109,14 @@ Seen in the field: reads and Pulse Briefs fail on weak signal, which never happe
       - [ ] On the phone: install Pulse Dev, sign in with Google (a test user on the pulse-test consent screen), read a card,
         make a Brief, try a card link and a lead form on dev.pulsecardscanner.com. The new apps start EMPTY (an Android
         app's data belongs to its id): move test contacts with Settings → Export → Backup file in the old app, then Restore.
+- [x] B6a. Found on the phone, fixed 2026-10-11:
+      - Deleting the account and signing in again gave a fresh 20 cards and 3 trial briefs (a way to farm free reads).
+        Migration `0012_free_use_survives_deletion.sql` (also folded into the baseline): deletion keeps a one-way
+        fingerprint of the sign-in (sha256 of provider and account id) with the month's free cards used and the trial
+        briefs left, for 13 months; the same sign-in comes back carrying on from there. Disclosed in the privacy policy.
+        **To run in `pulse-test` and `pulse-prod`** (SQL Editor). Tested both ways in `npm run test:db`.
+      - Plan & cards said "Not loaded yet" just after sign-in: it now says "Loading your plan…" and asks once more by itself
+        if the first request went out before the sign-in had landed.
 - [ ] B7. Free safety nets: a nightly database backup (GitHub Actions) and a daily ping so a quiet week does not pause the
       Supabase project.
 
