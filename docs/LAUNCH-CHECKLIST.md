@@ -126,8 +126,8 @@ Seen in the field: reads and Pulse Briefs fail on weak signal, which never happe
       each (not the numbered migrations).
 - [ ] C4. Google Cloud: a project per environment, each with its own Gemini key (production on billing: the paid tier is
       what stops Google using the photos) and OAuth client.
-      - [ ] Billing account (service Gmail, started 2026-10-11 as Google Cloud's free trial: $300 credit for 90 days).
-        **Activate the full (pay-as-you-go) account right away**: a trial account pauses everything when the trial ends,
+      - [ ] Billing account "My Billing Account" (`01711F-18A36B-6F5963`, service Gmail): free trial started and upgraded
+        to a **paid account** on 2026-10-11, both projects linked. Done: upgrade. Original note: activate the full account at once: a trial account pauses everything when the trial ends,
         Gemini keys included, which would stop card reading; upgrading keeps the remaining credit. Link `pulse-test` and
         `pulse-prod` to it; budget alert ₹1,000 a month (50%, 90%, 100%); one Gemini key per project from AI Studio, shown
         on the paid tier, saved as Keychain items `cardpulse-gemini-prod` and `cardpulse-gemini-test`.
