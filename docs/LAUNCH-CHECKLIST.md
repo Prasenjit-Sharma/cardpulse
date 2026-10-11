@@ -116,7 +116,8 @@ Seen in the field: reads and Pulse Briefs fail on weak signal, which never happe
       authored with a personal email), no `.impeccable/`, no `docs/superpowers/`, no old project addresses. The first
       attempt (`byangomaaa/pulse`, pushed with full history by mistake) was deleted on 2026-10-10. This Mac's push access to
       byangomaaa is scoped to `https://byangomaaa@github.com` and never touches the other projects. Then: new account, one repo, environments development / staging / production, approval before production.
-- [ ] C2. (account created 2026-10-10) This Mac reaches it ONLY through a project API token (decided 2026-10-11): Cloudflare →
+- [x] C2. (account created 2026-10-10; account id `caf6401c7e28c7eb7044a283ea5e96dd`; token `pulse-mac-deploy` saved and
+      tested 2026-10-11, the Mac's own login unchanged) This Mac reaches it ONLY through a project API token (decided 2026-10-11): Cloudflare →
       My Profile → API Tokens → "Edit Cloudflare Workers" template plus Workers R2 Storage: Edit and Cloudflare Pages: Edit,
       saved with `security add-generic-password -s cardpulse-cloudflare-token -a pulse -w` and passed per command. Never
       `wrangler login` to the new account: the Mac's login stays on the old development account until C6. Cloudflare: one account (Workers, KV, R2, Pages, Access).
