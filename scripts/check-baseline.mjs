@@ -1,5 +1,5 @@
 // Run: npm run test:db (after check-migrations), or node scripts/check-baseline.mjs
-// supabase/baseline.sql is what a NEW project runs instead of migrations 0001 to 0011. This builds one database each way
+// supabase/baseline.sql is what a NEW project runs instead of the numbered migrations. This builds one database each way
 // (PGlite, with stand-ins for Supabase's auth and storage) and compares them: every table and column, function and its
 // body, policy, grant, trigger, index and storage bucket must match, apart from the changes the baseline lists. Then it
 // runs the baseline's own behaviour checks: the daily brakes (the one table that changed), charging, limits and leads.
@@ -12,6 +12,7 @@ const ROOT = fileURLToPath(new URL('../supabase/', import.meta.url))
 const SETUP = `
   create role anon nologin; create role authenticated nologin; create role service_role nologin;
   create schema auth; create table auth.users (id uuid primary key);
+  create table auth.identities (id uuid primary key default gen_random_uuid(), user_id uuid not null references auth.users(id) on delete cascade, provider text not null, provider_id text not null);
   create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
   grant usage on schema auth to anon, authenticated; grant execute on function auth.uid() to anon, authenticated;
   create schema storage;
@@ -31,7 +32,7 @@ for (const f of readdirSync(ROOT + 'migrations').filter((f) => /^\d{4}_.*\.sql$/
 const base = await fresh()
 await base.exec(readFileSync(ROOT + 'baseline.sql', 'utf8'))
 await base.exec(readFileSync(ROOT + 'baseline.sql', 'utf8'))   // re-runnable
-console.log('baseline ran twice; migrations 0001 to 0011 ran in order')
+console.log('baseline ran twice; every numbered migration ran in order')
 
 // ── the same database, apart from the listed changes ──
 const TABLES_GONE = new Set(['scan_usage', 'brief_usage']), TABLES_NEW = new Set(['daily_brakes'])
@@ -57,14 +58,14 @@ same('row-level security switched on', await rows(migrated, rls), await rows(bas
 const grants = `select r.routine_name, p.grantee, p.privilege_type from information_schema.routine_privileges p join information_schema.routines r on r.specific_name = p.specific_name
   where r.routine_schema = 'public' and p.grantee in ('anon', 'authenticated', 'service_role', 'PUBLIC')`
 same('who may call each function', await rows(migrated, grants), await rows(base, grants), (r) => FUNCS_GONE.has(r.routine_name), (r) => FUNCS_NEW.has(r.routine_name))
-const trig = `select event_object_table, trigger_name, event_manipulation, action_timing from information_schema.triggers where trigger_schema = 'public'`
+const trig = `select event_object_schema, event_object_table, trigger_name, event_manipulation, action_timing from information_schema.triggers where trigger_schema in ('public', 'auth')`
 same('triggers', await rows(migrated, trig), await rows(base, trig))
 const idx = `select tablename, indexname from pg_indexes where schemaname = 'public'`
 same('indexes', await rows(migrated, idx), await rows(base, idx), (r) => TABLES_GONE.has(r.tablename), (r) => TABLES_NEW.has(r.tablename))
 const cons = `select conrelid::regclass::text as tbl, pg_get_constraintdef(oid) as def from pg_constraint where connamespace = 'public'::regnamespace`
 same('constraints (checks, keys, references)', await rows(migrated, cons), await rows(base, cons), (r) => TABLES_GONE.has(r.tbl), (r) => TABLES_NEW.has(r.tbl))
 same('storage buckets', await rows(migrated, 'select * from storage.buckets'), await rows(base, 'select * from storage.buckets'))
-console.log('ok the baseline defines the same database as 0001 to 0011, apart from the listed changes')
+console.log('ok the baseline defines the same database as every numbered migration, apart from the listed changes')
 
 // ── the baseline's own behaviour ──
 const db = base
@@ -111,5 +112,20 @@ await assert.rejects(as('anon', null, `select public.submit_lead($1, null, null,
 await assert.rejects(as('authenticated', Q, 'select * from public.consume_scan()'), /does not exist/, 'consume_scan is not carried over')
 await as('authenticated', Q, 'select public.delete_my_account()')
 assert.equal((await db.query(`select count(*)::int as n from auth.users where id = '${Q}'`)).rows[0].n, 0)
-console.log('ok balances, charge once, plans, card limit, leads and deletion behave as after 0011')
+// free use survives deleting the account: the same Google sign-in comes back with this month's cards and the trial used
+const signUp = async (uid, sub) => db.exec(`insert into auth.users values ('${uid}'); insert into auth.identities (user_id, provider, provider_id) values ('${uid}', 'google', '${sub}')`)
+const [R1, R2, R3] = ['b1', 'b2', 'b3'].map((s) => `99999999-9999-9999-9999-9999999999${s}`)
+await signUp(R1, 'google-sub-777')
+await as('authenticated', R1, 'select public.charge_reads(15)')
+await as('authenticated', R1, 'select public.charge_brief()'); await as('authenticated', R1, 'select public.charge_brief()')
+b = await bal(R1); assert.equal(b.cards.left, 5); assert.equal(b.briefs.trial, 1)
+await as('authenticated', R1, 'select public.delete_my_account()')
+assert.equal((await db.query(`select count(*)::int as n from public.quota_memory`)).rows[0].n, 1, 'one fingerprint kept')
+assert.equal((await db.query(`select count(*)::int as n from public.quota_memory where identity_hash ~ 'google|777'`)).rows[0].n, 0, 'the sign-in id is not readable in it')
+await signUp(R2, 'google-sub-777')
+b = await bal(R2); assert.equal(b.cards.left, 5, 'the month\'s free cards stay used'); assert.equal(b.briefs.trial, 1, 'trial briefs do not come back')
+await signUp(R3, 'google-sub-888')
+b = await bal(R3); assert.equal(b.cards.left, 20, 'a different Google account starts fresh'); assert.equal(b.briefs.trial, 3)
+assert.equal((await as('authenticated', R3, 'select count(*)::int as n from public.quota_memory')).rows[0].n, 0, 'nobody can read the fingerprints')
+console.log('ok balances, charge once, plans, card limit, leads and deletion behave as after 0012; free use survives deletion')
 console.log('BASELINE OK')
