@@ -22,8 +22,9 @@ export async function refreshBalance(userId: string, retried = false): Promise<v
   const { data, error } = await supabase.rpc('my_balance')
   if (error) {
     log(`my_balance failed: ${error.code ?? ''} ${error.message}`)
-    // just signed in: the session lands a moment later, so ask once more before saying anything went wrong
-    if (!retried && notSignedInYet(error)) { await new Promise((r) => setTimeout(r, 1500)); return refreshBalance(userId, true) }
+    // just signed in (the session lands a moment later) or a passing network hiccup: ask once more before saying anything
+    // went wrong; a refusal for want of a sign-in waits a little longer for the session
+    if (!retried) { await new Promise((r) => setTimeout(r, notSignedInYet(error) ? 1500 : 800)); return refreshBalance(userId, true) }
     setLoading(false)
     setError(error.message || 'The server did not answer')
     return

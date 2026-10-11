@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ALLOWANCE, DAILY, EXTRA_BRIEFS, isUnlimited, MY_CARDS, UNLIMITED_LOW, PACKS, PASS, PASS_MY_CARDS, PLANS, TRIAL_BRIEFS, rupees, type PaidTier, type Tier } from '../../shared/plans'
 import type { Balance } from '../lib/balance'
 import { signInWithGoogle, useSession } from '../lib/auth'
@@ -43,6 +43,12 @@ function Holding({ balance, signedIn }: { balance: Balance | null; signedIn: boo
   const loading = useBalanceLoading()
   const [trying, setTrying] = useState(false)
   const retry = async () => { if (!userId) return; setTrying(true); await refreshBalance(userId).finally(() => setTrying(false)) }
+  // opened signed in with nothing to show and nothing on its way (first sign-in, or a request that never ran): ask now,
+  // once, instead of waiting for a tap on Try again
+  const asked = useRef(false)
+  useEffect(() => {
+    if (signedIn && userId && !balance && !loading && !asked.current) { asked.current = true; void refreshBalance(userId) }
+  }, [signedIn, userId, balance, loading])
   if (!signedIn) {
     return (
       <section className="pl-hero" aria-label="Your plan">
