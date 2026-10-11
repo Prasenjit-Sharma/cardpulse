@@ -128,8 +128,8 @@ Seen in the field: reads and Pulse Briefs fail on weak signal, which never happe
       - [x] `pulse-prod` (2026-10-11): its own Google Cloud project `pulse-prod`, consent screen "Pulse" (testing), web
         client `642308154441-rjb0413prr9n1iuq264u5rgpfeouseu4`, Google on in Supabase `pulse-prod` with the store app's
         return link only; checked from outside.
-      - [ ] In both Supabase projects: **Authentication → Sign In / Providers → Email → off** (user deciding; still on
-        2026-10-11). The app signs in with Google only. Left on, a script could make throwaway email accounts, each with 20
+      - [x] In both Supabase projects: **Authentication → Sign In / Providers → Email → off** (done 2026-10-11, checked
+        from outside). The app signs in with Google only. Left on, a script could make throwaway email accounts, each with 20
         free cards a month; new email accounts must confirm their address first, which limits but does not stop it.
       - [ ] Before the closed test (F2): publish the `pulse-prod` consent screen (Audience → Publish app) so any Google
         account can sign in. Basic sign-in (email, profile) needs no Google review as long as no logo is uploaded.
