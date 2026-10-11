@@ -117,6 +117,8 @@ Seen in the field: reads and Pulse Briefs fail on weak signal, which never happe
         **To run in `pulse-test` and `pulse-prod`** (SQL Editor). Tested both ways in `npm run test:db`.
       - Plan & cards said "Not loaded yet" just after sign-in: it now says "Loading your plan…" and asks once more by itself
         if the first request went out before the sign-in had landed.
+- [ ] B6b. Small, next migration: `grant_plan`, `grant_pack` and `grant_pass` should refuse an unknown account with a plain
+      "No account with that id" (today a mistyped email gives a not-null error on plans.owner_id, seen 2026-10-11).
 - [ ] B7. Free safety nets: a nightly database backup (GitHub Actions) and a daily ping so a quiet week does not pause the
       Supabase project.
 
