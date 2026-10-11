@@ -136,7 +136,9 @@ Seen in the field: reads and Pulse Briefs fail on weak signal, which never happe
         free cards a month; new email accounts must confirm their address first, which limits but does not stop it.
       - [ ] Before the closed test (F2): publish the `pulse-prod` consent screen (Audience → Publish app) so any Google
         account can sign in. Basic sign-in (email, profile) needs no Google review as long as no logo is uploaded.
-- [ ] **C5. Domain. When: before B6** (soon after Google sign-in is set up), because B6 writes the domain into every
+- [x] **C5. Domain: `pulsecardscanner.com`** (bought 2026-10-11 at Cloudflare Registrar in the pulsecardscanner account,
+      cost price $10.46 a year, auto-renew on, Cloudflare nameservers; expires 2027-10-11). Still to do here: Email Routing
+      for `support@` and `privacy@`. Original note: **buy before B6** (soon after Google sign-in is set up), because B6 writes the domain into every
       environment: the address in card QR codes and links (`VITE_PUBLIC_URL`), the Worker's allowed origins, the privacy
       policy and account-deletion links in the Play listing and on Google's sign-in screen, and the App Links file that
       opens card links in the app. Buying it later means changing all of those, and card links already shared would break.
