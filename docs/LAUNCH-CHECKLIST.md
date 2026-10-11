@@ -122,6 +122,14 @@ Seen in the field: reads and Pulse Briefs fail on weak signal, which never happe
       each (not the numbered migrations).
 - [ ] C4. Google Cloud: a project per environment, each with its own Gemini key (production on billing: the paid tier is
       what stops Google using the photos) and OAuth client.
+      - [x] `pulse-test` (2026-10-11): Google Cloud project `pulse-test` (service Gmail), consent screen "Pulse" (External,
+        testing, no logo), web client `283965860755-44idm66jvbo34eg2k7u4m80et3f9p953`, Google on in Supabase `pulse-test`
+        with the dev and staging return links; checked from outside (the sign-in page opens with this client).
+      - [ ] `pulse-prod`: the same, return link `in.pulsecardscanner.app://auth/callback`.
+      - [ ] In both Supabase projects: **Authentication → Sign In / Providers → Email → off**. The app signs in with Google
+        only; left on, anyone could script throwaway email accounts, each with 20 free cards a month.
+      - [ ] Before the closed test (F2): publish the `pulse-prod` consent screen (Audience → Publish app) so any Google
+        account can sign in. Basic sign-in (email, profile) needs no Google review as long as no logo is uploaded.
 - [ ] **C5. Domain. When: before B6** (soon after Google sign-in is set up), because B6 writes the domain into every
       environment: the address in card QR codes and links (`VITE_PUBLIC_URL`), the Worker's allowed origins, the privacy
       policy and account-deletion links in the Play listing and on Google's sign-in screen, and the App Links file that
